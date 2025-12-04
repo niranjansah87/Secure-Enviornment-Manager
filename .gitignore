@@ -54,3 +54,4 @@ dist/
 
 # Node modules (if React is in same repo)
 node_modules/
+.env.development

@@ -1,0 +1,42 @@
+services:
+  dotenv-server-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: dotenv-server-dev
+    restart: unless-stopped
+    env_file:
+      - .env.development
+    volumes:
+      # Mount source code for hot-reload
+      - ./app.py:/app/app.py
+      - ./audit_logger.py:/app/audit_logger.py
+      - ./history_manager.py:/app/history_manager.py
+      - ./templates:/app/templates
+      - ./templates_config.json:/app/templates_config.json
+      # Persistent data directories
+      - ./data:/app/data
+      - ./audit_logs:/app/audit_logs
+      - ./logs:/app/logs
+    ports:
+      - "8070:8070"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8070/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    networks:
+      - dotenv-dev-network
+
+networks:
+  dotenv-dev-network:
+    driver: bridge

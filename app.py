@@ -849,7 +849,7 @@ def view_audit_logs(namespace: str, environment: str):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8070, debug=settings.debug)
+    app.run(host="0.0.0.0", port=8070, debug=settings.debug, use_reloader=True)
 
 
 @app.get("/healthz")
