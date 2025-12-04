@@ -1,0 +1,43 @@
+{
+  "django_starter": {
+    "name": "Django Starter",
+    "description": "Essential settings for a new Django project",
+    "variables": {
+      "DEBUG": "True",
+      "SECRET_KEY": "__GENERATE__",
+      "ALLOWED_HOSTS": "localhost,127.0.0.1",
+      "DATABASE_URL": "postgres://user:password@localhost:5432/dbname",
+      "STATIC_URL": "/static/"
+    }
+  },
+  "react_app": {
+    "name": "React App",
+    "description": "Standard environment variables for React",
+    "variables": {
+      "REACT_APP_API_URL": "http://localhost:8000/api",
+      "REACT_APP_ENV": "development",
+      "REACT_APP_FEATURE_FLAG_NEW_UI": "true"
+    }
+  },
+  "node_express": {
+    "name": "Node.js Express",
+    "description": "Basic configuration for Express.js server",
+    "variables": {
+      "PORT": "3000",
+      "NODE_ENV": "development",
+      "JWT_SECRET": "__GENERATE__",
+      "DB_HOST": "localhost",
+      "DB_USER": "root",
+      "DB_PASS": "password"
+    }
+  },
+  "flask_minimal": {
+    "name": "Flask Minimal",
+    "description": "Minimal config for Flask applications",
+    "variables": {
+      "FLASK_APP": "app.py",
+      "FLASK_DEBUG": "1",
+      "SECRET_KEY": "__GENERATE__"
+    }
+  }
+}

@@ -1,0 +1,156 @@
+{% extends "layout.html" %} {% block content %}
+<main
+  style="
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 3rem);
+    padding: 1rem;
+  "
+>
+  <div
+    class="card"
+    style="max-width: 520px; width: 100%; padding: 2.5rem; position: relative"
+  >
+    <div style="position: absolute; top: 1.5rem; right: 1.5rem">
+      <button
+        class="theme-toggle"
+        type="button"
+        id="themeToggleBtn"
+        title="Toggle theme"
+      >
+        <span class="theme-icon">🌙</span>
+      </button>
+    </div>
+
+    <div style="text-align: center; margin-bottom: 2rem">
+      <div style="font-size: 3rem; margin-bottom: 1rem">🔒</div>
+      <h1 style="font-size: 1.75rem; margin-bottom: 0.75rem">
+        Secure Environment Manager
+      </h1>
+      <p class="muted" style="font-size: 0.875rem; margin-bottom: 0.5rem">
+        Accessing: <code>{{ namespace }}</code> · <code>{{ environment }}</code>
+      </p>
+    </div>
+
+    {% with messages = get_flashed_messages() %} {% if messages %}
+    <div class="messages" style="margin-bottom: 1.5rem">
+      {% for message in messages %}
+      <div
+        class="flash flash-error"
+        style="padding: 0.75rem; font-size: 0.875rem"
+      >
+        ⚠️ {{ message }}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %} {% endwith %}
+
+    <form
+      method="POST"
+      action="{{ url_for('dashboard', namespace=namespace, environment=environment) }}"
+    >
+      <label for="password" style="font-size: 0.9375rem; margin-bottom: 0.5rem"
+        >Master Password</label
+      >
+      <input
+        type="password"
+        name="password"
+        id="password"
+        required
+        autofocus
+        placeholder="Enter your password"
+        autocomplete="current-password"
+        style="font-size: 1rem; margin-bottom: 1.25rem; padding: 0.875rem 1rem"
+      />
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <button
+        type="submit"
+        style="
+          width: 100%;
+          background: var(--accent-gradient);
+          padding: 0.875rem;
+          font-size: 1rem;
+        "
+      >
+        🔓 Unlock Dashboard
+      </button>
+    </form>
+
+    <div
+      style="
+        margin-top: 1.75rem;
+        padding-top: 1.75rem;
+        border-top: 1px solid var(--border);
+      "
+    >
+      <div
+        style="
+          display: flex;
+          gap: 1rem;
+          align-items: center;
+          justify-content: center;
+          flex-wrap: wrap;
+        "
+      >
+        <span
+          style="
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+          "
+        >
+          <span style="color: var(--success)">✓</span> AES-256
+        </span>
+        <span
+          style="
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+          "
+        >
+          <span style="color: var(--success)">✓</span> Rate Limited
+        </span>
+        <span
+          style="
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+          "
+        >
+          <span style="color: var(--success)">✓</span> CSRF Protected
+        </span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  // Wait for DOM to be ready
+  document.addEventListener("DOMContentLoaded", () => {
+    const themeToggleBtn = document.getElementById("themeToggleBtn");
+    const themeIcon = document.querySelector(".theme-icon");
+
+    // Set initial icon
+    if (themeIcon) {
+      const currentTheme = document.documentElement.dataset.theme || "dark";
+      themeIcon.textContent = currentTheme === "dark" ? "☀️" : "🌙";
+    }
+
+    // Add click handler
+    if (themeToggleBtn) {
+      themeToggleBtn.addEventListener("click", () => {
+        if (typeof window.toggleTheme === "function") {
+          window.toggleTheme();
+        }
+      });
+    }
+  });
+</script>
+{% endblock %}

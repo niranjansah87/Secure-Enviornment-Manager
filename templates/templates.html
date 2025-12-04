@@ -1,0 +1,105 @@
+{% extends "layout.html" %} {% block content %}
+<div class="page">
+  <header>
+    <nav>
+      <div>
+        <h1>Variable Templates</h1>
+        <p class="muted">
+          Bootstrap <code>{{ namespace }}/{{ environment }}</code> with
+          predefined configurations
+        </p>
+      </div>
+      <a
+        href="{{ url_for('dashboard', namespace=namespace, environment=environment) }}"
+        class="btn btn-outline"
+      >
+        ← Back to Dashboard
+      </a>
+    </nav>
+  </header>
+
+  <main>
+    {% if templates %}
+    <div
+      class="grid"
+      style="grid-template-columns: repeat(2, 1fr); gap: 1.5rem"
+    >
+      {% for key, template in templates.items() %}
+      <div class="card">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+          "
+        >
+          <div>
+            <h2 style="margin-bottom: 0.5rem">{{ template.name }}</h2>
+            <p class="muted">{{ template.description }}</p>
+          </div>
+          <span class="pill">{{ template.variables|length }} vars</span>
+        </div>
+
+        <div
+          style="
+            background: var(--surface-hover);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+          "
+        >
+          <h3 style="font-size: 0.875rem; margin-bottom: 0.75rem">
+            Variables:
+          </h3>
+          <div style="max-height: 200px; overflow-y: auto">
+            {% for var_key, var_val in template.variables.items() %}
+            <div
+              style="
+                display: flex;
+                gap: 0.5rem;
+                margin-bottom: 0.5rem;
+                font-size: 0.875rem;
+              "
+            >
+              <code style="flex-shrink: 0">{{ var_key }}</code>
+              <span style="color: var(--text-muted)">=</span>
+              <code style="flex: 1; overflow: hidden; text-overflow: ellipsis">
+                {% if var_val == '__GENERATE__' %}
+                <span style="color: var(--success); font-style: italic"
+                  >&lt;auto-generated&gt;</span
+                >
+                {% else %} {{ var_val }} {% endif %}
+              </code>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <form
+          action="{{ url_for('apply_template', namespace=namespace, environment=environment) }}"
+          method="POST"
+        >
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <input type="hidden" name="template_key" value="{{ key }}" />
+          <button
+            type="submit"
+            class="btn"
+            style="width: 100%"
+            onclick="return confirm('Apply {{ template.name }} template? This will merge variables into your current environment.');"
+          >
+            ✓ Apply Template
+          </button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="card" style="text-align: center; padding: 3rem">
+      <h2>📋 No Templates Available</h2>
+      <p class="muted">Templates will appear here once configured.</p>
+    </div>
+    {% endif %}
+  </main>
+</div>
+{% endblock %}

@@ -1,0 +1,99 @@
+{% extends "layout.html" %} {% block content %}
+<div class="page">
+  <header>
+    <nav>
+      <div>
+        <h1>Version History</h1>
+        <p class="muted">
+          Timeline of changes for <code>{{ namespace }}/{{ environment }}</code>
+        </p>
+      </div>
+      <a
+        href="{{ url_for('dashboard', namespace=namespace, environment=environment) }}"
+        class="btn btn-outline"
+      >
+        ← Back to Dashboard
+      </a>
+    </nav>
+  </header>
+
+  <main>
+    {% if history %}
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Action</th>
+            <th>User</th>
+            <th>Description</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for entry in history %}
+          <tr>
+            <td style="white-space: nowrap">
+              {{ entry.timestamp[:19].replace('T', ' ') }}
+            </td>
+            <td>
+              <span
+                class="pill"
+                style="
+                {% if entry.action == 'CREATE' %} background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3); color: var(--success);
+                {% elif entry.action == 'UPDATE' %} background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.3); color: var(--accent-primary);
+                {% elif entry.action == 'DELETE' %} background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.3); color: var(--danger);
+                {% elif entry.action == 'ROLLBACK' %} background: rgba(168, 85, 247, 0.15); border-color: rgba(168, 85, 247, 0.3); color: #a855f7;
+                {% endif %}"
+              >
+                {{ entry.action }}
+              </span>
+            </td>
+            <td>{{ entry.user_id }}</td>
+            <td>{{ entry.description }}</td>
+            <td>
+              <div class="table-actions">
+                <a
+                  href="{{ url_for('compare_version', namespace=namespace, environment=environment, snapshot_id=entry.id) }}"
+                  class="btn"
+                  style="padding: 0.5rem 1rem; font-size: 0.875rem"
+                >
+                  🔍 View Diff
+                </a>
+                <form
+                  action="{{ url_for('rollback_version', namespace=namespace, environment=environment, snapshot_id=entry.id) }}"
+                  method="POST"
+                  style="display: inline"
+                  onsubmit="return confirm('⚠️ Restore this version? This will overwrite current variables.');"
+                >
+                  <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token() }}"
+                  />
+                  <button
+                    type="submit"
+                    class="btn btn-outline"
+                    style="padding: 0.5rem 1rem; font-size: 0.875rem"
+                  >
+                    ↩️ Restore
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="card" style="text-align: center; padding: 3rem">
+      <h2>🕰️ No History Yet</h2>
+      <p class="muted">
+        Changes will appear here automatically as you modify variables.
+      </p>
+    </div>
+    {% endif %}
+  </main>
+</div>
+{% endblock %}

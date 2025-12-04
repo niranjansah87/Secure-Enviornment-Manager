@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyc
+
+# Virtual environments
+venv/
+env/
+.venv/
+ENV/
+env.bak/
+
+# Environment and secrets
+.env
+.env.local
+api_keys.json
+service_account.json
+
+# Data and logs
+data/
+audit_logs/
+*.log
+*.out
+*.err
+*.pid
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# IDE configs
+.vscode/
+.idea/
+
+# Supabase
+.supabase/
+.supabase/functions/.env
+
+# Testing and coverage
+.cache/
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Build artifacts
+*.spec
+build/
+dist/
+
+# Database
+*.sqlite3
+
+# Node modules (if React is in same repo)
+node_modules/

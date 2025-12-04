@@ -1,0 +1,32 @@
+env.domain.ai {
+	encode gzip zstd
+	log {
+		output file /var/log/caddy/dotenv-server.log {
+			roll_size 50MB
+			roll_keep 5
+		}
+		format console
+	}
+
+	@api path /api/v1/*
+	header @api {
+		Access-Control-Allow-Origin *
+		Access-Control-Allow-Methods GET,OPTIONS
+		Access-Control-Allow-Headers Authorization,Content-Type
+	}
+
+	reverse_proxy 127.0.0.1:8070 {
+		transport http {
+			read_timeout 30s
+			write_timeout 30s
+		}
+	}
+
+	handle_errors {
+		rewrite * /server-error.html
+		file_server {
+			root /var/www/html
+		}
+	}
+}
+

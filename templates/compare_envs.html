@@ -1,0 +1,152 @@
+{% extends "layout.html" %} 
+{% block content %}
+<div class="page">
+  <header>
+    <nav>
+      <div>
+        <h1>Compare Environments</h1>
+        <p class="muted">Analyze drift between <code>{{ namespace }}/{{ environment }}</code> and another environment</p>
+      </div>
+      <a href="{{ url_for('dashboard', namespace=namespace, environment=environment) }}" class="btn btn-outline">
+        ← Back to Dashboard
+      </a>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Selection Form -->
+    <div class="card">
+      <form method="POST" class="grid grid-2">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        
+        <div>
+          <label for="target_namespace">Target Namespace</label>
+          <select id="target_namespace" name="target_namespace" onchange="updateEnvironments()">
+            <option value="">Select Namespace</option>
+            {% for ns in all_envs.keys() %}
+            <option value="{{ ns }}" {% if target_ns == ns %}selected{% endif %}>{{ ns }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div>
+          <label for="target_environment">Target Environment</label>
+          <select id="target_environment" name="target_environment">
+            <option value="">Select Environment</option>
+          </select>
+        </div>
+
+        <div style="grid-column: 1 / -1;">
+          <button type="submit" class="btn" style="width: 100%;">
+            ⚖️ Compare Environments
+          </button>
+        </div>
+      </form>
+    </div>
+
+    {% if source_vars is defined and target_vars is defined %}
+    <!-- Comparison Results -->
+    <div class="card" style="margin-top: 2rem;">
+      <h2>Comparison Results</h2>
+      <p class="muted" style="margin-bottom: 1.5rem;">
+        <strong>Source:</strong> <code>{{ namespace }}/{{ environment }}</code> 
+        <strong style="margin-left: 1rem;">Target:</strong> <code>{{ target_ns }}/{{ target_env }}</code>
+      </p>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Variable</th>
+              <th>Source Value</th>
+              <th>Target Value</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% set all_keys = (source_vars.keys() | list + target_vars.keys() | list) | unique | sort %}
+            {% set has_diff = false %}
+            
+            {% for key in all_keys %}
+              {% set src_val = source_vars.get(key) %}
+              {% set tgt_val = target_vars.get(key) %}
+              
+              {% if src_val != tgt_val %}
+                {% set has_diff = true %}
+                <tr>
+                  <td><code>{{ key }}</code></td>
+                  <td>
+                    {% if src_val is not none %}
+                      <code>{{ src_val }}</code>
+                    {% else %}
+                      <span class="muted" style="font-style: italic;">Not present</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if tgt_val is not none %}
+                      <code>{{ tgt_val }}</code>
+                    {% else %}
+                      <span class="muted" style="font-style: italic;">Not present</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if src_val is none %}
+                      <span class="pill" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3); color: var(--success);">
+                        UNIQUE TO TARGET
+                      </span>
+                    {% elif tgt_val is none %}
+                      <span class="pill" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3); color: var(--success);">
+                        UNIQUE TO SOURCE
+                      </span>
+                    {% else %}
+                      <span class="pill" style="background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.3); color: var(--warning);">
+                        MODIFIED
+                      </span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endif %}
+            {% endfor %}
+            
+            {% if not has_diff %}
+              <tr>
+                <td colspan="4" style="text-align: center; padding: 2rem;">
+                  <strong>✨ Perfect Match</strong><br>
+                  <span class="muted">These environments are identical.</span>
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+  </main>
+</div>
+
+<script>
+const allEnvs = {{ all_envs | tojson }};
+const targetNsSelect = document.getElementById('target_namespace');
+const targetEnvSelect = document.getElementById('target_environment');
+const preselectedEnv = "{{ target_env }}";
+
+function updateEnvironments() {
+  const ns = targetNsSelect.value;
+  targetEnvSelect.innerHTML = '<option value="">Select Environment</option>';
+  
+  if (ns && allEnvs[ns]) {
+    allEnvs[ns].forEach(env => {
+      const option = document.createElement('option');
+      option.value = env;
+      option.textContent = env;
+      if (env === preselectedEnv) {
+        option.selected = true;
+      }
+      targetEnvSelect.appendChild(option);
+    });
+  }
+}
+
+updateEnvironments();
+</script>
+{% endblock %}

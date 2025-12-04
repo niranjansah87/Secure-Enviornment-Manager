@@ -1,0 +1,703 @@
+{% extends "layout.html" %} {% block content %}
+<div class="page">
+  <header class="card">
+    <nav>
+      <div>
+        <p class="pill">🔒 Active Workspace</p>
+        <h1>{{ namespace }} · {{ environment }}</h1>
+        <p class="muted">
+          🔐 Encrypted storage ·
+          <strong>{{ stats.total }}</strong> variables · {% if
+          stats.last_modified %} Updated {{
+          format_timestamp(stats.last_modified) }} {% else %} Awaiting first
+          deployment {% endif %}
+        </p>
+      </div>
+      <div class="table-actions" style="gap: 0.75rem">
+        <div style="position: relative; display: inline-block">
+          <button
+            class="icon-btn"
+            id="exportBtn"
+            title="Export variables"
+            onclick="toggleExportMenu()"
+          >
+            📥
+          </button>
+          <div
+            id="exportMenu"
+            style="
+              display: none;
+              position: absolute;
+              right: 0;
+              top: 100%;
+              margin-top: 0.5rem;
+              background: var(--surface);
+              border: 1.5px solid var(--border-strong);
+              border-radius: 8px;
+              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+              min-width: 150px;
+              z-index: 1000;
+            "
+          >
+            <a
+              href="{{ url_for('download_env', namespace=namespace, environment=environment) }}"
+              style="
+                display: block;
+                padding: 0.75rem 1rem;
+                text-decoration: none;
+                color: var(--text);
+                border-bottom: 1px solid var(--border);
+                transition: background 0.2s;
+              "
+            >
+              <span style="margin-right: 0.5rem">📄</span> .env file
+            </a>
+            <a
+              href="{{ url_for('export_json', namespace=namespace, environment=environment) }}"
+              style="
+                display: block;
+                padding: 0.75rem 1rem;
+                text-decoration: none;
+                color: var(--text);
+                border-bottom: 1px solid var(--border);
+                transition: background 0.2s;
+              "
+            >
+              <span style="margin-right: 0.5rem">📋</span> JSON
+            </a>
+            <a
+              href="{{ url_for('export_yaml', namespace=namespace, environment=environment) }}"
+              style="
+                display: block;
+                padding: 0.75rem 1rem;
+                text-decoration: none;
+                color: var(--text);
+                transition: background 0.2s;
+              "
+            >
+              <span style="margin-right: 0.5rem">📝</span> YAML
+            </a>
+          </div>
+        </div>
+        <button
+          class="theme-toggle"
+          type="button"
+          id="themeToggleBtn"
+          title="Toggle theme"
+        >
+          <span class="theme-icon">🌙</span>
+        </button>
+        <a
+          class="icon-btn"
+          href="{{ url_for('view_audit_logs', namespace=namespace, environment=environment) }}"
+          title="View Audit Logs"
+        >
+          🛡️
+        </a>
+        <a
+          class="icon-btn"
+          href="{{ url_for('compare_environments', namespace=namespace, environment=environment) }}"
+          title="Compare Environments"
+        >
+          ⚖️
+        </a>
+        <a
+          class="icon-btn"
+          href="{{ url_for('view_history', namespace=namespace, environment=environment) }}"
+          title="View History"
+        >
+          🕒
+        </a>
+        <a
+          class="icon-btn"
+          href="{{ url_for('view_templates', namespace=namespace, environment=environment) }}"
+          title="Variable Templates"
+        >
+          🧩
+        </a>
+        <a
+          class="icon-btn icon-btn-danger"
+          href="{{ url_for('logout', namespace=namespace, environment=environment) }}"
+          title="Lock workspace"
+        >
+          🔒
+        </a>
+      </div>
+    </nav>
+  </header>
+
+  {% with messages = get_flashed_messages() %} {% if messages %}
+  <div class="messages">
+    {% for message in messages %}
+    <div class="flash">✓ {{ message }}</div>
+    {% endfor %}
+  </div>
+  {% endif %} {% endwith %}
+
+  <!-- Statistics Card -->
+  <div
+    class="card"
+    style="
+      margin-bottom: 1.5rem;
+      background: linear-gradient(
+        135deg,
+        var(--surface) 0%,
+        var(--surface-hover) 100%
+      );
+    "
+  >
+    <div
+      style="
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+      "
+    >
+      <div style="text-align: center; padding: 1rem">
+        <div
+          style="
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+            margin-bottom: 0.5rem;
+          "
+          id="stat-total"
+        >
+          {{ stats.total }}
+        </div>
+        <div
+          style="
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+          "
+        >
+          Total Variables
+        </div>
+      </div>
+      <div style="text-align: center; padding: 1rem">
+        <div
+          style="
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--success);
+            margin-bottom: 0.5rem;
+          "
+          id="stat-size"
+        >
+          0 B
+        </div>
+        <div
+          style="
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+          "
+        >
+          Total Size
+        </div>
+      </div>
+      <div style="text-align: center; padding: 1rem">
+        <div
+          style="
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--warning);
+            margin-bottom: 0.5rem;
+          "
+          id="stat-avg-key"
+        >
+          0
+        </div>
+        <div
+          style="
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+          "
+        >
+          Avg Key Length
+        </div>
+      </div>
+      <div style="text-align: center; padding: 1rem">
+        <div
+          style="
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--info);
+            margin-bottom: 0.5rem;
+          "
+          id="stat-avg-value"
+        >
+          0
+        </div>
+        <div
+          style="
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+          "
+        >
+          Avg Value Length
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Update Variable Section - Horizontal Layout -->
+  <div class="card" style="margin-bottom: 1.5rem">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem">
+      <!-- Add/Update Variable Form -->
+      <div>
+        <h2 style="margin-bottom: 1rem">➕ Add / Update Variable</h2>
+        <form
+          method="POST"
+          action="{{ url_for('add_variable', namespace=namespace, environment=environment) }}"
+        >
+          <label for="key">Variable Key</label>
+          <input
+            type="text"
+            name="key"
+            id="key"
+            required
+            placeholder="DATABASE_URL"
+            autocomplete="off"
+          />
+
+          <label for="value">Variable Value</label>
+          <input
+            type="text"
+            name="value"
+            id="value"
+            required
+            placeholder="postgres://user:pass@host/db"
+            autocomplete="off"
+          />
+
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <button type="submit" class="btn-success" style="width: 100%">
+            💾 Save Variable
+          </button>
+        </form>
+      </div>
+
+      <!-- Bulk Replace Form -->
+      <div>
+        <h2 style="margin-bottom: 1rem">📦 Bulk Replace</h2>
+        <p class="muted" style="margin-bottom: 1rem; font-size: 0.875rem">
+          Paste .env formatted content to replace all variables.
+        </p>
+        <form
+          method="POST"
+          action="{{ url_for('bulk_replace', namespace=namespace, environment=environment) }}"
+        >
+          <textarea
+            name="bulk_payload"
+            placeholder="KEY=value&#10;ANOTHER_KEY=another_value&#10;DATABASE_URL=postgres://..."
+            style="font-size: 0.875rem; min-height: 140px"
+          ></textarea>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <button type="submit" class="btn-outline" style="width: 100%">
+            🔄 Replace All Variables
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Environment Variables Section -->
+  <main>
+    <section class="card">
+      <div
+        style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 1rem;
+          flex-wrap: wrap;
+          margin-bottom: 1rem;
+        "
+      >
+        <h2>📋 Environment Variables</h2>
+        {% if variables %}
+        <input
+          type="search"
+          id="filter"
+          placeholder="🔍 Search variables..."
+          oninput="filterRows()"
+          style="max-width: 300px; margin-bottom: 0"
+        />
+        {% endif %}
+      </div>
+
+      {% if variables %}
+      <div class="table-container">
+        <table id="vars-table">
+          <thead>
+            <tr>
+              <th style="width: 30%">Key</th>
+              <th style="width: 45%">Value</th>
+              <th style="text-align: right; width: 25%">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for key, value in variables.items() %}
+            <tr data-key="{{ key|lower }}">
+              <td>
+                <code style="word-break: break-word">{{ key }}</code>
+              </td>
+              <td>
+                <span
+                  class="muted"
+                  style="
+                    word-break: break-all;
+                    display: block;
+                    max-width: 100%;
+                    overflow-wrap: break-word;
+                  "
+                >
+                  {{ value[:100] }}{% if value|length > 100 %}...{% endif %}
+                </span>
+              </td>
+              <td class="actions-cell">
+                <div
+                  style="display: flex; gap: 0.5rem; justify-content: flex-end"
+                >
+                  <button
+                    class="icon-btn"
+                    onclick="editVariable(this)"
+                    data-key="{{ key }}"
+                    data-value="{{ value }}"
+                    title="Edit variable"
+                    style="width: 32px; height: 32px; font-size: 0.9rem"
+                  >
+                    ✏️
+                  </button>
+                  <button
+                    class="icon-btn"
+                    onclick="copyRow(this)"
+                    data-key="{{ key }}"
+                    data-value="{{ value }}"
+                    title="Copy value"
+                    style="width: 32px; height: 32px; font-size: 0.9rem"
+                  >
+                    📋
+                  </button>
+                  <form
+                    action="{{ url_for('delete_variable', namespace=namespace, environment=environment, key=key) }}"
+                    method="post"
+                    style="display: inline"
+                    onsubmit="return confirm('Delete {{ key }}?');"
+                  >
+                    <input
+                      type="hidden"
+                      name="csrf_token"
+                      value="{{ csrf_token() }}"
+                    />
+                    <button
+                      type="submit"
+                      style="padding: 0.5rem 1rem; font-size: 0.875rem"
+                    >
+                      🗑️
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div
+        style="
+          text-align: center;
+          padding: 3rem 1rem;
+          background: var(--surface-hover);
+          border-radius: 16px;
+          border: 2px dashed var(--border);
+        "
+      >
+        <p style="font-size: 3rem; margin-bottom: 1rem">📦</p>
+        <h3>No Variables Yet</h3>
+        <p class="muted">
+          Get started by adding your first environment variable using the form
+          above.
+        </p>
+      </div>
+      {% endif %}
+    </section>
+  </main>
+
+  <script>
+    // Enhanced filter with highlighting
+    function filterRows() {
+      const term = (document.getElementById("filter").value || "")
+        .toLowerCase()
+        .trim();
+      const rows = document.querySelectorAll("#vars-table tbody tr");
+      let visibleCount = 0;
+
+      rows.forEach((row) => {
+        const key = row.dataset.key;
+        const keyCell = row.querySelector("td:nth-child(1)");
+        const valueCell = row.querySelector("td:nth-child(2)");
+        const valueText = valueCell.textContent.toLowerCase();
+
+        // Remove previous highlights
+        keyCell.innerHTML = keyCell.textContent;
+
+        if (!term) {
+          row.style.display = "";
+          visibleCount++;
+          return;
+        }
+
+        // Check if search term matches key or value
+        const keyMatch = key.includes(term);
+        const valueMatch = valueText.includes(term);
+
+        if (keyMatch || valueMatch) {
+          row.style.display = "";
+          visibleCount++;
+
+          // Highlight matching text in key
+          if (keyMatch) {
+            const keyText = keyCell.textContent;
+            const regex = new RegExp(`(${escapeRegex(term)})`, "gi");
+            const highlighted = keyText.replace(
+              regex,
+              '<mark style="background: var(--accent-primary); color: white; padding: 2px 4px; border-radius: 3px;">$1</mark>'
+            );
+            keyCell.innerHTML = `<code style="word-break: break-word;">${highlighted}</code>`;
+          }
+        } else {
+          row.style.display = "none";
+        }
+      });
+
+      // Update search results count
+      updateSearchCount(visibleCount, rows.length);
+    }
+
+    // Escape special regex characters
+    function escapeRegex(string) {
+      return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    // Update search results count
+    function updateSearchCount(visible, total) {
+      let countEl = document.getElementById("search-count");
+      if (!countEl) {
+        const searchInput = document.getElementById("filter");
+        if (searchInput) {
+          countEl = document.createElement("span");
+          countEl.id = "search-count";
+          countEl.style.cssText =
+            "margin-left: 0.5rem; font-size: 0.875rem; color: var(--text-muted);";
+          searchInput.parentElement.appendChild(countEl);
+        }
+      }
+
+      if (countEl) {
+        const searchTerm = document.getElementById("filter").value;
+        if (searchTerm) {
+          countEl.textContent = `${visible} of ${total} variables`;
+        } else {
+          countEl.textContent = "";
+        }
+      }
+    }
+
+    // Edit variable
+    function editVariable(button) {
+      const key = button.dataset.key;
+      const value = button.dataset.value;
+
+      document.getElementById("key").value = key;
+      document.getElementById("value").value = value;
+      document.getElementById("key").focus();
+
+      // Visual feedback
+      const form = document.querySelector('form[action*="add_variable"]');
+      form.style.transition = "transform 0.2s";
+      form.style.transform = "scale(1.02)";
+      setTimeout(() => (form.style.transform = "scale(1)"), 200);
+    }
+
+    // Copy variable to clipboard with visual feedback
+    function copyRow(button) {
+      const key = button.dataset.key;
+      const value = button.dataset.value || "";
+      const content = `${key}=${value}`;
+
+      // Modern clipboard API
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard
+          .writeText(content)
+          .then(() => {
+            showCopyFeedback(button, key);
+          })
+          .catch(() => {
+            fallbackCopy(content, button, key);
+          });
+      } else {
+        fallbackCopy(content, button, key);
+      }
+    }
+
+    // Fallback copy method for older browsers
+    function fallbackCopy(content, button, key) {
+      const temp = document.createElement("textarea");
+      temp.value = content;
+      temp.style.position = "fixed";
+      temp.style.opacity = "0";
+      document.body.appendChild(temp);
+      temp.select();
+
+      try {
+        document.execCommand("copy");
+        showCopyFeedback(button, key);
+      } catch (err) {
+        console.error("Copy failed:", err);
+      }
+
+      document.body.removeChild(temp);
+    }
+
+    // Show visual feedback when copying
+    function showCopyFeedback(button, key) {
+      const originalText = button.innerHTML;
+      button.innerHTML = "✓ Copied!";
+      button.style.background = "var(--success)";
+      button.style.color = "white";
+      button.style.borderColor = "var(--success)";
+
+      setTimeout(() => {
+        button.innerHTML = originalText;
+        button.style.background = "";
+        button.style.color = "";
+        button.style.borderColor = "";
+      }, 2000);
+    }
+
+    // Export menu toggle
+    function toggleExportMenu() {
+      const menu = document.getElementById("exportMenu");
+      menu.style.display = menu.style.display === "none" ? "block" : "none";
+    }
+
+    // Close export menu when clicking outside
+    document.addEventListener("click", (e) => {
+      const exportBtn = document.getElementById("exportBtn");
+      const exportMenu = document.getElementById("exportMenu");
+      if (
+        exportBtn &&
+        exportMenu &&
+        !exportBtn.contains(e.target) &&
+        !exportMenu.contains(e.target)
+      ) {
+        exportMenu.style.display = "none";
+      }
+    });
+
+    // Add hover effect to export menu items
+    document.addEventListener("DOMContentLoaded", () => {
+      const menuItems = document.querySelectorAll("#exportMenu a");
+      menuItems.forEach((item) => {
+        item.addEventListener("mouseenter", () => {
+          item.style.background = "var(--surface-hover)";
+        });
+        item.addEventListener("mouseleave", () => {
+          item.style.background = "transparent";
+        });
+      });
+    });
+
+    // Initialize theme icon on page load
+    document.addEventListener("DOMContentLoaded", () => {
+      const themeIcon = document.querySelector(".theme-icon");
+      const themeToggleBtn = document.getElementById("themeToggleBtn");
+
+      if (themeIcon) {
+        const currentTheme = document.documentElement.dataset.theme || "dark";
+        themeIcon.textContent = currentTheme === "dark" ? "☀️" : "🌙";
+      }
+
+      // Add click handler for theme toggle
+      if (themeToggleBtn) {
+        themeToggleBtn.addEventListener("click", () => {
+          if (typeof window.toggleTheme === "function") {
+            window.toggleTheme();
+          }
+        });
+      }
+    });
+  </script>
+
+  <script>
+    // Calculate and update statistics
+    function calculateStatistics() {
+      const rows = document.querySelectorAll("#vars-table tbody tr");
+      let totalSize = 0;
+      let totalKeyLength = 0;
+      let totalValueLength = 0;
+      const count = rows.length;
+
+      rows.forEach((row) => {
+        const key = row.dataset.key || "";
+        const valueCell = row.querySelector("td:nth-child(2)");
+        const value = valueCell ? valueCell.textContent : "";
+
+        totalKeyLength += key.length;
+        totalValueLength += value.length;
+        totalSize += key.length + value.length;
+      });
+
+      // Update statistics display
+      document.getElementById("stat-total").textContent = count;
+      document.getElementById("stat-size").textContent = formatBytes(totalSize);
+      document.getElementById("stat-avg-key").textContent =
+        count > 0 ? Math.round(totalKeyLength / count) : 0;
+      document.getElementById("stat-avg-value").textContent =
+        count > 0 ? Math.round(totalValueLength / count) : 0;
+    }
+
+    // Format bytes to human-readable format
+    function formatBytes(bytes) {
+      if (bytes === 0) return "0 B";
+      const k = 1024;
+      const sizes = ["B", "KB", "MB", "GB"];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+    }
+
+    // Calculate statistics on page load
+    document.addEventListener("DOMContentLoaded", () => {
+      calculateStatistics();
+    });
+
+    // Recalculate statistics when variables change
+    const observer = new MutationObserver(() => {
+      calculateStatistics();
+    });
+
+    const tableBody = document.querySelector("#vars-table tbody");
+    if (tableBody) {
+      observer.observe(tableBody, { childList: true, subtree: true });
+    }
+  </script>
+
+  <style>
+    @media (max-width: 968px) {
+      .card > div[style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+      }
+    }
+  </style>
+</div>
+{% endblock %}

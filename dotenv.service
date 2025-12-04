@@ -1,0 +1,13 @@
+[Unit]
+Description=Gunicorn instance to serve dotenv app
+After=network.target
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/home/ubuntu/dotenv-server
+Environment="PATH=/home/ubuntu/dotenv-server/env/bin"
+ExecStart=/home/ubuntu/dotenv-server/env/bin/gunicorn --workers 1 --bind 127.0.0.1:8070 app:app
+
+[Install]
+WantedBy=multi-user.target

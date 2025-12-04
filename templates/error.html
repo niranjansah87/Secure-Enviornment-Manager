@@ -1,0 +1,13 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="card" style="text-align:center;">
+    <p class="pill">Request failed</p>
+    <h1>{{ status_code or 500 }}</h1>
+    <p class="muted">{{ message or "An unexpected error occurred." }}</p>
+    <div style="margin-top:1.5rem;">
+        <a class="btn" href="javascript:history.back()">Go back</a>
+    </div>
+</section>
+{% endblock %}
+

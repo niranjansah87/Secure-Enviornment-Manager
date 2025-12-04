@@ -1,0 +1,96 @@
+{% extends "layout.html" %} {% block content %}
+<div class="page">
+  <header>
+    <nav>
+      <div>
+        <h1>Audit Logs</h1>
+        <p class="muted">
+          Security audit trail for
+          <code>{{ namespace }}/{{ environment }}</code>
+        </p>
+      </div>
+      <a
+        href="{{ url_for('dashboard', namespace=namespace, environment=environment) }}"
+        class="btn btn-outline"
+      >
+        ← Back to Dashboard
+      </a>
+    </nav>
+  </header>
+
+  <main>
+    {% if logs %}
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Action</th>
+            <th>Resource</th>
+            <th>User</th>
+            <th>IP Address</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in logs %}
+          <tr>
+            <td style="white-space: nowrap">
+              {{ log.timestamp[:19].replace('T', ' ') }}
+            </td>
+            <td>
+              <span
+                class="pill"
+                style="
+                {% if 'CREATE' in log.action %} background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3); color: var(--success);
+                {% elif 'UPDATE' in log.action or 'BULK' in log.action %} background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.3); color: var(--accent-primary);
+                {% elif 'DELETE' in log.action %} background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.3); color: var(--danger);
+                {% elif 'LOGIN' in log.action %} background: rgba(168, 85, 247, 0.15); border-color: rgba(168, 85, 247, 0.3); color: #a855f7;
+                {% elif 'EXPORT' in log.action %} background: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.3); color: var(--warning);
+                {% endif %}"
+              >
+                {{ log.action }}
+              </span>
+            </td>
+            <td><code>{{ log.resource }}</code></td>
+            <td>{{ log.user_id }}</td>
+            <td style="font-family: monospace; font-size: 0.875rem">
+              {{ log.ip_address }}
+            </td>
+            <td>
+              {% if log.details %}
+              <details style="cursor: pointer">
+                <summary style="color: var(--accent-primary); font-weight: 500">
+                  View Details
+                </summary>
+                <pre
+                  style="
+                    margin-top: 0.5rem;
+                    padding: 0.5rem;
+                    background: var(--surface-hover);
+                    border-radius: 6px;
+                    font-size: 0.75rem;
+                    overflow-x: auto;
+                  "
+                >
+{{ log.details | tojson(indent=2) }}</pre
+                >
+              </details>
+              {% else %}
+              <span class="muted">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="card" style="text-align: center; padding: 3rem">
+      <h2>🛡️ No Audit Logs</h2>
+      <p class="muted">Audit logs will appear here as actions are performed.</p>
+    </div>
+    {% endif %}
+  </main>
+</div>
+{% endblock %}
