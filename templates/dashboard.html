@@ -1,6 +1,9 @@
 {% extends "layout.html" %} {% block content %}
 <div class="page">
-  <header class="card">
+  <header
+    class="card"
+    style="position: relative; z-index: auto; overflow: visible"
+  >
     <nav>
       <div>
         <p class="pill">🔒 Active Workspace</p>
@@ -14,7 +17,7 @@
         </p>
       </div>
       <div class="table-actions" style="gap: 0.75rem">
-        <div style="position: relative; display: inline-block">
+        <div style="position: relative; display: inline-block; z-index: 1000">
           <button
             class="icon-btn"
             id="exportBtn"
@@ -29,25 +32,30 @@
               display: none;
               position: absolute;
               right: 0;
-              top: calc(100% + 0.5rem);
-              background: var(--surface);
-              border: 1.5px solid var(--border-strong);
-              border-radius: 8px;
-              box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-              min-width: 160px;
-              z-index: 10000;
-              overflow: hidden;
+              top: calc(100% + 0.75rem);
+              background: var(--bg-secondary);
+              backdrop-filter: blur(20px);
+              -webkit-backdrop-filter: blur(20px);
+              border: 2px solid var(--border-strong);
+              border-radius: 12px;
+              box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4),
+                0 0 0 1px rgba(255, 255, 255, 0.05);
+              min-width: 180px;
+              z-index: 99999;
+              overflow: visible;
             "
           >
             <a
               href="{{ url_for('download_env', namespace=namespace, environment=environment) }}"
               style="
                 display: block;
-                padding: 0.75rem 1rem;
+                padding: 0.875rem 1.25rem;
                 text-decoration: none;
-                color: var(--text);
+                color: var(--text-primary);
                 border-bottom: 1px solid var(--border);
-                transition: background 0.2s;
+                transition: all 0.2s;
+                white-space: nowrap;
+                font-weight: 500;
               "
             >
               <span style="margin-right: 0.5rem">📄</span> .env file
@@ -56,11 +64,13 @@
               href="{{ url_for('export_json', namespace=namespace, environment=environment) }}"
               style="
                 display: block;
-                padding: 0.75rem 1rem;
+                padding: 0.875rem 1.25rem;
                 text-decoration: none;
-                color: var(--text);
+                color: var(--text-primary);
                 border-bottom: 1px solid var(--border);
-                transition: background 0.2s;
+                transition: all 0.2s;
+                white-space: nowrap;
+                font-weight: 500;
               "
             >
               <span style="margin-right: 0.5rem">📋</span> JSON
@@ -69,10 +79,12 @@
               href="{{ url_for('export_yaml', namespace=namespace, environment=environment) }}"
               style="
                 display: block;
-                padding: 0.75rem 1rem;
+                padding: 0.875rem 1.25rem;
                 text-decoration: none;
-                color: var(--text);
-                transition: background 0.2s;
+                color: var(--text-primary);
+                transition: all 0.2s;
+                white-space: nowrap;
+                font-weight: 500;
               "
             >
               <span style="margin-right: 0.5rem">📝</span> YAML
