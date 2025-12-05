@@ -7,8 +7,11 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    user: "1000:1000"
     volumes:
       - ./data:/app/data
+      - ./audit_logs:/app/audit_logs
+      - ./logs:/app/logs
     ports:
       - "8071:8070"
     healthcheck:

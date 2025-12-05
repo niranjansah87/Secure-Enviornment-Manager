@@ -374,6 +374,12 @@ def index():
     """, 200
 
 
+@app.route("/healthz")
+def health_check():
+    """Health check endpoint for Docker and monitoring."""
+    return jsonify({"status": "healthy"}), 200
+
+
 @app.route("/<namespace>/<environment>", methods=["GET", "POST"])
 def dashboard(namespace: str, environment: str):
     validate_segments(namespace, environment)
