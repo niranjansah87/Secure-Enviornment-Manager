@@ -1,0 +1,326 @@
+name: Deploy Secure Environment Manager
+
+on:
+  push:
+    branches: [ "dev", "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+concurrency:
+  group: deploy-dotenv-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DEPLOYMENT_TIMEOUT: 600
+  HEALTH_CHECK_RETRIES: 5
+  HEALTH_CHECK_INTERVAL: 10
+
+jobs:
+  # Pre-deployment validation
+  validate:
+    name: Pre-deployment Validation
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(git describe --tags --always --dirty)
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "📦 Version: ${VERSION}"
+
+      - name: Validate docker-compose.dev.yml
+        run: |
+          if [ ! -f "docker-compose.dev.yml" ]; then
+            echo "❌ docker-compose.dev.yml not found"
+            exit 1
+          fi
+          echo "✅ docker-compose.dev.yml exists"
+
+      - name: Security scan for secrets
+        run: |
+          echo "🔍 Scanning for exposed secrets..."
+          if grep -r "password\s*=\s*['\"]" --include="*.py" --include="*.js" .; then
+            echo "⚠️  Warning: Potential hardcoded credentials found"
+          fi
+          echo "✅ Security scan complete"
+
+  # Main deployment job
+  deploy:
+    name: Deploy to Server
+    runs-on: ubuntu-latest
+    needs: validate
+    environment:
+      name: ${{ github.event.inputs.environment || 'staging' }}
+      url: https://dotenv.domain.com
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan -H "${{ secrets.SERVER_HOST }}" >> ~/.ssh/known_hosts
+          printf "%s" "${{ secrets.SERVER_SSH_KEY }}" | tr -d '\r' > ~/.ssh/server.key
+          chmod 600 ~/.ssh/server.key
+
+      - name: Pre-deployment backup
+        id: backup
+        run: |
+          BACKUP_ID=$(date +%Y%m%d_%H%M%S)
+          echo "backup_id=${BACKUP_ID}" >> $GITHUB_OUTPUT
+          
+          ssh -i ~/.ssh/server.key -o StrictHostKeyChecking=yes \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" << EOF
+            set -euo pipefail
+            
+            REPO_DIR="${{ secrets.DOTENV_REPO_DIR }}"
+            BACKUP_DIR="\${REPO_DIR}_backup_${BACKUP_ID}"
+            
+            echo "📦 Creating backup at \${BACKUP_DIR}"
+            if [ -d "\${REPO_DIR}" ]; then
+              cp -r "\${REPO_DIR}" "\${BACKUP_DIR}"
+              echo "✅ Backup created successfully"
+            else
+              echo "⚠️  No existing deployment to backup"
+            fi
+          EOF
+
+      - name: Deploy application
+        id: deploy
+        timeout-minutes: 10
+        run: |
+          ssh -i ~/.ssh/server.key -o StrictHostKeyChecking=yes \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" << 'EOF'
+            set -euo pipefail
+
+            REPO_DIR="${{ secrets.DOTENV_REPO_DIR }}"
+            echo "🚀 Starting deployment to $REPO_DIR"
+            cd "$REPO_DIR"
+
+            # Git operations
+            echo "📥 Fetching latest changes..."
+            git fetch --all --prune --tags
+
+            # Determine branch based on trigger
+            BRANCH="${{ github.ref_name }}"
+            echo "🔀 Checking out branch: $BRANCH"
+            
+            if git show-ref --verify --quiet refs/heads/$BRANCH; then
+              git checkout $BRANCH
+            else
+              git checkout -b $BRANCH origin/$BRANCH
+            fi
+
+            git config pull.rebase false
+            git reset --hard origin/$BRANCH
+
+            # Show current commit
+            echo "📌 Current commit: $(git rev-parse --short HEAD)"
+            echo "👤 Author: $(git log -1 --pretty=format:'%an')"
+            echo "💬 Message: $(git log -1 --pretty=format:'%s')"
+
+            # Pre-deployment health check
+            echo "🏥 Running pre-deployment checks..."
+            if docker compose -f docker-compose.dev.yml ps | grep -q "Up"; then
+              echo "✅ Existing containers are running"
+              
+              # Graceful shutdown
+              echo "⏸️  Gracefully stopping containers..."
+              docker compose -f docker-compose.dev.yml down --timeout 30
+            fi
+
+            # Build and deploy
+            echo "🔨 Building and starting containers..."
+            docker compose -f docker-compose.dev.yml up -d --build --remove-orphans
+
+            # Wait for containers to be healthy
+            echo "⏳ Waiting for containers to be ready..."
+            sleep 5
+
+            # Check container status
+            echo "📊 Container status:"
+            docker compose -f docker-compose.dev.yml ps
+
+            # Cleanup old images
+            echo "🧹 Cleaning up unused Docker resources..."
+            docker image prune -f --filter "until=72h" || true
+
+            echo "✅ Deployment complete for dotenv.domain.com"
+          EOF
+
+      - name: Health check
+        id: health_check
+        run: |
+          echo "🏥 Running post-deployment health checks..."
+          
+          for i in $(seq 1 ${{ env.HEALTH_CHECK_RETRIES }}); do
+            echo "Attempt $i of ${{ env.HEALTH_CHECK_RETRIES }}"
+            
+            ssh -i ~/.ssh/server.key -o StrictHostKeyChecking=yes \
+              "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" << 'EOF'
+              cd "${{ secrets.DOTENV_REPO_DIR }}"
+              
+              # Check if containers are running
+              if docker compose -f docker-compose.dev.yml ps | grep -q "Up"; then
+                echo "✅ Containers are running"
+                exit 0
+              else
+                echo "⚠️  Containers not ready yet"
+                exit 1
+              fi
+          EOF
+            
+            if [ $? -eq 0 ]; then
+              echo "✅ Health check passed"
+              exit 0
+            fi
+            
+            if [ $i -lt ${{ env.HEALTH_CHECK_RETRIES }} ]; then
+              echo "⏳ Waiting ${{ env.HEALTH_CHECK_INTERVAL }} seconds before retry..."
+              sleep ${{ env.HEALTH_CHECK_INTERVAL }}
+            fi
+          done
+          
+          echo "❌ Health check failed after ${{ env.HEALTH_CHECK_RETRIES }} attempts"
+          exit 1
+
+      - name: Collect deployment logs
+        if: failure()
+        run: |
+          echo "📋 Collecting logs for debugging..."
+          ssh -i ~/.ssh/server.key -o StrictHostKeyChecking=yes \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" << 'EOF'
+            cd "${{ secrets.DOTENV_REPO_DIR }}"
+            echo "=== Docker Compose Logs (last 50 lines) ==="
+            docker compose -f docker-compose.dev.yml logs --tail=50
+          EOF
+
+      - name: Rollback on failure
+        if: failure() && steps.backup.outputs.backup_id != ''
+        run: |
+          echo "🔄 Rolling back to previous version..."
+          ssh -i ~/.ssh/server.key -o StrictHostKeyChecking=yes \
+            "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}" << EOF
+            set -euo pipefail
+            
+            REPO_DIR="${{ secrets.DOTENV_REPO_DIR }}"
+            BACKUP_DIR="\${REPO_DIR}_backup_${{ steps.backup.outputs.backup_id }}"
+            
+            if [ -d "\${BACKUP_DIR}" ]; then
+              echo "📦 Restoring from backup..."
+              cd "\${BACKUP_DIR}"
+              docker compose -f docker-compose.dev.yml up -d
+              echo "✅ Rollback complete"
+            else
+              echo "❌ Backup not found, manual intervention required"
+              exit 1
+            fi
+          EOF
+
+  # Notification job
+  notify:
+    name: Send Notifications
+    runs-on: ubuntu-latest
+    needs: [validate, deploy]
+    if: always()
+    
+    steps:
+      - name: Install jq
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+
+      - name: Notify Discord
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          STATUS: ${{ needs.deploy.result }}
+          VERSION: ${{ needs.validate.outputs.version }}
+          SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          DOMAIN: "https://dotenv.domain.com"
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          SHORT_SHA=${SHA::7}
+
+          if [ "$STATUS" = "success" ]; then
+            COLOR=3066993  # green
+            TITLE="✅ Secure Environment Manager Deploy SUCCESS"
+            HEAD="**Domain:** [dotenv.domain.com](${DOMAIN})"
+            FOOTER="Deployment completed successfully"
+          elif [ "$STATUS" = "failure" ]; then
+            COLOR=15158332  # red
+            TITLE="❌ Secure Environment Manager Deploy FAILED"
+            HEAD="Deployment failed on **dotenv.domain.com**"
+            FOOTER="⚠️ Rollback may have been triggered"
+          else
+            COLOR=16776960  # yellow
+            TITLE="⚠️ Secure Environment Manager Deploy CANCELLED"
+            HEAD="Deployment cancelled for **dotenv.domain.com**"
+            FOOTER="Deployment was cancelled or skipped"
+          fi
+
+          printf -v DESC '%s\n**Repo:** `%s`\n**Branch:** `%s`\n**Version:** `%s`\n**Commit:** `%s` by `%s`\n**Run:** %s' \
+            "$HEAD" "$REPO" "$BRANCH" "$VERSION" "$SHORT_SHA" "$ACTOR" "$RUN_URL"
+
+          PAYLOAD=$(jq -n \
+            --arg title "$TITLE" \
+            --arg desc "$DESC" \
+            --arg url "$RUN_URL" \
+            --arg footer "$FOOTER" \
+            --argjson color "$COLOR" \
+            '{embeds: [{
+              title: $title, 
+              description: $desc, 
+              url: $url, 
+              color: $color,
+              footer: {text: $footer},
+              timestamp: (now | strftime("%Y-%m-%dT%H:%M:%SZ"))
+            }]}' )
+
+          curl -sS -X POST -H "Content-Type: application/json" \
+            -d "$PAYLOAD" "$WEBHOOK" >/dev/null 2>&1 || true
+
+      - name: Notify Slack (Optional)
+        if: secrets.SLACK_WEBHOOK != ''
+        env:
+          WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          STATUS: ${{ needs.deploy.result }}
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          if [ "$STATUS" = "success" ]; then
+            EMOJI=":white_check_mark:"
+            COLOR="good"
+          else
+            EMOJI=":x:"
+            COLOR="danger"
+          fi
+          
+          PAYLOAD=$(jq -n \
+            --arg text "$EMOJI Dotenv Deploy $STATUS - Version: $VERSION" \
+            --arg color "$COLOR" \
+            '{text: $text, attachments: [{color: $color, text: $text}]}' )
+          
+          curl -sS -X POST -H "Content-Type: application/json" \
+            -d "$PAYLOAD" "$WEBHOOK" >/dev/null 2>&1 || true
