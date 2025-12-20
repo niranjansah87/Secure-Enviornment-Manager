@@ -19,13 +19,7 @@ COPY . .
 RUN mkdir -p /app/data /app/audit_logs /app/logs && \
     chmod -R 777 /app/data /app/audit_logs /app/logs
 
-# Create non-root user
-RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app
-
-USER appuser
-
 EXPOSE 8070
 
-# Run using python app.py
-CMD ["python", "app.py"]
+# Run as root to handle volume permissions
+CMD ["sh", "-c", "chmod -R 777 /app/data /app/audit_logs /app/logs 2>/dev/null || true && python app.py"]

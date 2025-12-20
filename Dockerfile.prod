@@ -22,8 +22,7 @@ RUN mkdir -p /app/data /app/audit_logs /app/logs && \
 RUN useradd -m -u 1000 appuser && \
     chown -R appuser:appuser /app
 
-USER appuser
-
 EXPOSE 8070
 
-CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:8070", "--timeout", "120", "app:app"]
+# Run as root to handle volume permissions
+CMD ["sh", "-c", "chmod -R 777 /app/data /app/audit_logs /app/logs 2>/dev/null || true && gunicorn -w 2 -b 0.0.0.0:8070 --timeout 120 app:app"]
