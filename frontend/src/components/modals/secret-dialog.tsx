@@ -15,6 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
 
 const KEY_RE = /^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$/;
 
@@ -82,59 +84,94 @@ export function SecretDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-hidden border-zinc-800 bg-[#111827] p-0 sm:max-w-md">
+      <DialogContent className="p-0 border-white/10 bg-[#0A0A0A] shadow-2xl overflow-hidden sm:max-w-[440px] rounded-2xl">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-violet-500 to-fuchsia-500" />
+        
         <motion.div
-          initial={{ opacity: 0, scale: 0.98, y: 4 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ type: "spring", damping: 26, stiffness: 320 }}
-          className="p-6"
+           initial={{ opacity: 0, y: 10 }}
+           animate={{ opacity: 1, y: 0 }}
+           className="p-8"
         >
-          <DialogHeader>
-            <DialogTitle>
-              {initialKey ? "Edit secret" : "Add secret"}
+          <DialogHeader className="mb-8">
+            <DialogTitle className="text-2xl font-bold tracking-tight text-white">
+              {initialKey ? "Update Secret" : "New Environment Variable"}
             </DialogTitle>
-            <DialogDescription>
-              Keys must match server validation rules. Values are encrypted at
-              rest on the API.
+            <DialogDescription className="text-zinc-500 text-sm leading-relaxed mt-2">
+              Configure your environment variables. Keys must be unique and follow standard naming conventions.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="secret-key">Key</Label>
+
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="secret-key" className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">
+                Variable Key
+              </Label>
               <Input
                 id="secret-key"
                 value={key}
                 onChange={(e) => setKey(e.target.value)}
-                placeholder="DATABASE_URL"
+                placeholder="e.g. STRIPE_API_KEY"
                 disabled={!!initialKey}
-                className="font-mono text-sm"
+                className={cn(
+                  "h-12 bg-black/40 border-white/5 rounded-xl font-mono text-sm focus-visible:ring-violet-500/40 transition-all",
+                  initialKey && "opacity-50 grayscale"
+                )}
               />
               {keyError && (
-                <p className="text-xs text-red-400">{keyError}</p>
+                <motion.p 
+                  initial={{ opacity: 0, x: -5 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="text-xs text-red-500 mt-1 ml-1 font-medium"
+                >
+                  {keyError}
+                </motion.p>
               )}
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="secret-value">Value</Label>
-              <Input
-                id="secret-value"
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                placeholder="••••••••"
-                className="font-mono text-sm"
-              />
+
+            <div className="space-y-2">
+              <Label htmlFor="secret-value" className="text-[10px] uppercase tracking-widest font-bold text-zinc-500 ml-1">
+                Secret Value
+              </Label>
+              <div className="relative group">
+                <Input
+                  id="secret-value"
+                  type="text"
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  placeholder="••••••••"
+                  className="h-12 bg-black/40 border-white/5 rounded-xl font-mono text-sm focus-visible:ring-violet-500/40 pr-10 transition-all"
+                />
+              </div>
+              <p className="text-[10px] text-zinc-600 ml-1">
+                This value will be encrypted and hidden by default in the dashboard.
+              </p>
             </div>
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
+
+          <DialogFooter className="mt-10 gap-3 border-t border-white/5 pt-8 -mx-8 px-8">
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
+              className="rounded-xl h-11 px-6 text-zinc-400 hover:text-white hover:bg-white/5 font-semibold"
               onClick={() => onOpenChange(false)}
               disabled={loading}
             >
               Cancel
             </Button>
-            <Button type="button" onClick={() => void submit()} disabled={loading}>
-              {loading ? "Saving…" : "Save"}
+            <Button 
+               type="button" 
+               className="rounded-xl h-11 px-8 bg-zinc-100 hover:bg-white text-black font-bold shadow-lg shadow-white/5 flex-1 sm:flex-none transition-all active:scale-95"
+               onClick={() => void submit()} 
+               disabled={loading}
+            >
+              {loading ? (
+                <div className="flex items-center gap-2">
+                   <div className="h-3 w-3 border-2 border-zinc-500 border-t-zinc-900 rounded-full animate-spin" />
+                   <span>Saving...</span>
+                </div>
+              ) : (
+                initialKey ? "Update Variable" : "Create Secret"
+              )}
             </Button>
           </DialogFooter>
         </motion.div>
@@ -142,3 +179,4 @@ export function SecretDialog({
     </Dialog>
   );
 }
+

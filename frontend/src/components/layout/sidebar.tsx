@@ -1,9 +1,8 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   LayoutDashboard,
   FolderKanban,
@@ -18,7 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/context/workspace-context";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
+
 import { useCallback, useEffect, useState } from "react";
 
 const STORAGE_KEY = "sem_sidebar_collapsed";
@@ -112,98 +111,103 @@ export function AppSidebar() {
       initial={false}
       animate={{ width: collapsed ? 80 : 256 }}
       transition={{ type: "spring", damping: 24, stiffness: 200 }}
-      className="relative z-40 flex h-full shrink-0 flex-col rounded-2xl border border-white/5 bg-gradient-to-b from-white/[0.03] to-white/[0.01] backdrop-blur-2xl shadow-[8px_0_24px_rgba(0,0,0,0.4)] overflow-hidden"
+      className="relative z-40 flex h-full shrink-0 flex-col border-r border-white/5 bg-[#030303] shadow-[4px_0_24px_rgba(0,0,0,0.5)]"
     >
-      <div className="flex h-20 items-center justify-center border-b border-white/5">
-        <Link href="/">
+      <div className="flex h-16 items-center px-6 border-b border-white/5">
+        <Link href="/" className="flex items-center gap-3">
           <motion.div
-            whileHover={{ scale: 1.1, rotate: 2 }}
+            whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            className="flex items-center justify-center rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-violet-500/20"
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/20"
           >
-            <Image
-              src="/logo.png"
-              width={48}
-              height={48}
-              alt="Secure Environment Manager"
-              className="h-12 w-12 shrink-0 rounded-xl object-cover"
-              unoptimized
-            />
+             <Shield className="h-5 w-5 text-white" />
           </motion.div>
+          {!collapsed && (
+            <motion.span
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="text-sm font-bold tracking-tight text-white"
+            >
+              SECURE ENV
+            </motion.span>
+          )}
         </Link>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1 p-2">
-        {items.map(({ href, label, icon: Icon }) => {
-          const isActive = navActive(label, pathname, workspace);
+      <div className="flex-1 overflow-y-auto py-6 px-3 custom-scrollbar">
+        <nav className="flex flex-col gap-1.5">
+          {items.map(({ href, label, icon: Icon }) => {
+            const isActive = navActive(label, pathname, workspace);
 
-          return (
-            <Link key={label} href={href} title={label} className="relative block">
-              {isActive && (
+            return (
+              <Link key={label} href={href} title={label} className="relative group">
                 <motion.div
-                  layoutId="sidebar-active"
-                  className="absolute left-0 top-0 bottom-0 w-1 bg-violet-500 rounded-r-md"
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                />
-              )}
-              <motion.span
-                whileHover={{ x: isActive ? 0 : 4 }}
-                transition={{ type: "spring", stiffness: 400, damping: 28 }}
-                className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition-all duration-200 ml-1",
-                  isActive
-                    ? "bg-violet-500/10 text-violet-300 ring-1 ring-violet-500/20"
-                    : "text-zinc-400 hover:bg-white/5 hover:text-zinc-100"
-                )}
-              >
-                <Icon className={cn("h-5 w-5 shrink-0 transition-colors", isActive ? "text-violet-400" : "")} />
-                <AnimatePresence mode="wait">
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all relative overflow-hidden",
+                    isActive
+                      ? "text-white bg-white/5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]"
+                      : "text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.03]"
+                  )}
+                >
+                  <Icon className={cn("h-4.5 w-4.5 shrink-0 transition-colors", isActive ? "text-violet-400" : "group-hover:text-zinc-200")} />
                   {!collapsed && (
                     <motion.span
-                      initial={{ opacity: 0, filter: "blur(4px)" }}
-                      animate={{ opacity: 1, filter: "blur(0px)" }}
-                      exit={{ opacity: 0, filter: "blur(4px)", transition: { duration: 0.1 } }}
-                      className="truncate ml-1"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="truncate"
                     >
                       {label}
                     </motion.span>
                   )}
-                </AnimatePresence>
-              </motion.span>
-            </Link>
-          );
-        })}
-      </nav>
+                  
+                  {isActive && (
+                    <motion.div
+                      layoutId="nav-active-glow"
+                      className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-violet-500 blur-[2px] mr-2"
+                    />
+                  )}
+                </motion.div>
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
 
-      <Separator className="bg-zinc-800" />
-      <div className="p-2 flex flex-col gap-1">
-        <Button
-          variant="ghost"
-          size={collapsed ? "icon" : "default"}
-          className="w-full justify-start text-zinc-400 hover:text-red-400 hover:bg-red-500/10"
-          onClick={() => {
-            setToken("");
-            router.push("/login");
-          }}
-          type="button"
-        >
-          <LogOut className="h-4 w-4 shrink-0 transition-colors" />
-          {!collapsed && <span className="ml-2 font-medium">Log Out</span>}
-        </Button>
-        <Button
-          variant="ghost"
-          size={collapsed ? "icon" : "default"}
-          className="w-full justify-start text-zinc-400"
-          onClick={toggle}
-          type="button"
-        >
-          <ChevronLeft
-            className={cn("h-4 w-4 transition-transform", collapsed && "rotate-180")}
-          />
-          {!collapsed && <span className="ml-2">Collapse</span>}
-        </Button>
+      <div className="mt-auto p-4 border-t border-white/5 bg-[#050505]/50 backdrop-blur-sm">
+        <div className="flex flex-col gap-1">
+          <Button
+            variant="ghost"
+            size={collapsed ? "icon" : "default"}
+            className={cn(
+               "w-full justify-start text-zinc-400 hover:text-red-400 hover:bg-red-500/5 transition-colors",
+               collapsed ? "px-0 justify-center" : "px-3"
+            )}
+            onClick={() => {
+              setToken("");
+              router.push("/login");
+            }}
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            {!collapsed && <span className="ml-3 text-sm font-medium">Log Out</span>}
+          </Button>
+          
+          <Button
+            variant="ghost"
+            size={collapsed ? "icon" : "default"}
+            className={cn(
+               "w-full justify-start text-zinc-500 hover:text-zinc-300 hover:bg-white/5",
+               collapsed ? "px-0 justify-center" : "px-3"
+            )}
+            onClick={toggle}
+          >
+            <ChevronLeft
+              className={cn("h-4 w-4 transition-transform duration-300", collapsed && "rotate-180")}
+            />
+            {!collapsed && <span className="ml-3 text-sm">Collapse Sidebar</span>}
+          </Button>
+        </div>
       </div>
     </motion.aside>
   );
 }
+

@@ -28,16 +28,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (!isMounted) return null;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#0B0F19]">
-      <div className="p-4 pr-2 h-full flex flex-col z-40">
-        <AppSidebar />
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden pl-2">
+    <div className="flex h-screen overflow-hidden bg-black selection:bg-violet-500/30">
+      <AppSidebar />
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#050505]">
         <AppHeader />
-        <main className="flex flex-1 flex-col p-6">
+        <main className="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-8">
           <PageMotion>{children}</PageMotion>
         </main>
       </div>
     </div>
   );
 }
+
