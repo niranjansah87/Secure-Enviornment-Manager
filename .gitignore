@@ -14,8 +14,17 @@ env.bak/
 # Environment and secrets
 .env
 .env.local
+.env.*
+!.env.example
 api_keys.json
 service_account.json
+.secrets.baseline
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets/
 
 # Data and logs
 data/
@@ -54,4 +63,9 @@ dist/
 
 # Node modules (if React is in same repo)
 node_modules/
+dist/
+.next/
+out/
+.env.production
 .env.development
+.env.local
