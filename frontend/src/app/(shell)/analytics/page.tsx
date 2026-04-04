@@ -25,7 +25,8 @@ import {
   PieChart as PieIcon,
   Zap,
   Lock,
-  AlertTriangle
+  AlertTriangle,
+  LucideIcon
 } from "lucide-react";
 import { api, type AnalyticsResponse, type HealthResponse } from "@/lib/api";
 import { useWorkspace } from "@/context/workspace-context";
@@ -349,7 +350,7 @@ interface HealthCardProps {
   title: string;
   status: string;
   message: string;
-  icon: React.ElementType;
+  icon: LucideIcon;
 }
 
 function HealthCard({ title, status, message, icon: Icon }: HealthCardProps) {
