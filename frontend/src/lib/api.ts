@@ -101,6 +101,36 @@ export type MetaResponse = {
   variable_count: number;
 };
 
+export type AnalyticsResponse = {
+  trends: {
+    date: string;
+    updates: number;
+    access: number;
+    auth: number;
+    total: number;
+  }[];
+  distribution: {
+    namespaces: {
+      name: string;
+      environments: number;
+      estimated_secrets: number;
+    }[];
+    total_secrets: number;
+    total_environments: number;
+  };
+};
+
+export type HealthResponse = {
+  status: string;
+  timestamp: string;
+  checks: {
+    encryption: { status: string; message: string };
+    storage: { status: string; message: string; details?: Record<string, unknown> };
+    process: { status: string; message: string; details?: Record<string, unknown> };
+    folders: { status: string; message: string };
+  };
+};
+
 export const api = {
   metaEnvironments(token: string) {
     return request<EnvironmentsResponse>("/api/v1/meta/environments", token);
@@ -110,6 +140,12 @@ export const api = {
   },
   metaLogins(token: string) {
     return request<{ logins: AuditEntry[] }>("/api/v1/meta/logins", token);
+  },
+  metaAnalytics(token: string, days = 7) {
+    return request<AnalyticsResponse>(`/api/v1/meta/analytics?days=${days}`, token);
+  },
+  metaHealth(token: string) {
+    return request<HealthResponse>("/api/v1/meta/health", token);
   },
   getSecrets(token: string, namespace: string, environment: string) {
     return request<SecretsRecord>(

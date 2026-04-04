@@ -14,6 +14,7 @@ import {
   GitCompare,
   LogOut,
   History,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/context/workspace-context";
@@ -58,6 +59,11 @@ const nav = (
       label: "Templates",
       icon: LayoutTemplate,
     },
+    {
+      href: "/analytics",
+      label: "Analytics",
+      icon: BarChart3,
+    },
   ];
 };
 
@@ -75,6 +81,7 @@ function navActive(
   if (label === "History") return pathname === `${p}/history`;
   if (label === "Audit Logs") return pathname === `${p}/audit`;
   if (label === "Templates") return pathname === `${p}/templates`;
+  if (label === "Analytics") return pathname === "/analytics";
   return false;
 }
 

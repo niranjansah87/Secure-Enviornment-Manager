@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: 'SEM Dashboards'
+    orgId: 1
+    folder: 'SECURE ENV MANAGER'
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /etc/grafana/provisioning/dashboards

@@ -164,6 +164,19 @@ Visit [http://localhost:3000](http://localhost:3000) and start managing your sec
 
 ---
 
+## 📚 Documentation
+
+For detailed guides and deep-dives, please check our documentation:
+
+*   **[Setup Instructions](file:///c:/Secure-Enviornment-Manager/docs/SETUP.md)**: Comprehensive guide to getting started.
+*   **[Monitoring Guide](file:///c:/Secure-Enviornment-Manager/docs/MONITORING.md)**: Details on Prometheus and Grafana integration.
+*   **[Local Monitoring Setup](file:///c:/Secure-Enviornment-Manager/docs/LOCAL_MONITORING_SETUP.md)**: Manual guide (No Docker).
+*   **[Backup & Recovery](file:///c:/Secure-Enviornment-Manager/docs/BACKUP_GUIDE.md)**: Safeguarding your encrypted data.
+*   **[Security Policy](SECURITY.md)**: How we handle security and vulnerability reporting.
+*   **[Branch Protection](file:///c:/Secure-Enviornment-Manager/docs/branch_protection_guide.md)**: Best practices for production stability.
+
+---
+
 ## 🤝 Contributing
 
 We love contributions! Whether it's fixing a bug, adding a feature, or improving documentation:
