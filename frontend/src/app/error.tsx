@@ -37,8 +37,6 @@ export default function Error({
           We encountered an unexpected error while processing your request. Don&apos;t worry, your data is safe.
         </p>
 
-
-
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Button
             onClick={reset}
