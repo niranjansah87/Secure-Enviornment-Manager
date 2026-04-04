@@ -1,43 +1,351 @@
 {
-  "django_starter": {
-    "name": "Django Starter",
-    "description": "Essential settings for a new Django project",
+  "django_advanced": {
+    "name": "Django Advanced (Production)",
+    "description": "Enterprise-grade Django settings including Redis caching, Celery worker config, and secure JWT auth.",
     "variables": {
-      "DEBUG": "True",
+      "DEBUG": "False",
       "SECRET_KEY": "__GENERATE__",
-      "ALLOWED_HOSTS": "localhost,127.0.0.1",
-      "DATABASE_URL": "postgres://user:password@localhost:5432/dbname",
-      "STATIC_URL": "/static/"
+      "ALLOWED_HOSTS": "api.example.com,app.example.com",
+      "DATABASE_URL": "postgres://user:password@db.interal:5432/production_db",
+      "REDIS_URL": "redis://cache.internal:6379/0",
+      "CELERY_BROKER_URL": "redis://cache.internal:6379/1",
+      "STATIC_URL": "https://cdn.example.com/static/",
+      "MEDIA_URL": "https://cdn.example.com/media/",
+      "AWS_ACCESS_KEY_ID": "",
+      "AWS_SECRET_ACCESS_KEY": "__GENERATE__",
+      "AWS_STORAGE_BUCKET_NAME": "my-app-assets",
+      "JWT_SIGNING_KEY": "__GENERATE__"
     }
   },
-  "react_app": {
-    "name": "React App",
-    "description": "Standard environment variables for React",
+  "nextjs_enterprise": {
+    "name": "Next.js 14 Enterprise",
+    "description": "Next.js App Router setup with NextAuth, Prisma ORM, and Vercel/Supabase Edge environment configs.",
     "variables": {
-      "REACT_APP_API_URL": "http://localhost:8000/api",
-      "REACT_APP_ENV": "development",
-      "REACT_APP_FEATURE_FLAG_NEW_UI": "true"
+      "NEXT_PUBLIC_APP_URL": "https://myapp.com",
+      "NEXT_PUBLIC_API_URL": "https://api.myapp.com/v1",
+      "NEXTAUTH_URL": "https://myapp.com/api/auth",
+      "NEXTAUTH_SECRET": "__GENERATE__",
+      "DATABASE_URL": "postgresql://postgres:password@db.supabase.co:5432/postgres?pgbouncer=true",
+      "DIRECT_DATABASE_URL": "postgresql://postgres:password@db.supabase.co:5432/postgres",
+      "CLERK_SECRET_KEY": "",
+      "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": "",
+      "UPSTASH_REDIS_REST_URL": "",
+      "UPSTASH_REDIS_REST_TOKEN": "",
+      "SENTRY_DSN": ""
     }
   },
-  "node_express": {
-    "name": "Node.js Express",
-    "description": "Basic configuration for Express.js server",
+  "node_microservice": {
+    "name": "Node.js Event-Driven Microservice",
+    "description": "Config for a Node.js microservice utilizing Kafka, Redis, and Jaeger for distributed tracing.",
     "variables": {
-      "PORT": "3000",
-      "NODE_ENV": "development",
+      "PORT": "8080",
+      "NODE_ENV": "production",
+      "SERVICE_NAME": "user-auth-service",
+      "KAFKA_BROKERS": "kafka1:9092,kafka2:9092",
+      "KAFKA_CONSUMER_GROUP": "auth-events-group",
+      "REDIS_URI": "redis://redis-cluster:6379",
       "JWT_SECRET": "__GENERATE__",
-      "DB_HOST": "localhost",
-      "DB_USER": "root",
-      "DB_PASS": "password"
+      "MONGO_URI": "mongodb://user:pass@mongo-cluster:27017/authdb?replicaSet=rs0",
+      "JAEGER_ENDPOINT": "http://jaeger-collector:14268/api/traces",
+      "LOG_LEVEL": "info"
     }
   },
-  "flask_minimal": {
-    "name": "Flask Minimal",
-    "description": "Minimal config for Flask applications",
+  "fastapi_ml": {
+    "name": "FastAPI Inference Server (ML)",
+    "description": "Machine learning model serving environment with PyTorch/Tensorflow memory limits and API keys.",
     "variables": {
-      "FLASK_APP": "app.py",
-      "FLASK_DEBUG": "1",
-      "SECRET_KEY": "__GENERATE__"
+      "WORKERS": "4",
+      "MODEL_PATH": "/models/v2/transformer_optim.pt",
+      "HUGGINGFACE_API_TOKEN": "",
+      "CUDA_VISIBLE_DEVICES": "0,1",
+      "MAX_BATCH_SIZE": "16",
+      "TIMEOUT_SECONDS": "30",
+      "API_AUTH_TOKEN": "__GENERATE__",
+      "PROMETHEUS_METRICS_ENABLED": "true"
+    }
+  },
+  "spring_boot_ms": {
+    "name": "Spring Boot Cloud Native",
+    "description": "Standard variables for Spring Boot applications in a Kubernetes / Eureka ecosystem.",
+    "variables": {
+      "SERVER_PORT": "8080",
+      "SPRING_PROFILES_ACTIVE": "prod,cloud",
+      "SPRING_APPLICATION_NAME": "payment-gateway",
+      "SPRING_DATASOURCE_URL": "jdbc:postgresql://db:5432/payments",
+      "SPRING_DATASOURCE_USERNAME": "db_user",
+      "SPRING_DATASOURCE_PASSWORD": "__GENERATE__",
+      "EUREKA_CLIENT_SERVICEURL_DEFAULTZONE": "http://eureka-server:8761/eureka/",
+      "RABBITMQ_HOST": "rabbitmq.internal",
+      "RABBITMQ_PASSWORD": "__GENERATE__"
+    }
+  },
+  "laravel_advanced": {
+    "name": "Laravel Horizon & Octane",
+    "description": "High-performance Laravel config utilizing Swoole/Octane, Horizon queues, and S3.",
+    "variables": {
+      "APP_NAME": "LaravelProject",
+      "APP_ENV": "production",
+      "APP_KEY": "__GENERATE__",
+      "APP_DEBUG": "false",
+      "APP_URL": "https://example.com",
+      "DB_CONNECTION": "mysql",
+      "DB_HOST": "127.0.0.1",
+      "DB_DATABASE": "forge",
+      "BROADCAST_DRIVER": "pusher",
+      "CACHE_DRIVER": "redis",
+      "QUEUE_CONNECTION": "redis",
+      "SESSION_DRIVER": "redis",
+      "REDIS_HOST": "127.0.0.1",
+      "AWS_ACCESS_KEY_ID": "",
+      "AWS_SECRET_ACCESS_KEY": "",
+      "AWS_DEFAULT_REGION": "us-east-1",
+      "AWS_BUCKET": "",
+      "OCTANE_SERVER": "swoole"
+    }
+  },
+  "react_web3": {
+    "name": "React Web3 / dApp Frontend",
+    "description": "Environment for a decentralized application (dApp) connecting to EVM networks and IPFS.",
+    "variables": {
+      "REACT_APP_CHAIN_ID": "1",
+      "REACT_APP_NETWORK_NAME": "Ethereum Mainnet",
+      "REACT_APP_RPC_URL": "https://mainnet.infura.io/v3/YOUR_INFURA_KEY",
+      "REACT_APP_ALCHEMY_KEY": "",
+      "REACT_APP_INFURA_ID": "",
+      "REACT_APP_CONTRACT_ADDRESS": "0x...",
+      "REACT_APP_IPFS_GATEWAY": "https://ipfs.io/ipfs/",
+      "REACT_APP_PINATA_API_KEY": "",
+      "REACT_APP_PINATA_SECRET_API_KEY": "__GENERATE__",
+      "REACT_APP_WALLETCONNECT_PROJECT_ID": ""
+    }
+  },
+  " stripe_payments": {
+    "name": "Stripe Payments Backend",
+    "description": "Secure template for handling Stripe webhooks, subscriptions, and checkout sessions.",
+    "variables": {
+      "STRIPE_PUBLISHABLE_KEY": "pk_test_...",
+      "STRIPE_SECRET_KEY": "sk_test_...",
+      "STRIPE_WEBHOOK_SECRET": "whsec_...",
+      "CURRENCY": "usd",
+      "SUBSCRIPTION_PLAN_BASIC": "price_...",
+      "SUBSCRIPTION_PLAN_PRO": "price_...",
+      "SUCCESS_URL": "https://myapp.com/success",
+      "CANCEL_URL": "https://myapp.com/cancel"
+    }
+  },
+  "aws_serverless_lambda": {
+    "name": "AWS Serverless (Lambda / SAM)",
+    "description": "Cloud deployment config for AWS Lambda functions handling API Gateway traffic and DynamoDB.",
+    "variables": {
+      "REGION": "us-west-2",
+      "STAGE": "prod",
+      "DYNAMODB_TABLE_USERS": "users-prod",
+      "DYNAMODB_TABLE_ORDERS": "orders-prod",
+      "SNS_TOPIC_ARN": "arn:aws:sns:REGION:ACCOUNT:TOPIC",
+      "POWERTOOLS_SERVICE_NAME": "ServerlessApp",
+      "POWERTOOLS_METRICS_NAMESPACE": "ProductionApp",
+      "LOG_LEVEL": "INFO",
+      "JWT_SECRET": "__GENERATE__"
+    }
+  },
+  "oidc_oauth_provider": {
+    "name": "OIDC/OAuth2 Integration",
+    "description": "Authentication configuration for apps consuming external OAuth2 (Google, GitHub, Auth0).",
+    "variables": {
+      "OAUTH_CLIENT_ID": "",
+      "OAUTH_CLIENT_SECRET": "__GENERATE__",
+      "OAUTH_ISSUER_URL": "https://tenant.us.auth0.com/",
+      "OAUTH_REDIRECT_URI": "https://myapp.com/callback",
+      "OAUTH_AUDIENCE": "https://api.myapp.com",
+      "GOOGLE_CLIENT_ID": "",
+      "GOOGLE_CLIENT_SECRET": "",
+      "GITHUB_CLIENT_ID": "",
+      "GITHUB_CLIENT_SECRET": ""
+    }
+  },
+  "supa_firebase_edge": {
+    "name": "Supabase / Firebase Edge",
+    "description": "BaaS (Backend as a Service) integration variables for modern edge computing apps.",
+    "variables": {
+      "NEXT_PUBLIC_SUPABASE_URL": "https://xxx.supabase.co",
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY": "",
+      "SUPABASE_SERVICE_ROLE_KEY": "__GENERATE__",
+      "FIREBASE_PROJECT_ID": "",
+      "FIREBASE_CLIENT_EMAIL": "",
+      "FIREBASE_PRIVATE_KEY": "",
+      "FIREBASE_DATABASE_URL": ""
+    }
+  },
+  "ruby_on_rails_prod": {
+    "name": "Ruby on Rails (Production)",
+    "description": "Rails 7+ production stack variables, including Sidekiq, ActionCable, and ActiveStorage.",
+    "variables": {
+      "RAILS_ENV": "production",
+      "RAILS_MASTER_KEY": "__GENERATE__",
+      "SECRET_KEY_BASE": "__GENERATE__",
+      "DATABASE_URL": "postgres://pg_user:pg_pass@db.internal:5432/rails_prod",
+      "REDIS_URL": "redis://redis.internal:6379/1",
+      "SIDEKIQ_CONCURRENCY": "10",
+      "ACTION_CABLE_ALLOWED_REQUEST_ORIGINS": "https://myapp.com",
+      "SMTP_ADDRESS": "smtp.sendgrid.net",
+      "SMTP_PORT": "587",
+      "SMTP_USERNAME": "apikey",
+      "SMTP_PASSWORD": "__GENERATE__"
+    }
+  },
+  "golang_grpc": {
+    "name": "Go Lang gRPC Service",
+    "description": "Configuration for a high-throughput Go gRPC microservice.",
+    "variables": {
+      "APP_ENV": "production",
+      "GRPC_PORT": "50051",
+      "HTTP_REST_PORT": "8080",
+      "DB_HOST": "localhost",
+      "DB_PORT": "5432",
+      "DB_USER": "postgres",
+      "DB_PASSWORD": "__GENERATE__",
+      "DB_NAME": "service_db",
+      "REDIS_URI": "redis://localhost:6379",
+      "TLS_CERT_PATH": "/etc/certs/tls.crt",
+      "TLS_KEY_PATH": "/etc/certs/tls.key"
+    }
+  },
+  "nestjs_microservice": {
+    "name": "NestJS CQRS Microservice",
+    "description": "NestJS advanced CQRS setup with TypeORM and NATS/RabbitMQ event bus.",
+    "variables": {
+      "NODE_ENV": "production",
+      "HTTP_PORT": "3000",
+      "NATS_URL": "nats://nats-cluster:4222",
+      "RABBITMQ_URL": "amqp://user:password@rabbitmq-cluster:5672",
+      "DB_TYPE": "postgres",
+      "DB_HOST": "postgresql.internal",
+      "DB_PORT": "5432",
+      "DB_USERNAME": "nest_user",
+      "DB_PASSWORD": "__GENERATE__",
+      "DB_DATABASE": "cqrs_events",
+      "DB_SYNCHRONIZE": "false",
+      "JWT_ACCESS_SECRET": "__GENERATE__",
+      "JWT_REFRESH_SECRET": "__GENERATE__"
+    }
+  },
+  "kubernetes_ingress": {
+    "name": "Kubernetes Pod ConfigMap",
+    "description": "Common environmental variables projected into Kubernetes pods from ConfigMaps and Secrets.",
+    "variables": {
+      "POD_NAME": "${HOSTNAME}",
+      "POD_NAMESPACE": "production",
+      "NODE_NAME": "",
+      "POD_IP": "",
+      "KUBERNETES_SERVICE_HOST": "10.96.0.1",
+      "KUBERNETES_SERVICE_PORT": "443",
+      "HELM_REVISION": "1",
+      "APP_VERSION": "v1.2.0"
+    }
+  },
+  "ci_cd_github_actions": {
+    "name": "CI/CD Pipeline Secrets",
+    "description": "Variables commonly required by GitHub Actions or GitLab CI runners for deployment.",
+    "variables": {
+      "DOCKER_REGISTRY": "ghcr.io",
+      "DOCKER_USERNAME": "",
+      "DOCKER_PASSWORD": "__GENERATE__",
+      "AWS_ACCESS_KEY_ID": "",
+      "AWS_SECRET_ACCESS_KEY": "__GENERATE__",
+      "AWS_REGION": "us-east-1",
+      "KUBE_CONFIG_DATA": "__GENERATE__",
+      "SLACK_WEBHOOK_URL": "",
+      "SONAR_TOKEN": "__GENERATE__"
+    }
+  },
+  "rust_axum_api": {
+    "name": "Rust Axum Web API",
+    "description": "Environment for high-performance Rust web servers using Axum, Tokio, and SQLx.",
+    "variables": {
+      "RUST_LOG": "info,my_app=debug",
+      "SERVER_BIND_ADDRESS": "0.0.0.0:8000",
+      "DATABASE_URL": "postgres://rust_user:pass@localhost/rust_db",
+      "MAX_CONNECTIONS": "100",
+      "JWT_SECRET": "__GENERATE__",
+      "CORS_ALLOWED_ORIGIN": "https://myapp.com",
+      "API_RATE_LIMIT": "100"
+    }
+  },
+  "elixir_phoenix": {
+    "name": "Elixir Phoenix Channels",
+    "description": "Erlang/Elixir stack for distributed WebSockets using Phoenix LiveView.",
+    "variables": {
+      "MIX_ENV": "prod",
+      "PORT": "4000",
+      "SECRET_KEY_BASE": "__GENERATE__",
+      "DATABASE_URL": "ecto://user:pass@localhost/phoenix_prod",
+      "POOL_SIZE": "10",
+      "PHX_HOST": "example.com",
+      "RELEASE_COOKIE": "__GENERATE__",
+      "ERL_AFLAGS": "-kernel shell_history enabled"
+    }
+  },
+  "wordpress_headless": {
+    "name": "Headless WordPress API",
+    "description": "Environment config for a WordPress instance functioning purely as a GraphQL/REST backend.",
+    "variables": {
+      "WP_ENV": "production",
+      "WP_HOME": "https://cms.mydomain.com",
+      "WP_SITEURL": "https://cms.mydomain.com/wp",
+      "DB_NAME": "wp_headless",
+      "DB_USER": "wp_user",
+      "DB_PASSWORD": "__GENERATE__",
+      "DB_HOST": "localhost",
+      "AUTH_KEY": "__GENERATE__",
+      "SECURE_AUTH_KEY": "__GENERATE__",
+      "LOGGED_IN_KEY": "__GENERATE__",
+      "NONCE_KEY": "__GENERATE__",
+      "GRAPHQL_JWT_AUTH_SECRET_KEY": "__GENERATE__"
+    }
+  },
+  "blockchain_node_rpc": {
+    "name": "Blockchain Node / RPC Server",
+    "description": "Config for running an Ethereum (Geth) or Solana validator / RPC node layer.",
+    "variables": {
+      "NODE_ENV": "production",
+      "NETWORK_ID": "1",
+      "SYNC_MODE": "snap",
+      "HTTP_RPC_PORT": "8545",
+      "WS_RPC_PORT": "8546",
+      "MAX_PEERS": "50",
+      "P2P_PORT": "30303",
+      "JWT_SECRET": "__GENERATE__",
+      "METRICS_ENABLED": "true",
+      "METRICS_PORT": "6060"
+    }
+  },
+  "sveltekit_edge": {
+    "name": "SvelteKit Cloudflare Edge",
+    "description": "Configuration tailored for SvelteKit deploying via Cloudflare Pages or Workers.",
+    "variables": {
+      "PUBLIC_API_ENDPOINT": "https://api.myapp.workers.dev",
+      "PUBLIC_SITE_URL": "https://myapp.com",
+      "CF_PAGES": "1",
+      "CLOUDFLARE_ACCOUNT_ID": "",
+      "CLOUDFLARE_API_TOKEN": "__GENERATE__",
+      "KV_NAMESPACE_ID": "",
+      "D1_DATABASE_ID": "",
+      "R2_BUCKET_NAME": ""
+    }
+  },
+  "airflow_data_pipeline": {
+    "name": "Apache Airflow Pipeline",
+    "description": "Configuration for an Apache Airflow data orchestration node.",
+    "variables": {
+      "AIRFLOW__CORE__EXECUTOR": "CeleryExecutor",
+      "AIRFLOW__DATABASE__SQL_ALCHEMY_CONN": "postgresql+psycopg2://airflow:airflow@postgres/airflow",
+      "AIRFLOW__CELERY__BROKER_URL": "redis://redis:6379/0",
+      "AIRFLOW__CELERY__RESULT_BACKEND": "db+postgresql://airflow:airflow@postgres/airflow",
+      "AIRFLOW__WEBSERVER__SECRET_KEY": "__GENERATE__",
+      "AIRFLOW__CORE__FERNET_KEY": "__GENERATE__",
+      "AIRFLOW__API__AUTH_BACKENDS": "airflow.api.auth.backend.basic_auth",
+      "AIRFLOW_CONN_SNOWFLAKE": "snowflake://user:pass@account_url",
+      "AIRFLOW_VAR_SLACK_WEBHOOK": ""
     }
   }
 }
