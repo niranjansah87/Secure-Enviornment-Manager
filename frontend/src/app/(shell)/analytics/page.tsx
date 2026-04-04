@@ -11,7 +11,10 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell
+  Cell,
+  BarChart,
+  Bar,
+  Legend
 } from "recharts";
 import { 
   Activity, 
@@ -19,7 +22,10 @@ import {
   HardDrive, 
   Cpu, 
   TrendingUp,
-  PieChart as PieIcon
+  PieChart as PieIcon,
+  Zap,
+  Lock,
+  AlertTriangle
 } from "lucide-react";
 import { api, type AnalyticsResponse, type HealthResponse } from "@/lib/api";
 import { useWorkspace } from "@/context/workspace-context";
@@ -145,8 +151,10 @@ export default function AnalyticsPage() {
                     axisLine={false} 
                   />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: "#18181b", border: "1px solid #27272a" }}
-                    itemStyle={{ color: "#f4f4f5" }}
+                    contentStyle={{ backgroundColor: "#18181b", border: "1px solid #27272a", borderRadius: "8px", boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)" }}
+                    labelStyle={{ color: "#f8fafc", fontWeight: "bold", marginBottom: "4px" }}
+                    itemStyle={{ color: "#94a3b8", fontSize: "12px" }}
+                    cursor={{ stroke: '#4c1d95', strokeWidth: 2 }}
                   />
                   <Area 
                     type="monotone" 
@@ -154,12 +162,15 @@ export default function AnalyticsPage() {
                     stroke="#8b5cf6" 
                     fillOpacity={1} 
                     fill="url(#colorTotal)" 
+                    strokeWidth={3}
                   />
                   <Area 
                     type="monotone" 
                     dataKey="updates" 
                     stroke="#3b82f6" 
                     fill="transparent" 
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -169,14 +180,127 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
 
+        {/* Security Health */}
+        <Card className="border-zinc-800 bg-[#111827]">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              {data && data.security_stats.failures > 0 ? (
+                <AlertTriangle className="h-5 w-5 text-red-400 animate-pulse" />
+              ) : (
+                <Lock className="h-5 w-5 text-emerald-400" />
+              )}
+              <CardTitle>Security Health</CardTitle>
+            </div>
+            <CardDescription>Login success vs. failure ratio</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center h-[350px] pt-4">
+            {loading ? (
+              <Skeleton className="h-full w-full" />
+            ) : data ? (
+              <div className="w-full space-y-8">
+                <div className="relative flex items-center justify-center h-40">
+                   <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-4xl font-bold text-zinc-100">
+                        {data.security_stats.success + data.security_stats.failures === 0 ? "100" : 
+                          Math.round((data.security_stats.success / (data.security_stats.success + data.security_stats.failures)) * 100)}%
+                      </span>
+                      <span className="text-[10px] uppercase text-zinc-500 font-semibold tracking-wider">Score</span>
+                   </div>
+                   <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'Success', value: data.security_stats.success || 1 },
+                          { name: 'Failures', value: data.security_stats.failures }
+                        ]}
+                        innerRadius={65}
+                        outerRadius={80}
+                        paddingAngle={2}
+                        dataKey="value"
+                      >
+                        <Cell fill="#10b981" />
+                        <Cell fill="#ef4444" />
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20 text-center">
+                    <p className="text-[10px] uppercase text-emerald-500/60 font-semibold mb-1">Success</p>
+                    <p className="text-xl font-bold text-emerald-500">{data.security_stats.success}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-red-500/5 border border-red-500/20 text-center">
+                    <p className="text-[10px] uppercase text-red-500/60 font-semibold mb-1">Failures</p>
+                    <p className="text-xl font-bold text-red-500">{data.security_stats.failures}</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex h-full items-center justify-center text-zinc-500">No security data</div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Event Breakdown */}
+        <Card className="border-zinc-800 bg-[#111827]">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-amber-400" />
+              <CardTitle>Event Breakdown (7 Days)</CardTitle>
+            </div>
+            <CardDescription>Operation types across entire system</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[350px] pt-4">
+            {loading ? (
+              <Skeleton className="h-full w-full" />
+            ) : data ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data.action_breakdown}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                  <XAxis 
+                    dataKey="action" 
+                    stroke="#71717a" 
+                    fontSize={12} 
+                    tickLine={false} 
+                    axisLine={false}
+                  />
+                  <YAxis 
+                    stroke="#71717a" 
+                    fontSize={12} 
+                    tickLine={false} 
+                    axisLine={false} 
+                  />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: "#18181b", border: "1px solid #27272a", borderRadius: "8px" }}
+                    labelStyle={{ color: "#f8fafc", fontWeight: "bold" }}
+                    itemStyle={{ color: "#94a3b8" }}
+                    cursor={{ fill: 'rgba(139, 92, 246, 0.1)' }}
+                  />
+                  <Bar 
+                    dataKey="count" 
+                    fill="#8b5cf6" 
+                    radius={[4, 4, 0, 0]} 
+                    barSize={40}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center text-zinc-500">No event data</div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Distribution */}
         <Card className="border-zinc-800 bg-[#111827]">
           <CardHeader>
             <div className="flex items-center gap-2">
               <PieIcon className="h-5 w-5 text-blue-400" />
-              <CardTitle>Distribution</CardTitle>
+              <CardTitle>Namespace Distribution</CardTitle>
             </div>
-            <CardDescription>Secrets per namespace</CardDescription>
+            <CardDescription>Secrets per namespace (Estimated)</CardDescription>
           </CardHeader>
           <CardContent className="h-[350px]">
             {loading ? (
@@ -188,18 +312,26 @@ export default function AnalyticsPage() {
                     data={data.distribution.namespaces}
                     cx="50%"
                     cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
+                    innerRadius={70}
+                    outerRadius={90}
+                    paddingAngle={8}
                     dataKey="estimated_secrets"
                     nameKey="name"
                   >
                     {data.distribution.namespaces.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="#111827" />
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="#111827" strokeWidth={2} />
                     ))}
                   </Pie>
                   <Tooltip 
-                    contentStyle={{ backgroundColor: "#18181b", border: "1px solid #27272a" }}
+                    contentStyle={{ backgroundColor: "#18181b", border: "1px solid #27272a", borderRadius: "8px" }}
+                    labelStyle={{ color: "#f8fafc", fontWeight: "bold" }}
+                    itemStyle={{ color: "#94a3b8" }}
+                  />
+                  <Legend 
+                    verticalAlign="bottom" 
+                    height={36} 
+                    iconType="circle"
+                    formatter={(value) => <span className="text-xs text-zinc-400">{value}</span>}
                   />
                 </PieChart>
               </ResponsiveContainer>

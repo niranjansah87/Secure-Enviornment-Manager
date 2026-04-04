@@ -118,6 +118,14 @@ export type AnalyticsResponse = {
     total_secrets: number;
     total_environments: number;
   };
+  security_stats: {
+    success: number;
+    failures: number;
+  };
+  action_breakdown: {
+    action: string;
+    count: number;
+  }[];
 };
 
 export type HealthResponse = {
