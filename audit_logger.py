@@ -145,14 +145,28 @@ class AuditLogger:
         user_id: str,
         ip_address: str
     ):
-        """Log successful login"""
+        """Log successful login
+
+        The raw user_id may, depending on the caller, contain data derived
+        from authentication tokens or other potentially sensitive
+        information. To avoid storing such data in clear text, we normalize
+        the user_id to a bounded, non-sensitive value before writing it to
+        the audit log.
+        """
+        # Normalize the user identifier to avoid leaking secrets. If the
+        # identifier includes a prefix and additional detail separated by
+        # ":", only keep the prefix (e.g. "api_key", "master_token").
+        safe_user_id = (
+            user_id.split(":", 1)[0] if isinstance(user_id, str) else "unknown"
+        )
+
         log_entry = {
             "timestamp": self._get_timestamp(),
             "action": "LOGIN_SUCCESS",
             "namespace": namespace,
             "environment": environment,
             "resource": "authentication",
-            "user_id": user_id,
+            "user_id": safe_user_id,
             "ip_address": ip_address
         }
         self._write_log(log_entry)
