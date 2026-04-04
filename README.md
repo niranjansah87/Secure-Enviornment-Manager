@@ -3,8 +3,6 @@
 A powerful, secure web-based environment variable management system with encryption, version control, audit logging, and automated backups.
 
 > **Advanced version of the original dotenv-server** - Enhanced with enterprise features including version control, environment comparison, variable templates, CLI tool, and automated email backups.
->
-> Original project by [bugswriter.ai](https://github.com/bugswriter)
 
 ---
 
@@ -547,11 +545,7 @@ Contributions are welcome! Please:
 
 ## 📄 License
 
-This project is an enhanced version of the original dotenv-server.
-
-**Credits:**
-- Original project: [bugswriter.ai](https://github.com/bugswriter)
-- Advanced features: Enhanced version with enterprise capabilities
+This project is the Secure Environment Manager, featuring enterprise capabilities like audit logging, Next.js frontend, multi-tenancy, and high-performance caching.
 
 ---
 
