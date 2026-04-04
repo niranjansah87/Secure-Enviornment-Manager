@@ -833,13 +833,15 @@ def api_meta_analytics():
         
     trends = analytics_service.get_activity_trends(days=days)
     distribution = analytics_service.get_distribution_stats(settings.data_dir)
+    summary = analytics_service.get_summary_stats(days=days)
     
     # Filter distribution to only visible namespaces
     distribution["namespaces"] = [ns for ns in distribution["namespaces"] if ns["name"] in visible]
     
     return jsonify({
         "trends": trends,
-        "distribution": distribution
+        "distribution": distribution,
+        **summary
     })
 
 

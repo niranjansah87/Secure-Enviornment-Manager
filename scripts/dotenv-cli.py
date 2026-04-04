@@ -26,7 +26,7 @@ class DotenvCLI:
     
     def list_variables(self, namespace: str, environment: str) -> Dict[str, str]:
         """List all variables in an environment"""
-        url = urljoin(self.base_url, f"/api/{namespace}/{environment}")
+        url = urljoin(self.base_url, f"/api/v1/{namespace}/{environment}")
         response = self.session.get(url)
         if response.status_code == 200:
             return response.json()
@@ -39,19 +39,22 @@ class DotenvCLI:
     
     def set_variable(self, namespace: str, environment: str, key: str, value: str) -> bool:
         """Set a variable value"""
-        url = urljoin(self.base_url, f"/add/{namespace}/{environment}")
-        response = self.session.post(url, data={"key": key, "value": value})
+        url = urljoin(self.base_url, f"/api/v1/{namespace}/{environment}")
+        response = self.session.patch(url, json={key: value})
         return response.status_code == 200
     
     def delete_variable(self, namespace: str, environment: str, key: str) -> bool:
         """Delete a variable"""
-        url = urljoin(self.base_url, f"/delete/{namespace}/{environment}")
-        response = self.session.post(url, data={"key": key})
+        url = urljoin(self.base_url, f"/api/v1/{namespace}/{environment}/keys/{key}")
+        response = self.session.delete(url)
         return response.status_code == 200
     
     def export_env(self, namespace: str, environment: str, format: str = "env") -> str:
         """Export environment variables"""
-        url = urljoin(self.base_url, f"/download/{namespace}/{environment}/{format}")
+        if format == "env":
+            url = urljoin(self.base_url, f"/download/{namespace}/{environment}")
+        else:
+            url = urljoin(self.base_url, f"/export/{namespace}/{environment}/{format}")
         response = self.session.get(url)
         if response.status_code == 200:
             return response.text
@@ -62,8 +65,8 @@ class DotenvCLI:
         with open(file_path, 'r') as f:
             content = f.read()
         
-        url = urljoin(self.base_url, f"/bulk-replace/{namespace}/{environment}")
-        response = self.session.post(url, data={"content": content})
+        url = urljoin(self.base_url, f"/api/v1/{namespace}/{environment}/bulk")
+        response = self.session.post(url, json={"payload": content})
         return response.status_code == 200
 
 def main():
