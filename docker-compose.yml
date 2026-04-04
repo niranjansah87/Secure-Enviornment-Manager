@@ -7,10 +7,13 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      - PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
     volumes:
       - ./data:/app/data
       - ./audit_logs:/app/audit_logs
       - ./logs:/app/logs
+      - prometheus_multiproc:/tmp/prometheus_multiproc
     ports:
       - "8070:8070"
     healthcheck:
@@ -34,6 +37,41 @@ services:
     networks:
       - sem-network
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: sem-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - sem-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: sem-grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - sem-network
+
 networks:
   sem-network:
     driver: bridge
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  prometheus_multiproc:

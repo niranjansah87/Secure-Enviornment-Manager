@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="frontend/public/logo.png" alt="Secure Environment Manager Logo" width="200" height="auto">
+
 # 🔐 Secure Environment Manager
 
 **The professional, open-source vault for your environment variables. Fully encrypted, audit-ready, and developer-obsessed.**
@@ -10,7 +12,7 @@
 [![Issues](https://img.shields.io/github/issues/niranjansah87/Secure-Environment-Manager?style=flat-square)](https://github.com/niranjansah87/Secure-Environment-Manager/issues)
 [![Last Commit](https://img.shields.io/github/last-commit/niranjansah87/Secure-Environment-Manager?style=flat-square)](https://github.com/niranjansah87/Secure-Environment-Manager/commits/main)
 
-[Features](#-features) • [Quick Start](#-quick-start) • [Architecture](#-architecture) • [Security](#-security-highlights) • [Roadmap](#-roadmap)
+[Features](#-features) • [Quick Start](#-quick-start) • [Architecture](#-architecture) • [Security](#-security-highlights)
 
 </div>
 
@@ -162,18 +164,16 @@ Visit [http://localhost:3000](http://localhost:3000) and start managing your sec
 
 ---
 
-## 📈 Roadmap
+## 📚 Documentation
 
-| Phase | Feature | Status |
-| :--- | :--- | :---: |
-| **Phase 1** | Modern Web UI & API Core | ✅ |
-| **Phase 1** | Audit Logs & Version History | ✅ |
-| **Phase 2** | CLI Tool & Email Backups | ✅ |
-| **Phase 2** | Multi-tenant Namespaces | ✅ |
-| **Phase 3** | Secrets Rotation Service | 🚧 |
-| **Phase 3** | Dashboard Analytics & Health | 🚧 |
-| **Phase 4** | PostgreSQL/Redis Support | 📅 |
-| **Phase 4** | Prometheus / Grafana Monitoring | 📅 |
+For detailed guides and deep-dives, please check our documentation:
+
+*   **[Setup Instructions](file:///c:/Secure-Enviornment-Manager/docs/SETUP.md)**: Comprehensive guide to getting started.
+*   **[Monitoring Guide](file:///c:/Secure-Enviornment-Manager/docs/MONITORING.md)**: Details on Prometheus and Grafana integration.
+*   **[Local Monitoring Setup](file:///c:/Secure-Enviornment-Manager/docs/LOCAL_MONITORING_SETUP.md)**: Manual guide (No Docker).
+*   **[Backup & Recovery](file:///c:/Secure-Enviornment-Manager/docs/BACKUP_GUIDE.md)**: Safeguarding your encrypted data.
+*   **[Security Policy](SECURITY.md)**: How we handle security and vulnerability reporting.
+*   **[Branch Protection](file:///c:/Secure-Enviornment-Manager/docs/branch_protection_guide.md)**: Best practices for production stability.
 
 ---
 

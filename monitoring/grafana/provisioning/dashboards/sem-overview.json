@@ -1,0 +1,74 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Security: Login Ratio",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "sum(sem_login_success_total)", "legendFormat": "Success" },
+        { "expr": "sum(sem_login_failure_total)", "legendFormat": "Failure" }
+      ],
+      "options": {
+        "reduceOptions": { "values": true, "calcs": ["lastNotNull"] },
+        "pieType": "donut"
+      }
+    },
+    {
+      "title": "Secret Activity (Last 1h)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 16, "x": 8, "y": 0 },
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "rate(sem_secret_updates_total[5m])", "legendFormat": "Updates" },
+        { "expr": "rate(sem_secret_access_total[5m])", "legendFormat": "Access" }
+      ]
+    },
+    {
+      "title": "Backend Request Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "sum(rate(flask_http_request_total[5m]))", "legendFormat": "Total RPS" }
+      ]
+    },
+    {
+      "title": "Frontend Memory Usage",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "sem_frontend_nodejs_heap_size_used_bytes", "legendFormat": "Heap Used" }
+      ]
+    }
+  ],
+  "schemaVersion": 36,
+  "style": "dark",
+  "tags": ["sem", "security"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "SEM Overview",
+  "uid": "sem_overview",
+  "version": 1
+}

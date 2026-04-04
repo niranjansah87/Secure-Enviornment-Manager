@@ -31,6 +31,14 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 from audit_logger import audit_logger
 from history_manager import HistoryManager
+from analytics_service import analytics_service
+from health_service import health_service
+from prometheus_flask_exporter import PrometheusMetrics
+from prometheus_client import Counter, CollectorRegistry
+try:
+    from prometheus_client import multiproc # type: ignore
+except ImportError:
+    multiproc = None
 
 # --- Initial Setup & Configuration ---
 load_dotenv()
@@ -139,6 +147,24 @@ MAX_LOGIN_ATTEMPTS = settings.max_login_attempts
 
 LOGIN_ATTEMPTS: Dict[str, Dict[str, Any]] = {}
 DATA_LOCKS: defaultdict[str, Lock] = defaultdict(Lock)
+
+# --- Prometheus Monitoring Setup ---
+def _get_metrics_registry():
+    registry = CollectorRegistry()
+    if os.getenv("PROMETHEUS_MULTIPROC_DIR") and multiproc:
+        multiproc.MultiProcessCollector(registry)
+    return registry
+
+metrics = PrometheusMetrics(app, registry=_get_metrics_registry())
+
+# Static information as metric
+metrics.info("sem_app_info", "Secure Environment Manager Info", version="1.0.0")
+
+# Custom counters for business logic
+LOGIN_SUCCESS_COUNTER = Counter("sem_login_success_total", "Total successful logins")
+LOGIN_FAILURE_COUNTER = Counter("sem_login_failure_total", "Total failed login attempts", ["reason"])
+SECRET_UPDATE_COUNTER = Counter("sem_secret_updates_total", "Total secret modifications", ["namespace", "environment"])
+SECRET_ACCESS_COUNTER = Counter("sem_secret_access_total", "Total secret reads/exports", ["namespace", "environment"])
 
 SEGMENT_PATTERN = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
 KEY_PATTERN = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$")
@@ -456,6 +482,7 @@ def dashboard(namespace: str, environment: str):
 
         password = request.form.get("password", "")
         if password and check_password_hash(DASHBOARD_PASSWORD_HASH, password):
+            LOGIN_SUCCESS_COUNTER.inc()
             mark_authenticated(namespace, environment)
             reset_attempts(identifier)
             try:
@@ -469,6 +496,9 @@ def dashboard(namespace: str, environment: str):
                 request.remote_addr,
             )
             return redirect(spa_url(namespace, environment))
+        
+        reason = "invalid_password" if password else "missing_password"
+        LOGIN_FAILURE_COUNTER.labels(reason=reason).inc()
         record_failed_attempt(identifier)
         remaining = max(0, MAX_LOGIN_ATTEMPTS - LOGIN_ATTEMPTS[identifier]["fails"])
         return Response(
@@ -497,6 +527,8 @@ def add_variable(namespace: str, environment: str):
     variables = read_vars(namespace, environment)
     variables[key] = value
     write_vars(namespace, environment, variables)
+    
+    SECRET_UPDATE_COUNTER.labels(namespace, environment).inc()
     
     # Save History Snapshot
     history_manager.save_snapshot(
@@ -587,6 +619,8 @@ def download_env(namespace: str, environment: str):
     audit_logger.log_export(
         namespace, environment, "env", "session", request.remote_addr or "unknown"
     )
+    
+    SECRET_ACCESS_COUNTER.labels(namespace, environment).inc()
     
     variables = read_vars(namespace, environment)
     content = to_env_lines(variables)
@@ -783,6 +817,48 @@ def api_meta_stats():
     )
 
 
+@app.get("/api/v1/meta/analytics")
+def api_meta_analytics():
+    token = extract_bearer_token()
+    if not token:
+        return jsonify({"error": "Authorization header missing"}), 401
+    visible = set(namespaces_visible_to_token(token))
+    if not visible:
+        return jsonify({"error": "Invalid API token"}), 403
+        
+    try:
+        days = min(int(request.args.get("days", 7)), 30)
+    except (ValueError, TypeError):
+        days = 7
+        
+    trends = analytics_service.get_activity_trends(days=days)
+    distribution = analytics_service.get_distribution_stats(settings.data_dir)
+    
+    # Filter distribution to only visible namespaces
+    distribution["namespaces"] = [ns for ns in distribution["namespaces"] if ns["name"] in visible]
+    
+    return jsonify({
+        "trends": trends,
+        "distribution": distribution
+    })
+
+
+@app.get("/api/v1/meta/health")
+def api_meta_health():
+    token = extract_bearer_token()
+    if not token:
+        return jsonify({"error": "Authorization header missing"}), 401
+    # Only dashboard password or master token can see full health
+    master = settings.master_api_token
+    is_master = master and hmac.compare_digest(master, token)
+    is_dashboard = check_password_hash(DASHBOARD_PASSWORD_HASH, token)
+    
+    if not (is_master or is_dashboard):
+        return jsonify({"error": "Forbidden: Requires administrative privileges"}), 403
+        
+    return jsonify(health_service.get_system_health())
+
+
 @app.get("/api/v1/meta/logins")
 def api_meta_logins():
     token = extract_bearer_token()
@@ -798,6 +874,12 @@ def api_meta_logins():
     recent = _recent_audit_entries({"system", "global"}.union(visible), limit=limit * 10)
     
     logins = []
+    for entry in recent:
+        if entry.get("action") in ("LOGIN_SUCCESS", "LOGIN_FAILURE"):
+            logins.append(entry)
+            if len(logins) >= limit:
+                break
+    return jsonify({"logins": logins})
     for entry in recent:
         if entry.get("action") in ["LOGIN_SUCCESS", "LOGIN_FAILURE"]:
             logins.append(entry)
