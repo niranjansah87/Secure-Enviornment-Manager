@@ -1,8 +1,11 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Mail, Globe } from "lucide-react";
 import { Security3DAnimation } from "@/components/animations/security-3d";
+import { useWorkspace } from "@/context/workspace-context";
 
 const GithubIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -27,6 +30,8 @@ const InstagramIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 export default function Home() {
+  const { token } = useWorkspace();
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-between text-white overflow-hidden relative selection:bg-violet-500/30 font-sans pointer-events-none">
       
@@ -57,8 +62,8 @@ export default function Home() {
 
         <div className="pointer-events-auto mt-8 flex gap-4">
           <Button asChild size="lg" className="h-14 px-10 text-base rounded-full bg-violet-600 hover:bg-violet-700 shadow-[0_0_40px_rgba(139,92,246,0.4)] transition-all hover:scale-105">
-            <Link href="/login">
-              Log in to Dashboard
+            <Link href={token ? "/dashboard" : "/login"}>
+              {token ? "Go to Dashboard" : "Log in to Dashboard"}
               <ArrowRight className="ml-2 h-5 w-5" />
             </Link>
           </Button>
