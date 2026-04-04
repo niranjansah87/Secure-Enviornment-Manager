@@ -10,29 +10,59 @@ A powerful, secure web-based environment variable management system with encrypt
 
 ## 📸 Screenshots
 
-### 🔐 Login Page
-![Login Page](screenshots/login_page.png)
-*Secure authentication for each environment namespace*
+<details>
+<summary>Click to view screenshots of the web UI</summary>
 
-### 📊 Dashboard
+### Home Page
+![Home Page](screenshots/home_page.png)
+
+### Login
+![Login](screenshots/login_page.png)
+
+### Dashboard
 ![Dashboard](screenshots/dashboard.png)
-*Clean interface for managing environment variables with search, add, edit, and delete capabilities*
 
-### 🕰️ Version History
-![Version History](screenshots/version_history.png)
-*Complete timeline of all changes with visual diff viewer and one-click rollback*
+### Secrets Management
+![Secrets Management](screenshots/secrets_page.png)
 
-### ⚖️ Environment Comparison
-![Environment Comparison](screenshots/environment_comparison.png)
-*Side-by-side comparison of variables across different environments*
-
-### 🧩 Variable Templates
-![Variable Templates](screenshots/templates.png)
-*Pre-configured templates for Django, React, Node.js, Flask with auto-generated secrets*
-
-### 🛡️ Audit Logs
+### Audit Logs
 ![Audit Logs](screenshots/audit_logs.png)
-*Complete security trail of all actions with filtering and export capabilities*
+
+</details>
+
+---
+
+## 🖥️ Web UI (Next.js)
+
+The primary interface is a **Next.js 14** app under `frontend/` (App Router, TypeScript, Tailwind, shadcn-style components, TanStack Table). The Flask server remains the **API and encryption layer**; legacy Jinja/HTML templates have been removed—browser visits to old paths redirect to the SPA.
+
+**Branding:** replace `frontend/public/logo.svg` and `frontend/src/app/icon.svg` with your own logo and favicon if you use different assets.
+
+### Next.js routes (implemented)
+
+| Route | Purpose |
+|--------|---------|
+| `/dashboard` | Stats, recent activity, quick actions |
+| `/projects` | Grid of namespaces/environments |
+| `/settings` | API base URL display, Bearer token (localStorage) |
+| `/{namespace}/{environment}` | Secrets table (mask/reveal, CRUD, bulk import) |
+| `/{namespace}/{environment}/compare` | Compare two environments (client-side diff) |
+| `/{namespace}/{environment}/history` | Timeline + restore snapshot |
+| `/{namespace}/{environment}/audit` | Audit timeline |
+| `/{namespace}/{environment}/templates` | Template cards + apply |
+
+**Not in the SPA (use API or History):** per-snapshot **visual diff** page (old `diff.html`). Rollback and history are available from **History** on the Next app.
+
+### Run the UI locally
+
+```bash
+cd frontend
+cp .env.local.example .env.local   # set NEXT_PUBLIC_API_URL if Flask is not on localhost:8070
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000). In **Settings**, paste a Bearer token from `api_keys.json` for that namespace, or set `MASTER_API_TOKEN` on Flask for full visibility.
 
 ---
 
@@ -40,9 +70,10 @@ A powerful, secure web-based environment variable management system with encrypt
 
 ### 🔒 Core Security
 - **AES-256 Encryption** - All variables encrypted at rest using Fernet
-- **Password Protection** - Secure authentication for each environment
+- **Dashboard password** (`DASHBOARD_PASSWORD`) - Legacy **session** auth for form/CLI flows against Flask (optional if you only use the Next UI + Bearer API)
+- **Bearer API** - `api_keys.json` per namespace; optional `MASTER_API_TOKEN` for admin-style API access
 - **Audit Logging** - Complete trail of all changes and access
-- **Session Management** - Secure session handling
+- **Session Management** - Flask session for legacy POST routes (add/delete/bulk/export)
 
 ### 📊 Environment Management
 - **Multi-Environment Support** - Production, staging, development, etc.
@@ -52,9 +83,9 @@ A powerful, secure web-based environment variable management system with encrypt
 
 ### 🕰️ Version Control
 - **Automatic History** - Every change tracked automatically
-- **Visual Diff Viewer** - See exactly what changed
-- **One-Click Rollback** - Restore previous versions instantly
-- **Timeline View** - Complete change history
+- **Rollback** - Restore previous versions from the Next.js **History** page (or API)
+- **Timeline View** - Complete change history in the SPA
+- **Snapshot diff (legacy HTML)** - Removed with Jinja templates; use History + Compare for drift
 
 ### 🔄 Advanced Features
 - **Environment Comparison** - Compare variables across environments
@@ -91,105 +122,64 @@ A powerful, secure web-based environment variable management system with encrypt
    ```
 
 3. **Configure environment**
-   
-   Create a `.env` file in the root directory:
+
+   Create a `.env` file in the repository root (see `.env.example`):
    ```bash
-   # Required
-   ADMIN_PASSWORD=your-secure-password
-   ENCRYPTION_KEY=your-encryption-key-here
+   # Required for Flask
+   FLASK_SECRET_KEY=your-random-secret
+   ENCRYPTION_KEY=your-fernet-key
+   DASHBOARD_PASSWORD=your-secure-password
    DATA_DIR=./data
-   
-   # Optional: Email Backup
-   SMTP_SERVER=smtp.gmail.com
-1.  **Clone the repository**
-    ```bash
-    git clone https://github.com/niranjansah87/Secure-Environment-Manager.git
-    cd Secure-Environment-Manager
-    ```
 
-2.  **Install dependencies**
-    ```bash
-    pip install -r requirements.txt
-    ```
+   # Next.js + browser API (local dev)
+   CORS_ORIGINS=http://localhost:3000
+   FRONTEND_URL=http://localhost:3000
 
-3.  **Configure environment**
+   # Optional: master Bearer for API (see docs in .env.example)
+   # MASTER_API_TOKEN=
 
-    Create a `.env` file in the root directory:
-    ```bash
-    # Required
-    ADMIN_PASSWORD=your-secure-password
-    ENCRYPTION_KEY=your-encryption-key-here
-    DATA_DIR=./data
+   # Optional: Email backup
+   # SMTP_SERVER=smtp.gmail.com
+   # SMTP_PORT=587
+   # SENDER_EMAIL=...
+   # SENDER_PASSWORD=...
+   # BACKUP_EMAIL=...
+   ```
 
-    # Optional: Email Backup
-    SMTP_SERVER=smtp.gmail.com
-    SMTP_PORT=587
-    SENDER_EMAIL=your-email@gmail.com
-    SENDER_PASSWORD=your-app-password
-    BACKUP_EMAIL=backup@example.com
-    ```
+   **Generate encryption key:**
+   ```bash
+   python scripts/generate_keys.py
+   ```
 
-    **Generate encryption key:**
-    ```bash
-    python scripts/generate_keys.py
-    ```
-    This will output a secure encryption key. Copy it for the next step.
+4. **Run the API (Flask)**
 
-4.  **Run the server**
-    ```bash
-    python app.py
-    ```
+   ```bash
+   python app.py
+   ```
 
-5.  **Access the application**
+   API listens on **http://localhost:8070** by default. Visiting `http://localhost:8070/{namespace}/{environment}` redirects to the Next.js app (`FRONTEND_URL`).
 
-    Open browser: `http://localhost:8070/production/main`
+5. **Run the web UI (Next.js)**
 
-    Default password: `testpassword123` (change in `.env`)
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+   Open **http://localhost:3000**. Add a Bearer token under **Settings** (from `api_keys.json` for that namespace, or `MASTER_API_TOKEN`).
 
 ---
 
 ## 📖 Usage Guide
 
-### Web Interface
+### Web interface (Next.js)
 
-#### 1. **Login**
-- Navigate to `http://localhost:8070/{namespace}/{environment}`
-- Enter your password
-- Access the dashboard
+Use the sidebar: **Dashboard**, **Projects**, **Secrets**, **Compare**, **History**, **Audit Logs**, **Templates**, **Settings**. Secrets support masked values, search, add/edit dialog, bulk import with preview, and delete confirmation. **History** supports restore (rollback) via the API.
 
-#### 2. **Manage Variables**
-- **Add:** Click "Add Variable" button
-- **Edit:** Click on variable value to edit inline
-- **Delete:** Click trash icon
-- **Search:** Use search box to filter variables
+Legacy **Flask session password** (`DASHBOARD_PASSWORD`) is only needed if you still use old form POST routes or tools that POST a password to `/{namespace}/{environment}`.
 
-#### 3. **Bulk Operations**
-- **Import:** Paste `.env` content and click "Bulk Replace"
-- **Export:** Choose format (ENV/JSON/YAML) and download
-
-#### 4. **Version History**
-- Click 🕒 History icon
-- View all changes with timestamps
-- Compare versions with diff viewer
-- Restore previous versions
-
-#### 5. **Compare Environments**
-- Click ⚖️ Compare icon
-- Select target environment
-- View side-by-side differences
-- Identify unique and modified variables
-
-#### 6. **Variable Templates**
-- Click 🧩 Templates icon
-- Browse pre-configured templates
-- Apply template to current environment
-- Auto-generates secure secrets
-
-#### 7. **Audit Logs**
-- Click 🛡️ Audit icon
-- View complete security trail
-- Filter by action, user, date
-- Export logs for compliance
+**Exports:** from the API or legacy authenticated GET routes (`/download/...`, `/export/.../json`, `/export/.../yaml`).
 
 ### CLI Tool
 
@@ -274,40 +264,33 @@ python scripts/dotenv-cli.py -n production -e main import .env
 
 ```
 Secure-Environment-Manager/
-├── app.py                    # Main Flask application
+├── app.py                    # Flask API + legacy form routes (redirect to Next.js)
 ├── audit_logger.py           # Audit logging functionality
 ├── history_manager.py        # Version history management
 ├── requirements.txt          # Python dependencies
 ├── .env                      # Configuration (not in git)
 ├── .env.example              # Example configuration template
-├── api_keys.json            # API tokens (not in git)
-├── templates_config.json    # Template configurations
-├── data/                    # Encrypted environment files
+├── api_keys.json             # API Bearer tokens per namespace (not in git)
+├── templates_config.json     # Variable templates (used by API + Next.js)
+├── frontend/                 # Next.js 14 web UI
+│   ├── src/app/              # App Router pages + icon.svg (favicon)
+│   ├── public/logo.svg       # Sidebar / metadata logo (replace with yours)
+│   └── package.json
+├── data/                     # Encrypted environment files
 │   └── <namespace>/
 │       └── <environment>.enc
-├── audit_logs/              # Audit log files (not in git)
-├── scripts/                 # Utility scripts
-│   ├── README.md            # Scripts documentation
-│   ├── generate_keys.py     # Encryption key generator
-│   ├── dotenv-cli.py        # CLI tool
-│   ├── email_backup.py      # Email backup script
-│   └── run_backup.bat       # Windows backup script
-├── templates/               # HTML templates
-│   ├── layout.html
-│   ├── login.html
-│   ├── dashboard.html
-│   └── error.html
-├── docs/                    # Documentation
-│   ├── SETUP.md
-│   ├── CLI_README.md
-│   ├── BACKUP_GUIDE.md
-│   ├── EMAIL_BACKUP_GUIDE.md
-│   └── WINDOWS_SCHEDULER_GUIDE.md
-├── nginx/                   # Nginx configuration
-├── Dockerfile.prod          # Production Docker image
-├── docker-compose.prod.yml  # Docker Compose config
-├── Caddyfile                # Caddy reverse proxy config
-└── dotenv.service           # Systemd service files
+├── audit_logs/               # Audit log files (not in git)
+├── scripts/                  # Utility scripts
+│   ├── generate_keys.py
+│   ├── dotenv-cli.py
+│   ├── email_backup.py
+│   └── run_backup.bat
+├── docs/
+├── nginx/
+├── Dockerfile.prod
+├── docker-compose.prod.yml
+├── Caddyfile
+└── dotenv.service
 ```
 
 ---
@@ -391,9 +374,14 @@ python email_backup.py
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `ADMIN_PASSWORD` | Yes | - | Master password for authentication |
+| `FLASK_SECRET_KEY` | Yes | - | Flask session signing secret |
 | `ENCRYPTION_KEY` | Yes | - | Fernet encryption key |
+| `DASHBOARD_PASSWORD` | Yes | - | Password for legacy session login (form/CLI POST) |
 | `DATA_DIR` | No | `./data` | Directory for encrypted files |
+| `FRONTEND_URL` | No | `http://localhost:3000` | Next.js origin for redirects from Flask |
+| `CORS_ORIGINS` | No | `http://localhost:3000` | Allowed browser origins for `/api/v1` |
+| `MASTER_API_TOKEN` | No | - | Optional Bearer with access to all namespaces via API |
+| `API_KEYS_FILE` | No | `api_keys.json` | Per-namespace API Bearer tokens |
 | `SMTP_SERVER` | No | - | SMTP server for email backups |
 | `SMTP_PORT` | No | `587` | SMTP port |
 | `SENDER_EMAIL` | No | - | Email address for sending backups |
@@ -459,20 +447,35 @@ pip install -r requirements.txt
 
 ## 📊 API Endpoints
 
+### JSON API (`/api/v1/...`, Bearer token)
+
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/{namespace}/{environment}` | GET/POST | Login and dashboard |
-| `/add/{namespace}/{environment}` | POST | Add/update variable |
-| `/delete/{namespace}/{environment}` | POST | Delete variable |
-| `/bulk-replace/{namespace}/{environment}` | POST | Bulk import |
-| `/download/{namespace}/{environment}/{format}` | GET | Export variables |
-| `/history/{namespace}/{environment}` | GET | View history |
-| `/compare/{namespace}/{environment}` | GET | Compare versions |
-| `/rollback/{namespace}/{environment}/{id}` | POST | Rollback to version |
-| `/compare-environments/{namespace}/{environment}` | GET/POST | Compare environments |
-| `/templates/{namespace}/{environment}` | GET | View templates |
-| `/templates/{namespace}/{environment}/apply` | POST | Apply template |
-| `/audit-logs/{namespace}/{environment}` | GET | View audit logs |
+| `/api/v1/meta/environments` | GET | List namespaces/environments visible to the token |
+| `/api/v1/meta/stats` | GET | Aggregate stats + recent audit lines |
+| `/api/v1/<namespace>/<environment>` | GET | Get all variables (JSON object) |
+| `/api/v1/<namespace>/<environment>` | PUT/PATCH | Replace or merge variables |
+| `/api/v1/<namespace>/<environment>/meta` | GET | `last_updated`, `variable_count` |
+| `/api/v1/<namespace>/<environment>/keys/<key>` | DELETE | Delete one key |
+| `/api/v1/<namespace>/<environment>/bulk` | POST | JSON `{ "payload": ".env text" }` full replace |
+| `/api/v1/<namespace>/<environment>/history` | GET | History entries |
+| `/api/v1/<namespace>/<environment>/audit` | GET | Audit entries |
+| `/api/v1/<namespace>/<environment>/rollback` | POST | JSON `{ "snapshot_id" }` |
+| `/api/v1/templates` | GET | Template definitions |
+| `/api/v1/<namespace>/<environment>/templates/apply` | POST | JSON `{ "template_key" }` |
+
+### Legacy browser paths (redirect to Next.js)
+
+These require Flask **session** auth where noted; they **302** to `FRONTEND_URL` (default `http://localhost:3000`).
+
+| Path | Notes |
+|------|--------|
+| `GET /{namespace}/{environment}` | Redirects to SPA workspace |
+| `POST /{namespace}/{environment}` | Password login (legacy CLI); then redirect to SPA |
+| `/history/...`, `/audit-logs/...`, `/templates/...`, `/compare-environments/...` | Redirect to matching SPA route |
+| `/add/...`, `/delete/...`, `/bulk/...`, `/download/...`, `/export/...` | Still accept form/session clients |
+
+See `.env.example` for `CORS_ORIGINS`, `FRONTEND_URL`, `MASTER_API_TOKEN`.
 
 ---
 
@@ -567,9 +570,11 @@ For issues, questions, or feature requests:
 
 ### Completed ✅
 - ✅ Version control with history
-- ✅ Environment comparison
+- ✅ Environment comparison (Next.js Compare page + API)
 - ✅ Variable templates
-- ✅ CLI tool
+- ✅ Next.js production-style web UI
+- ✅ Extended JSON API (`/api/v1`)
+- ✅ CLI tool (see `docs/CLI_README.md`; paths may need updating for `/api/v1`)
 - ✅ Email backups
 - ✅ Audit logging
 
