@@ -164,7 +164,18 @@ class AuditLogger:
         ip_address: str,
         reason: str = "invalid_password"
     ):
-        """Log failed login attempt"""
+        """Log failed login attempt
+
+        The raw reason string may contain data derived from authentication
+        tokens or other potentially sensitive information. To avoid storing
+        such data in clear text, we normalize the reason to a bounded,
+        non-sensitive value before writing it to the audit log.
+        """
+        # Normalize the reason to a limited, non-sensitive value.
+        # If the reason includes a prefix and additional detail separated
+        # by ":", only keep the prefix (e.g. "invalid_or_forbidden_token").
+        safe_reason = reason.split(":", 1)[0] if isinstance(reason, str) else "unknown"
+
         log_entry = {
             "timestamp": self._get_timestamp(),
             "action": "LOGIN_FAILURE",
@@ -174,7 +185,7 @@ class AuditLogger:
             "user_id": "anonymous",
             "ip_address": ip_address,
             "details": {
-                "reason": reason
+                "reason": safe_reason
             }
         }
         self._write_log(log_entry)
