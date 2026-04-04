@@ -1,5 +1,6 @@
 "use client";
 
+import NextImage from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -113,24 +114,22 @@ export function AppSidebar() {
       transition={{ type: "spring", damping: 24, stiffness: 200 }}
       className="relative z-40 flex h-full shrink-0 flex-col border-r border-white/5 bg-[#030303] shadow-[4px_0_24px_rgba(0,0,0,0.5)]"
     >
-      <div className="flex h-16 items-center px-6 border-b border-white/5">
-        <Link href="/" className="flex items-center gap-3">
+      <div className="flex h-24 items-center justify-center border-b border-white/5">
+        <Link href="/">
           <motion.div
-            whileHover={{ scale: 1.05 }}
+            whileHover={{ scale: 1.1, rotate: 2 }}
             whileTap={{ scale: 0.95 }}
-            className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-lg shadow-violet-500/20"
+            className="flex items-center justify-center rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-violet-500/20"
           >
-             <Shield className="h-5 w-5 text-white" />
+            <NextImage
+              src="/logo.png"
+              width={64}
+              height={64}
+              alt="Secure Environment Manager"
+              className="h-16 w-16 shrink-0 rounded-xl object-cover"
+              unoptimized
+            />
           </motion.div>
-          {!collapsed && (
-            <motion.span
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="text-sm font-bold tracking-tight text-white"
-            >
-              SECURE ENV
-            </motion.span>
-          )}
         </Link>
       </div>
 

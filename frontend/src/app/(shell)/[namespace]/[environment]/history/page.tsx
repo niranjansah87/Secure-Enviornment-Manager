@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, use } from "react";
 import { motion } from "framer-motion";
 import { RotateCcw, History } from "lucide-react";
 import { api, ApiError, type HistoryEntry } from "@/lib/api";
@@ -15,9 +15,9 @@ import { EmptyState } from "@/components/forms/empty-state";
 export default function HistoryPage({
   params,
 }: {
-  params: { namespace: string; environment: string };
+  params: Promise<{ namespace: string; environment: string }>;
 }) {
-  const { namespace, environment } = params;
+  const { namespace, environment } = use(params);
   const { token } = useWorkspace();
   const [items, setItems] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, use } from "react";
 import { motion } from "framer-motion";
 import { LayoutTemplate } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
@@ -14,9 +14,9 @@ import { EmptyState } from "@/components/forms/empty-state";
 export default function TemplatesPage({
   params,
 }: {
-  params: { namespace: string; environment: string };
+  params: Promise<{ namespace: string; environment: string }>;
 }) {
-  const { namespace, environment } = params;
+  const { namespace, environment } = use(params);
   const { token } = useWorkspace();
   const [templates, setTemplates] = useState<
     Record<

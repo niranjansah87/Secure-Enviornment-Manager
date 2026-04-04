@@ -16,10 +16,17 @@ We take the security of Secure Environment Manager seriously. If you believe you
 **Please do not report security vulnerabilities through public GitHub issues.**
 
 Instead, please report them via email to:
-**security@example.com**
+**niranjansah250@gmail.com**
 
-> [!NOTE]
-> Please replace the above email with your actual security contact address.
+> [!IMPORTANT]
+> Please replace `niranjansah250@gmail.com` with your actual security contact address in your fork or repository settings.
+
+### Disclosure Policy
+
+- **Private Reporting**: Please do not create public GitHub issues for security vulnerabilities.
+- **Reporting Information**: Provide a detailed description, steps to reproduce (PoC), and potential impact.
+- **Mutual Respect**: We ask that you do not disclose the vulnerability to third parties until we have had a chance to remediate it.
+- **No Exploitation**: Do not attempt to access user data or disrupt services during your research.
 
 ### Responsible Disclosure
 
@@ -48,3 +55,10 @@ The application is designed to handle sensitive information. We follow best prac
 - Protection against CSRF and XSS.
 - Audit logging of all sensitive operations (creates, updates, deletes, and access).
 - Secure template generation for common frameworks.
+
+## Security Practices
+
+* **Encryption at Rest**: We use Fernet (AES-256) encryption for all environment secrets.
+* **API Authentication**: Bearer tokens are required for all non-public endpoints.
+* **Audit Logs**: Every action involving a secret is logged with a timestamp and IP address.
+* **Minimal Permission**: Secrets are scoped to specific namespaces.

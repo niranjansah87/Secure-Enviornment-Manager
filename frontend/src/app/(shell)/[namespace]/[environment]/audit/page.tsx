@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, use } from "react";
 import { Shield, MonitorOff, UserCheck, SearchX } from "lucide-react";
 import { api, type AuditEntry } from "@/lib/api";
 import { useWorkspace } from "@/context/workspace-context";
@@ -24,9 +24,9 @@ function actionVariant(
 export default function AuditPage({
   params,
 }: {
-  params: { namespace: string; environment: string };
+  params: Promise<{ namespace: string; environment: string }>;
 }) {
-  const { namespace, environment } = params;
+  const { namespace, environment } = use(params);
   const { token } = useWorkspace();
   const [logs, setLogs] = useState<AuditEntry[]>([]);
   const [logins, setLogins] = useState<AuditEntry[]>([]);

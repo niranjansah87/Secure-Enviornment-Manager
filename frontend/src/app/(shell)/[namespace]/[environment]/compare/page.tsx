@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, use } from "react";
 import { GitCompare } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { useWorkspace } from "@/context/workspace-context";
@@ -53,9 +53,9 @@ function computeDiff(
 export default function ComparePage({
   params,
 }: {
-  params: { namespace: string; environment: string };
+  params: Promise<{ namespace: string; environment: string }>;
 }) {
-  const { namespace, environment } = params;
+  const { namespace, environment } = use(params);
   const { token, environments } = useWorkspace();
   const [targetNs, setTargetNs] = useState<string>("");
   const [targetEnv, setTargetEnv] = useState<string>("");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, use } from "react";
 import { api, ApiError } from "@/lib/api";
 import { useWorkspace } from "@/context/workspace-context";
 import { SecretsTable } from "@/components/tables/secrets-table";
@@ -11,9 +11,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function SecretsPage({
   params,
 }: {
-  params: { namespace: string; environment: string };
+  params: Promise<{ namespace: string; environment: string }>;
 }) {
-  const { namespace, environment } = params;
+  const { namespace, environment } = use(params);
   const { token } = useWorkspace();
   const [vars, setVars] = useState<Record<string, string>>({});
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);

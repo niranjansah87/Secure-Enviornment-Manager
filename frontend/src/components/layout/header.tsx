@@ -24,7 +24,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function AppHeader() {
   const router = useRouter();
@@ -158,11 +157,6 @@ export function AppHeader() {
             <ExternalLink className="h-4 w-4" />
           </Link>
         </Button>
-        
-        <Avatar className="h-8 w-8 border border-white/10 cursor-pointer hover:border-violet-500/50 transition-colors">
-          <AvatarImage src="https://github.com/niranjansah87.png" alt="Niranjan Sah" />
-          <AvatarFallback className="bg-zinc-800 text-[10px] text-zinc-400">NS</AvatarFallback>
-        </Avatar>
       </div>
     </header>
   );

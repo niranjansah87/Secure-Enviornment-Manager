@@ -1,17 +1,18 @@
 import { WorkspaceBootstrap } from "@/components/layout/workspace-bootstrap";
 
-export default function WorkspaceLayout({
+export default async function WorkspaceLayout({
   children,
   params,
 }: {
   children: React.ReactNode;
-  params: { namespace: string; environment: string };
+  params: Promise<{ namespace: string; environment: string }>;
 }) {
+  const { namespace, environment } = await params;
   return (
     <>
       <WorkspaceBootstrap
-        namespace={params.namespace}
-        environment={params.environment}
+        namespace={namespace}
+        environment={environment}
       />
       {children}
     </>

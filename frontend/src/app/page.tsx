@@ -4,8 +4,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Mail, Globe } from "lucide-react";
-import { Security3DAnimation } from "@/components/animations/security-3d";
+import dynamic from "next/dynamic";
 import { useWorkspace } from "@/context/workspace-context";
+
+const Security3DAnimation = dynamic(
+  () => import("@/components/animations/security-3d").then((mod) => mod.Security3DAnimation),
+  { ssr: false }
+);
+
 
 const GithubIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>

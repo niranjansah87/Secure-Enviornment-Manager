@@ -4,7 +4,13 @@ import Link from "next/link";
 import { motion, type Variants } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Home, ArrowLeft, Ghost } from "lucide-react";
-import { NotFound3DAnimation } from "@/components/animations/not-found-3d";
+import dynamic from "next/dynamic";
+
+const NotFound3DAnimation = dynamic(
+  () => import("@/components/animations/not-found-3d").then((mod) => mod.NotFound3DAnimation),
+  { ssr: false }
+);
+
 
 export default function NotFound() {
   const containerVariants: Variants = {
