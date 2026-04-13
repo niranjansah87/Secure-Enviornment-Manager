@@ -69,3 +69,4 @@ out/
 .env.production
 .env.development
 .env.local
+nginx/dotenv_soundchan_ai.conf

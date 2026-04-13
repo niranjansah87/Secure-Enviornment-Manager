@@ -31,7 +31,7 @@ services:
     container_name: sem-frontend
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3080:3000"
     depends_on:
       - backend
     networks:
@@ -45,7 +45,7 @@ services:
       - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus-data:/prometheus
     ports:
-      - "9090:9090"
+      - "9095:9090"
     networks:
       - sem-network
 
@@ -61,7 +61,7 @@ services:
       - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
       - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
     ports:
-      - "3001:3000"
+      - "3002:3000"
     depends_on:
       - prometheus
     networks:
