@@ -49,23 +49,23 @@ services:
     networks:
       - sem-network
 
-  grafana:
-    image: grafana/grafana:latest
-    container_name: sem-grafana
-    restart: unless-stopped
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_USERS_ALLOW_SIGN_UP=false
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
-      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
-    ports:
-      - "3002:3000"
-    depends_on:
-      - prometheus
-    networks:
-      - sem-network
+#  grafana:
+#    image: grafana/grafana:latest
+#    container_name: sem-grafana
+#    restart: unless-stopped
+#    environment:
+#      - GF_SECURITY_ADMIN_PASSWORD=admin
+#      - GF_USERS_ALLOW_SIGN_UP=false
+#    volumes:
+#      - grafana-data:/var/lib/grafana
+#      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+#      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+#    ports:
+#      - "3002:3000"
+#    depends_on:
+#      - prometheus
+#    networks:
+#      - sem-network
 
 networks:
   sem-network:
@@ -73,5 +73,5 @@ networks:
 
 volumes:
   prometheus-data:
-  grafana-data:
+#  grafana-data:
   prometheus_multiproc:
