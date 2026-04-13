@@ -2,7 +2,7 @@
 
 import { useRef, useMemo } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Stars, Float, Center, OrbitControls, MeshDistortMaterial } from "@react-three/drei";
+import { Stars, Float, Center, OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 
 function CyberShard() {
