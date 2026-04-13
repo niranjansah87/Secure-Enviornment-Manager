@@ -106,15 +106,15 @@ export default function ComparePage({
         api.getSecrets(token, rightNs, rightEnv),
       ]);
       
-      if ("error" in l) throw new Error((l as any).error);
-      if ("error" in r) throw new Error((r as any).error);
+      if (l && typeof l === "object" && "error" in l) throw new Error((l as { error: string }).error);
+      if (r && typeof r === "object" && "error" in r) throw new Error((r as { error: string }).error);
       
       setLeftData(l as Record<string, string>);
       setRightData(r as Record<string, string>);
-    } catch (e: any) {
+    } catch (e: unknown) {
       setLeftData({});
       setRightData({});
-      setError(e instanceof ApiError ? e.message : String(e));
+      setError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
