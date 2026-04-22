@@ -30,11 +30,48 @@ class AuditLogger:
         """Create SHA-256 hash of a value for audit trail"""
         return hashlib.sha256(value.encode()).hexdigest()[:16]
     
+    def _sanitize_field(self, key: str, value: Any) -> Any:
+        """Sanitize a field value before writing to persistent audit storage."""
+        if value is None:
+            return None
+        if not isinstance(key, str):
+            return value
+
+        lowered = key.lower()
+        sensitive_markers = (
+            "password",
+            "token",
+            "secret",
+            "api_key",
+            "key",
+            "credential",
+            "auth",
+            "reason",
+            "user_id",
+        )
+        if any(marker in lowered for marker in sensitive_markers):
+            # Keep audit utility (stable correlation) without cleartext leakage.
+            return f"sha256:{self._hash_value(str(value))}"
+        return value
+
+    def _sanitize_for_storage(self, value: Any) -> Any:
+        """Recursively sanitize audit payload prior to serialization."""
+        if isinstance(value, dict):
+            sanitized: Dict[str, Any] = {}
+            for k, v in value.items():
+                sanitized_value = self._sanitize_for_storage(v)
+                sanitized[str(k)] = self._sanitize_field(str(k), sanitized_value)
+            return sanitized
+        if isinstance(value, list):
+            return [self._sanitize_for_storage(item) for item in value]
+        return value
+    
     def _write_log(self, log_entry: Dict[str, Any]):
         """Write log entry to file"""
         try:
+            sanitized_entry = self._sanitize_for_storage(log_entry)
             with open(self.log_file, 'a', encoding='utf-8') as f:
-                f.write(json.dumps(log_entry) + '\n')
+                f.write(json.dumps(sanitized_entry) + '\n')
         except Exception as e:
             logger.error(f"Failed to write audit log: {e}")
     
