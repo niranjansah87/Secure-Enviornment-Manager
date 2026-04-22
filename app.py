@@ -238,10 +238,10 @@ def read_vars(namespace: str, environment: str) -> Dict[str, str]:
         if isinstance(payload, dict):
             return {str(k): str(v) for k, v in payload.items()}
     except InvalidToken:
-        logger.exception("Decryption failure for %s/%s", namespace, environment)
+        logger.exception("Decryption failure while reading environment variables")
         return {"error": "Decryption failed. Invalid key or corrupted data."}
     except json.JSONDecodeError:
-        logger.exception("Invalid JSON payload for %s/%s", namespace, environment)
+        logger.exception("Invalid JSON payload while reading environment variables")
     return {}
 
 
