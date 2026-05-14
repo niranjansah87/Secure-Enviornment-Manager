@@ -155,12 +155,7 @@ export function SecretsTable({
     [variables, namespace, environment, lastUpdated]
   );
 
-  const globalReveal = useMemo(() => {
-    // Check against filtered rows so toggle respects the search filter
-    const filteredRows = table.getFilteredRowModel().rows;
-    if (filteredRows.length === 0) return false;
-    return filteredRows.every((row) => !!revealedSecrets[row.original.key]);
-  }, [revealedSecrets, table]);
+  // globalReveal will be computed after table is defined
 
   const copyLine = useCallback((key: string, value: string) => {
     void navigator.clipboard.writeText(`${key}=${value}`);
@@ -334,6 +329,14 @@ export function SecretsTable({
       return k.includes(q) || v.includes(q);
     },
   });
+
+  // Compute globalReveal after table is defined
+  const globalReveal = useMemo(() => {
+    // Check against filtered rows so toggle respects the search filter
+    const filteredRows = table.getFilteredRowModel().rows;
+    if (filteredRows.length === 0) return false;
+    return filteredRows.every((row) => !!revealedSecrets[row.original.key]);
+  }, [revealedSecrets, table]);
 
   async function confirmDelete() {
     if (!deleteTarget) return;
