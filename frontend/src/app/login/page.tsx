@@ -27,23 +27,16 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
-    //console.log("[Login] Attempting login with input:", tokenInput.trim().substring(0, 10) + "...");
-
     try {
       // First try API token auth
-      //console.log("[Login] Trying API token auth...");
       const result = await api.metaEnvironments(tokenInput.trim());
-      //console.log("[Login] API token auth succeeded, result:", result);
       // If it doesn't throw, token is valid API key
       setToken(tokenInput.trim());
-      //console.log("[Login] Token set, redirecting to dashboard...");
       router.push("/dashboard");
     } catch (err) {
-      //console.log("[Login] API token auth failed:", err instanceof ApiError ? {status: err.status, message: err.message} : err);
       if (err instanceof ApiError) {
         // If API token rejected (401/403), try password-based auth
         if (err.status === 401 || err.status === 403) {
-          //console.log("[Login] Trying password-based auth...");
           try {
             // Try password validation via API
             const res = await fetch(
@@ -54,7 +47,6 @@ export default function LoginPage() {
                 body: JSON.stringify({ password: tokenInput.trim() }),
               }
             );
-            //console.log("[Login] validate-password response:", res.status, await res.text());
 
             if (res.ok) {
               // Password is valid - use it as the API token
@@ -64,7 +56,6 @@ export default function LoginPage() {
               setError("Invalid password or token.");
             }
           } catch (fetchErr) {
-            //console.log("[Login] Password auth fetch failed:", fetchErr);
             setError("Invalid password or token.");
           }
         } else if (err.status === 0) {

@@ -134,9 +134,7 @@ async function request<T>(
     const start = performance.now();
     res = await fetch(url, { ...init, headers });
     duration = performance.now() - start;
-    //console.log(`[API] ${init?.method ?? "GET"} ${url} -> ${res.status}`, res.ok ? "OK" : "FAIL");
   } catch (err) {
-    //console.log(`[API] Network error for ${url}:`, err);
     tracker.onResponse(0, duration, err as Error);
     log.error(`Network error: ${(err as Error).message}`, err as Error);
     const userErr = formatUnknownError(err);
@@ -144,11 +142,9 @@ async function request<T>(
   }
 
   const data = await parseJson<T & { error?: string; code?: string }>(res);
-  //console.log(`[API] Response data for ${url}:`, JSON.stringify(data).substring(0, 200));
 
   // Check for API error in response body even when status is 200
   if ((data as { error?: string }).error) {
-    //console.log(`[API] Error in response body for ${url}:`, (data as { error?: string }).error);
     const userErr = translateApiError({
       message: (data as { error?: string }).error ?? "Request failed",
       status: res.status,
