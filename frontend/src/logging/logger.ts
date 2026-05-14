@@ -33,14 +33,12 @@ export function setGlobalLogSubscriber(fn: ((entry: LogEntry) => void) | null): 
 
 function _shouldLog(level: LogLevel): boolean {
   if (typeof window === "undefined") return false;
+  // Skip console logging for browser - keep logs centralized in backend
+  // Only env var DEBUG will enable frontend console output
   const env = (typeof process !== "undefined" ? process.env?.NEXT_PUBLIC_LOG_LEVEL : undefined)?.toUpperCase();
-  if (!env) return level >= LogLevel.INFO;
-  const config =
-    env === "DEBUG" ? LogLevel.DEBUG :
-    env === "WARN" ? LogLevel.WARN :
-    env === "ERROR" ? LogLevel.ERROR :
-    LogLevel.INFO;
-  return level >= config;
+  if (!env) return false;  // No frontend console logging by default
+  if (env === "DEBUG") return true;
+  return level >= LogLevel.ERROR;
 }
 
 function _fmt(): string {
