@@ -142,7 +142,6 @@ export function trackApi(
   ctx?: { namespace?: string; environment?: string }
 ): { onResponse: (status: number, ms: number, err?: Error) => void; abort: () => void } {
   let aborted = false;
-  const start = performance.now();
   return {
     onResponse(status: number, ms: number, err?: Error) {
       if (aborted) return;
@@ -151,8 +150,8 @@ export function trackApi(
       _logger().withContext({
         api_method: method,
         api_path: path,
-        api_status: String(status),
-        api_duration_ms: String(ms),
+        api_status: status,
+        api_duration_ms: ms,
         ...ctx,
       })._log(level, msg, err);
     },

@@ -48,9 +48,10 @@ class RateLimiter:
             # Check if under limit
             if len(self.requests[key]) < self.max_requests:
                 self.requests[key].append(now)
+                current_len = len(self.requests[key])
                 return True, {
                     "limit": self.max_requests,
-                    "remaining": self.max_requests - len(self.requests[key]) - 1,
+                    "remaining": max(0, self.max_requests - current_len),
                     "reset": int(now + self.window_seconds),
                 }
             else:

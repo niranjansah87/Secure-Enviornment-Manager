@@ -8,11 +8,11 @@ export interface LogContext {
   api_label?: string;
   api_method?: string;
   api_path?: string;
-  api_status?: string;
-  api_duration_ms?: string;
+  api_status?: number;
+  api_duration_ms?: number;
   user_id?: string;
   session_id?: string;
-  [key: string]: string | undefined;
+  [key: string]: string | number | undefined;
 }
 
 export interface SerializedError {

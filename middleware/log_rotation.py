@@ -5,6 +5,7 @@ Provides rotating file handlers with size-based and time-based rotation.
 import gzip
 import logging
 import os
+import shutil
 from datetime import datetime, timedelta
 from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
 from pathlib import Path
@@ -16,17 +17,19 @@ logger = logging.getLogger(__name__)
 LOGS_DIR = Path("logs")
 ARCHIVES_DIR = Path("archives/logs")
 
-# Ensure directories exist
-LOGS_DIR.mkdir(exist_ok=True)
-ARCHIVES_DIR.mkdir(exist_ok=True, parents=True)
+
+def _ensure_log_dirs() -> None:
+    """Ensure log directories exist. Called lazily on first use."""
+    LOGS_DIR.mkdir(exist_ok=True)
+    ARCHIVES_DIR.mkdir(exist_ok=True, parents=True)
 
 
 def setup_log_rotation(
     app=None,
     max_bytes: int = 10 * 1024 * 1024,  # 10MB
     backup_count: int = 10,
-    when: str = "midnight",
-    interval: int = 1,
+    _when: str = "midnight",  # reserved for future use
+    _interval: int = 1,  # reserved for future use
 ) -> None:
     """Setup rotating loggers for the application.
 
@@ -34,10 +37,10 @@ def setup_log_rotation(
         app: Flask application instance (optional)
         max_bytes: Maximum size per log file before rotation
         backup_count: Number of backup files to keep
-        when: Time interval for timed rotation ("midnight", "H", "D", etc.)
-        interval: Interval for timed rotation
+        _when: Reserved for timed rotation (currently unused)
+        _interval: Reserved for timed rotation interval (currently unused)
     """
-    # Application log
+    _ensure_log_dirs()
     app_logger = logging.getLogger("app")
     app_logger.setLevel(logging.INFO)
     app_handler = RotatingFileHandler(
@@ -163,16 +166,16 @@ def archive_old_logs(days: int = 30) -> int:
         archive_path = ARCHIVES_DIR / archive_name
 
         try:
-            # Compress the file
+            # Compress the file using shutil for efficiency
             with open(log_file, "rb") as f_in:
                 with gzip.open(archive_path, "wb") as f_out:
-                    f_out.writelines(f_in)
+                    shutil.copyfileobj(f_in, f_out)
 
             # Remove original if compression successful
             log_file.unlink()
             archived_count += 1
-        except Exception as e:
-            logger.exception("Archive operation failed")
+        except Exception:
+            logger.exception("Archive operation failed for %s", log_file.name)
             continue
 
     return archived_count

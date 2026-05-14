@@ -62,7 +62,8 @@ def _log_api_auth_failure(
 
 def _check_api_lockout() -> tuple[bool, dict]:
     """Check if the client IP is locked out. Returns (is_locked, info)."""
-    return is_ip_locked(), {"locked": is_ip_locked(), "failure_count": get_login_failure_count()}
+    locked = is_ip_locked()
+    return locked, {"locked": locked, "failure_count": get_login_failure_count()}
 
 
 # Lazy singleton for history manager

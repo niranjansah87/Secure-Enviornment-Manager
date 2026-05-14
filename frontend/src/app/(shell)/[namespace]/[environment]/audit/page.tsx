@@ -70,7 +70,7 @@ export default function AuditPage({
     setLoadingMore(true);
     try {
       const nextOffset = pagination.offset + pagination.limit;
-      const auditRes = await api.audit(token, namespace, environment, pagination.limit, nextOffset);
+      const auditRes = await api.audit(token, namespace, environment, pagination.limit, nextOffset, actionFilter || undefined);
       setLogs(prev => [...prev, ...(auditRes.logs ?? [])]);
       setPagination(auditRes.pagination ?? pagination);
     } catch {
@@ -78,7 +78,7 @@ export default function AuditPage({
     } finally {
       setLoadingMore(false);
     }
-  }, [token, namespace, environment, pagination, loadingMore]);
+  }, [token, namespace, environment, pagination, loadingMore, actionFilter]);
 
   useEffect(() => {
     void loadInitial();
