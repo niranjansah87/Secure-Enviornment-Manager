@@ -18,20 +18,29 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/context/workspace-context";
+import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 
 import { useCallback, useEffect, useState } from "react";
 
 const STORAGE_KEY = "sem_sidebar_collapsed";
 
-const nav = (
-  workspace: { namespace: string; environment: string } | null
-) => {
+type NavItem = {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  adminOnly?: boolean;
+};
+
+const buildNav = (
+  workspace: { namespace: string; environment: string } | null,
+  isAdmin: boolean
+): NavItem[] => {
   const base =
     workspace != null
       ? `/${workspace.namespace}/${workspace.environment}`
       : null;
-  return [
+  const items: NavItem[] = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/projects", label: "Projects", icon: FolderKanban },
     {
@@ -65,6 +74,18 @@ const nav = (
       icon: BarChart3,
     },
   ];
+
+  // Only add API Keys for admin users
+  if (isAdmin) {
+    items.push({
+      href: "/apikeys",
+      label: "API Keys",
+      icon: KeyRound,
+      adminOnly: true,
+    });
+  }
+
+  return items;
 };
 
 function navActive(
@@ -81,6 +102,7 @@ function navActive(
   if (label === "History") return pathname === `${p}/history`;
   if (label === "Audit Logs") return pathname === `${p}/audit`;
   if (label === "Templates") return pathname === `${p}/templates`;
+  if (label === "API Keys") return pathname === "/apikeys";
   if (label === "Analytics") return pathname === "/analytics";
   return false;
 }
@@ -88,8 +110,10 @@ function navActive(
 export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { workspace, setToken } = useWorkspace();
+  const { workspace, token, setToken } = useWorkspace();
   const [collapsed, setCollapsed] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loadingAdmin, setLoadingAdmin] = useState(true);
 
   useEffect(() => {
     try {
@@ -99,6 +123,26 @@ export function AppSidebar() {
       /* ignore */
     }
   }, []);
+
+  // Check admin status when token changes
+  useEffect(() => {
+    if (!token) {
+      setIsAdmin(false);
+      setLoadingAdmin(false);
+      return;
+    }
+
+    api.isAdmin(token)
+      .then((res) => {
+        setIsAdmin(res.is_admin);
+      })
+      .catch(() => {
+        setIsAdmin(false);
+      })
+      .finally(() => {
+        setLoadingAdmin(false);
+      });
+  }, [token]);
 
   const toggle = useCallback(() => {
     setCollapsed((c) => {
@@ -112,7 +156,7 @@ export function AppSidebar() {
     });
   }, []);
 
-  const items = nav(workspace);
+  const items = buildNav(workspace, isAdmin);
 
   return (
     <motion.aside
