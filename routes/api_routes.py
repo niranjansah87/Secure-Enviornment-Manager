@@ -4,6 +4,7 @@ All /api/v1/* endpoints for programmatic access.
 """
 import hmac
 import json
+from pathlib import Path
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -729,7 +730,7 @@ def api_templates_list():
     if not namespaces_visible_to_token(token):
         _log_api_auth_failure("system", "global", request.remote_addr or "unknown", "forbidden_token", "templates")
         return jsonify({"error": "Invalid API token"}), 403
-    templates_path = os.path.join(os.path.dirname(__file__), "..", "..", "templates_config.json")
+    templates_path = Path(__file__).resolve().parent.parent / "templates_config.json"
     if not os.path.exists(templates_path):
         return jsonify({"templates": {}})
     with open(templates_path, "r", encoding="utf-8") as handle:
@@ -752,7 +753,7 @@ def api_templates_apply(namespace: str, environment: str):
     if not isinstance(body, dict):
         return jsonify({"error": "JSON object required"}), 400
     template_key = str(body.get("template_key", "")).strip()
-    templates_path = os.path.join(os.path.dirname(__file__), "..", "..", "templates_config.json")
+    templates_path = Path(__file__).resolve().parent.parent / "templates_config.json"
     if not os.path.exists(templates_path):
         return jsonify({"error": "Templates configuration not found"}), 404
     with open(templates_path, "r", encoding="utf-8") as handle:

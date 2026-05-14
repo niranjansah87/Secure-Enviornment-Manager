@@ -118,6 +118,15 @@ def step_up_auth(namespace: str, environment: str):
     if not session_id:
         return jsonify({"error": "No active session"}), 401
 
+    # Check step-up rate limit before validating password
+    allowed, rate_info = check_step_up_rate_limit()
+    if not allowed:
+        return jsonify({
+            "error": "Too many step-up attempts. Try again later.",
+            "code": "STEP_UP_RATE_LIMITED",
+            "retry_after": rate_info.get("retry_after", 300)
+        }), 429
+
     password = request.form.get("password", "")
     if not password:
         return jsonify({"error": "Password required"}), 400

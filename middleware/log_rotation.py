@@ -148,8 +148,13 @@ def archive_old_logs(days: int = 30) -> int:
     archived_count = 0
     cutoff = datetime.now() - timedelta(days=days)
 
-    for log_file in LOGS_DIR.glob("*.log"):
+    # Archive only rotated files like app.log.1 / errors.log.2 (not base files still open)
+    for log_file in LOGS_DIR.glob("*.log.*"):
         if not log_file.is_file():
+            continue
+
+        # Only match rotated backups (e.g., app.log.1, app.log.2) not compressed archives
+        if log_file.suffix not in (".1", ".2", ".3", ".4", ".5", ".6", ".7", ".8", ".9"):
             continue
 
         # Check modification time
@@ -205,6 +210,7 @@ def cleanup_old_archives(days: int = 90) -> int:
             archive_file.unlink()
             removed_count += 1
         except Exception:
+            logger.exception("Cleanup operation failed for %s", archive_file.name)
             continue
 
     return removed_count

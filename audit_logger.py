@@ -9,6 +9,7 @@ import logging
 import os
 import sys
 from datetime import datetime, timezone
+import threading
 from pathlib import Path
 from typing import Dict, Any, Optional
 import hashlib
@@ -27,6 +28,7 @@ class AuditLogger:
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(exist_ok=True)
         self.log_file = self.log_dir / "audit.jsonl"
+        self._write_lock = threading.Lock()
     
     def _get_timestamp(self) -> str:
         """Get current UTC timestamp in ISO format"""
