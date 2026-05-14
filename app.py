@@ -8,7 +8,7 @@ from threading import Lock
 from typing import Dict
 
 from dotenv import load_dotenv
-from flask import Flask, request, session, make_response, Response, jsonify
+from flask import Flask, request, session, make_response, Response, jsonify, g
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 load_dotenv()
@@ -155,6 +155,67 @@ def api_cors_preflight() -> Response | None:
         resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
         return resp
     return None
+
+# --- Centralized Request Logging ---
+@app.before_request
+def log_request_start():
+    """Log incoming request details to access log."""
+    from middleware.log_rotation import get_logger
+    access_logger = get_logger("app.access")
+    g.start_time = datetime.now()
+    access_logger.info(
+        f"request_start method={request.method} path={request.path} ip={request.remote_addr or 'unknown'} "
+        f"user_agent={request.user_agent.string[:100] if request.user_agent else 'unknown'}"
+    )
+
+@app.after_request
+def log_request_complete(response: Response):
+    """Log request completion details to access log."""
+    from middleware.log_rotation import get_logger
+    access_logger = get_logger("app.access")
+    duration_ms = 0
+    if hasattr(g, "start_time"):
+        duration_ms = (datetime.now() - g.start_time).total_seconds() * 1000
+
+    access_logger.info(
+        f"request_complete method={request.method} path={request.path} status={response.status_code} "
+        f"duration_ms={round(duration_ms, 2)}"
+    )
+
+    # Log errors to error log
+    if response.status_code >= 500:
+        error_logger = get_logger("app.error")
+        error_logger.error(
+            f"server_error method={request.method} path={request.path} status={response.status_code} "
+            f"ip={request.remote_addr or 'unknown'}"
+        )
+
+    # Log auth events to security log
+    if request.path.startswith("/api/v1/auth/"):
+        security_logger = get_logger("app.security")
+        if response.status_code == 401:
+            security_logger.warning(
+                f"auth_failure method={request.method} path={request.path} ip={request.remote_addr or 'unknown'} "
+                f"status=401 reason=unauthorized"
+            )
+        elif response.status_code == 200 and request.method == "POST":
+            security_logger.info(
+                f"auth_success method={request.method} path={request.path} ip={request.remote_addr or 'unknown'} "
+                f"status=200"
+            )
+
+    # Log secret access to audit log
+    if request.path.startswith("/api/v1/") and any(method in request.method for method in ["GET", "PUT", "PATCH", "DELETE"]):
+        if any(seg in request.path for seg in ["/keys/", "/bulk", "/rollback", "/templates/apply"]):
+            audit_logger = get_logger("app.audit")
+            token = request.headers.get("Authorization", "unknown")
+            token_id = token[7:23] if token.startswith("Bearer ") else "unknown"
+            audit_logger.info(
+                f"secret_access method={request.method} path={request.path} token={token_id} "
+                f"ip={request.remote_addr or 'unknown'} status={response.status_code}"
+            )
+
+    return response
 
 # --- Web Dashboard Routes ---
 @app.route("/")
