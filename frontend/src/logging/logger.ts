@@ -81,12 +81,15 @@ function _buildEntry(
 function _console(entry: LogEntry): void {
   const label = `[SEM] ${entry.timestamp} ${LEVEL_NAMES[entry.level as LogLevel]}`;
   const meta = { ...entry.context, ...(entry.error ? { error: entry.error } : {}) };
+  // Format meta as a clean single-line JSON string for consistent display
+  const metaStr = JSON.stringify(meta);
+  const msg = `${label} ${entry.message} ${metaStr}`;
   switch (entry.level) {
-    case LogLevel.DEBUG: console.debug(label, entry.message, meta); break;
-    case LogLevel.INFO: console.info(label, entry.message, meta); break;
-    case LogLevel.WARN: console.warn(label, entry.message, meta); break;
+    case LogLevel.DEBUG: console.debug(msg); break;
+    case LogLevel.INFO: console.info(msg); break;
+    case LogLevel.WARN: console.warn(msg); break;
     case LogLevel.ERROR:
-    case LogLevel.CRITICAL: console.error(label, entry.message, meta); break;
+    case LogLevel.CRITICAL: console.error(msg); break;
   }
 }
 
