@@ -156,8 +156,11 @@ export function SecretsTable({
   );
 
   const globalReveal = useMemo(() => {
-    return data.length > 0 && data.every((row) => !!revealedSecrets[row.key]);
-  }, [data, revealedSecrets]);
+    // Check against filtered rows so toggle respects the search filter
+    const filteredRows = table.getFilteredRowModel().rows;
+    if (filteredRows.length === 0) return false;
+    return filteredRows.every((row) => !!revealedSecrets[row.original.key]);
+  }, [revealedSecrets, table]);
 
   const copyLine = useCallback((key: string, value: string) => {
     void navigator.clipboard.writeText(`${key}=${value}`);
@@ -378,16 +381,26 @@ export function SecretsTable({
                   )}
                   title={globalReveal ? "Hide All Secrets" : "Reveal All Secrets"}
                   onClick={() => {
+                    // Toggle based on filtered rows only
+                    const filteredRows = table.getFilteredRowModel().rows;
                     if (globalReveal) {
-                      // Hide all: clear all revealed keys
-                      setRevealedSecrets({});
+                      // Hide all: clear only the filtered revealed keys
+                      setRevealedSecrets((prev) => {
+                        const next = { ...prev };
+                        for (const row of filteredRows) {
+                          delete next[row.original.key];
+                        }
+                        return next;
+                      });
                     } else {
-                      // Reveal all: set every key as revealed
-                      const allRevealed: Record<string, boolean> = {};
-                      for (const row of data) {
-                        allRevealed[row.key] = true;
-                      }
-                      setRevealedSecrets(allRevealed);
+                      // Reveal all: set filtered keys as revealed
+                      setRevealedSecrets((prev) => {
+                        const next = { ...prev };
+                        for (const row of filteredRows) {
+                          next[row.original.key] = true;
+                        }
+                        return next;
+                      });
                     }
                   }}
                 >

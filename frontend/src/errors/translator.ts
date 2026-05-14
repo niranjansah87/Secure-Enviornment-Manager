@@ -163,8 +163,10 @@ function detectCode(msg: string, status: number): string {
   if (m.includes("INVALID_KEY") || m.includes("KEY_NAME")) return "VALIDATION_KEY_INVALID";
   if (m.includes("PAYLOAD_REQUIRED") || m.includes("NO_VALID") || m.includes("NO_VALID_KEY")) return "VALIDATION_PAYLOAD_EMPTY";
   if (m.includes("JSON")) return "VALIDATION_JSON_REQUIRED";
+  // Check STORAGE_NOT_FOUND before KEY_NOT_FOUND since KEY_NOT_FOUND is a subset
   if (m.includes("NOT_FOUND") && (m.includes("SNAPSHOT") || m.includes("ENVIRONMENT"))) return "STORAGE_NOT_FOUND";
-  if (m.includes("KEY_NOT_FOUND") || m.includes("NOT_FOUND")) return "STORAGE_KEY_NOT_FOUND";
+  if (m.includes("KEY_NOT_FOUND")) return "STORAGE_KEY_NOT_FOUND";
+  if (m.includes("NOT_FOUND")) return "STORAGE_KEY_NOT_FOUND";
   if (m.includes("DECRYPTION") || m.includes("INVALID_KEY_OR_CORRUPTED")) return "STORAGE_DECRYPTION_FAILED";
   if (m.includes("TOO_MANY") || m.includes("RATE_LIMIT") || m.includes("429")) return "RATE_LIMIT_EXCEEDED";
   if (m.includes("INTERNAL") || m.includes("UNEXPECTED")) return "INTERNAL_ERROR";

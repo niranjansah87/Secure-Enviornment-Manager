@@ -32,16 +32,18 @@ def _tz_now() -> datetime:
 def _register_session(namespace: str, environment: str) -> str:
     """Register a new session and return its ID."""
     session_id = _generate_session_id()
+    session_info = {
+        "namespace": namespace,
+        "environment": environment,
+        "created": _tz_now().isoformat(),
+        "last_active": _tz_now().isoformat(),
+        "ip": request.remote_addr or "unknown",
+        "user_agent": request.headers.get("User-Agent", "unknown"),
+        "step_up_auth": None,
+    }
     with _SESSION_REGISTRY_LOCK:
-        _ACTIVE_SESSIONS[session_id] = {
-            "namespace": namespace,
-            "environment": environment,
-            "created": _tz_now().isoformat(),
-            "last_active": _tz_now().isoformat(),
-            "ip": request.remote_addr or "unknown",
-            "user_agent": request.headers.get("User-Agent", "unknown"),
-            "step_up_auth": None,
-        }
+        _ACTIVE_SESSIONS[session_id] = session_info
+    # Audit outside lock to prevent holding lock during I/O
     audit_logger.log_session_created(
         namespace, environment, session_id, request.remote_addr or "unknown",
         request.headers.get("User-Agent", "unknown")

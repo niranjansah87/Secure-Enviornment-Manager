@@ -422,7 +422,7 @@
                 <div class="card-icon web">🌐</div>
                 <h3>Web Dashboard</h3>
                 <p>Access your environment variables through the Next.js web interface.</p>
-                <code id="web-url">http://localhost:3000</code>
+                <code id="web-url">/</code>
             </div>
 
             <div class="card">
@@ -587,11 +587,21 @@
         <div class="footer">
             <p>Secure Environment Manager &bull; Encrypted secrets at rest &bull; v1.0</p>
             <p style="margin-top: 8px;">
-                <a href="http://localhost:3000">Open Web Dashboard</a>
+                <a href="#" id="dashboard-link">Open Web Dashboard</a>
                 &nbsp;&bull;&nbsp;
                 <a href="/healthz">Health Status</a>
             </p>
         </div>
     </div>
+    <script>
+        // Dynamically set dashboard URL based on current origin
+        (function() {
+            var base = window.location.origin || 'http://localhost:3000';
+            var link = document.getElementById('dashboard-link');
+            var code = document.getElementById('web-url');
+            if (link) link.href = base;
+            if (code) code.textContent = base;
+        })();
+    </script>
 </body>
 </html>
