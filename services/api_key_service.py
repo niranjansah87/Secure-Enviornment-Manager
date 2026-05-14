@@ -106,7 +106,7 @@ class ApiKeyService:
             json.dump(keys, f, indent=2)
 
     def _hash_key(self, key: str) -> str:
-        """Hash an API key for storage using HMAC-SHA256."""
+        """Hash an API key for storage using PBKDF2-HMAC-SHA256."""
         import hashlib
         return hashlib.sha256(key.encode()).hexdigest()
 
