@@ -2,6 +2,7 @@
 API key management service for Secure Environment Manager.
 Handles creation, validation, revocation, and listing of API keys with RBAC support.
 """
+import base64
 import json
 import re
 import secrets
@@ -11,6 +12,10 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from core.config import API_KEYS_FILE, logger
+
+# PBKDF2 parameters for API key hashing
+_PBKDF2_ITERATIONS = 480000  # OWASP recommended for SHA-256
+_PBKDF2_KEY_LEN = 32
 
 
 class ApiKeyService:
@@ -106,9 +111,20 @@ class ApiKeyService:
             json.dump(keys, f, indent=2)
 
     def _hash_key(self, key: str) -> str:
-        """Hash an API key for storage using SHA-256."""
+        """Hash an API key for storage using PBKDF2-HMAC-SHA256."""
         import hashlib
-        return hashlib.sha256(key.encode()).hexdigest()
+        # Use a fixed salt derived from the service identifier
+        # In production, you'd store per-key salts, but for API keys
+        # (which have high entropy), a fixed salt is acceptable
+        salt = b"SecureEnvironmentManager_api_key_v1"
+        dk = hashlib.pbkdf2_hmac(
+            "sha256",
+            key.encode("utf-8"),
+            salt,
+            _PBKDF2_ITERATIONS,
+            dklen=_PBKDF2_KEY_LEN,
+        )
+        return base64.b64encode(dk).decode("utf-8")
 
     def _verify_key(self, stored_hash: str, provided_key: str) -> bool:
         """Timing-safe comparison of stored hash vs provided key."""
