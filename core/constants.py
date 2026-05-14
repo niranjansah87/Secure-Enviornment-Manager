@@ -5,9 +5,9 @@ Extracted from app.py for modular architecture.
 import re
 from datetime import timedelta
 
-# Validation patterns
-SEGMENT_PATTERN = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
-KEY_PATTERN = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$")
+# Validation patterns - forbids consecutive dots to prevent path traversal
+SEGMENT_PATTERN = re.compile(r"^(?!.*\.\.)[A-Za-z0-9_.-]{1,64}$")
+KEY_PATTERN = re.compile(r"^(?!.*\.\.)[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$")
 
 # Timeout and limit settings
 # Note: SESSION_TIMEOUT is derived from settings at runtime
@@ -37,8 +37,11 @@ def get_session_timeout() -> timedelta:
     """Get session timeout - returns actual value from settings or default."""
     try:
         from core.config import settings
-        return timedelta(minutes=settings.session_timeout_minutes)
-    except ImportError:
+        val = settings.session_timeout_minutes
+        if val is None or not isinstance(val, (int, float)) or val <= 0:
+            return timedelta(minutes=SESSION_TIMEOUT_MINUTES_DEFAULT)
+        return timedelta(minutes=int(val))
+    except (ImportError, AttributeError, TypeError, ValueError):
         return timedelta(minutes=SESSION_TIMEOUT_MINUTES_DEFAULT)
 
 
@@ -46,8 +49,11 @@ def get_lockout_delta() -> timedelta:
     """Get lockout delta - returns actual value from settings or default."""
     try:
         from core.config import settings
-        return timedelta(minutes=settings.lockout_minutes)
-    except ImportError:
+        val = settings.lockout_minutes
+        if val is None or not isinstance(val, (int, float)) or val <= 0:
+            return timedelta(minutes=LOCKOUT_MINUTES_DEFAULT)
+        return timedelta(minutes=int(val))
+    except (ImportError, AttributeError, TypeError, ValueError):
         return timedelta(minutes=LOCKOUT_MINUTES_DEFAULT)
 
 
@@ -55,6 +61,9 @@ def get_max_login_attempts() -> int:
     """Get max login attempts - returns actual value from settings or default."""
     try:
         from core.config import settings
-        return settings.max_login_attempts
-    except ImportError:
+        val = settings.max_login_attempts
+        if val is None or not isinstance(val, int) or val <= 0:
+            return MAX_LOGIN_ATTEMPTS_DEFAULT
+        return val
+    except (ImportError, AttributeError, TypeError, ValueError):
         return MAX_LOGIN_ATTEMPTS_DEFAULT

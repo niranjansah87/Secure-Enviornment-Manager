@@ -133,7 +133,8 @@ def add_security_headers(response: Response):
         origin = request.headers.get("Origin")
         if origin and origin in settings.cors_origins:
             response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Vary"] = "Origin"
+            if "Origin" not in response.headers.get("Vary", ""):
+                response.headers.add("Vary", "Origin")
         response.headers.setdefault(
             "Access-Control-Allow-Headers", "Authorization, Content-Type"
         )

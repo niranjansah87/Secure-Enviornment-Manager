@@ -2,12 +2,16 @@
 Step-up authentication for Secure Environment Manager.
 Requires recent password re-entry for sensitive operations.
 """
+import logging
+from datetime import datetime, timezone
 from functools import wraps
 from typing import Callable
 
 from flask import Response, jsonify, request
 
 from core.sessions import current_identity, _check_step_up_auth
+
+logger = logging.getLogger(__name__)
 
 
 def require_step_up_auth(fn: Callable) -> Callable:
@@ -22,7 +26,19 @@ def require_step_up_auth(fn: Callable) -> Callable:
         session_id = record.get("id") if record else None
 
         if not session_id or not _check_step_up_auth(session_id):
-            if request.accept_mimetypes["application/json"] >= request.accept_mimetypes["text/html"]:
+            logger.warning(
+                "Step-up auth required but missing or invalid: "
+                "namespace=%s environment=%s session_id=%s timestamp=%s",
+                namespace,
+                environment,
+                session_id or "none",
+                datetime.now(timezone.utc).isoformat(),
+            )
+            accept_header = request.headers.get("Accept")
+            best_match = request.accept_mimetypes.best_match(
+                ["application/json", "text/html"], default="text/html"
+            )
+            if best_match == "application/json" or (accept_header and "application/json" in accept_header):
                 return jsonify({
                     "error": "Step-up authentication required",
                     "code": "STEP_UP_REQUIRED",

@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from functools import wraps
 from typing import Any, Dict, Tuple
 
-from flask import Response, jsonify, request, session
+from flask import Response, jsonify, redirect, request, session
 from werkzeug.security import check_password_hash
 
 from core.config import settings, logger
@@ -157,8 +157,11 @@ def namespaces_visible_to_token(token: str | None) -> list[str]:
                 if not allowed_namespaces:
                     # Empty list means all namespaces
                     return list(_list_all_environments().keys())
-                visible.append(ns)
-                break
+                # Use the key's allowed_namespaces, filtered to valid namespaces
+                valid_ns = set(_list_all_environments().keys())
+                for ns_item in allowed_namespaces:
+                    if ns_item in valid_ns:
+                        visible.append(ns_item)
 
     return list(set(visible))
 
@@ -174,8 +177,10 @@ def identify_token(token: str | None) -> str:
     from core.constants_patch import get_dashboard_password_hash
     if check_password_hash(get_dashboard_password_hash(), token):
         return "dashboard_password"
+    # Hash token to compare against stored API key hashes
+    provided_hash = hashlib.sha256(token.encode()).hexdigest()
     for ns, key in _load_api_keys().items():
-        if key and hmac.compare_digest(key, token):
+        if key and hmac.compare_digest(key, provided_hash):
             return f"api_key:{ns}"
     return "unknown_token"
 

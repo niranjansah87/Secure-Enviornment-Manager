@@ -22,8 +22,5 @@ from core.sessions import (
     clear_auth,
     mark_authenticated,
     session_key_for,
-    _invalidate_session,
-    _update_session_activity,
-    _SESSION_REGISTRY_LOCK,
 )
 from core.step_up_auth import require_step_up_auth

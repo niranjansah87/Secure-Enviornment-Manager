@@ -10,6 +10,8 @@ from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
 from pathlib import Path
 from typing import Optional
 
+logger = logging.getLogger(__name__)
+
 # Log directories
 LOGS_DIR = Path("logs")
 ARCHIVES_DIR = Path("archives/logs")
@@ -143,7 +145,7 @@ def archive_old_logs(days: int = 30) -> int:
     archived_count = 0
     cutoff = datetime.now() - timedelta(days=days)
 
-    for log_file in LOGS_DIR.glob("*.log*"):
+    for log_file in LOGS_DIR.glob("*.log"):
         if not log_file.is_file():
             continue
 
@@ -169,7 +171,8 @@ def archive_old_logs(days: int = 30) -> int:
             # Remove original if compression successful
             log_file.unlink()
             archived_count += 1
-        except Exception:
+        except Exception as e:
+            logger.exception("Archive operation failed")
             continue
 
     return archived_count

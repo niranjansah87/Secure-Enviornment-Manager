@@ -16,12 +16,23 @@ from cryptography.fernet import Fernet
 load_dotenv()
 
 
+def _parse_int_env(name: str, default: int) -> int:
+    """Parse integer env var with descriptive error on failure."""
+    val = os.getenv(name)
+    if val is None:
+        return default
+    try:
+        return int(val)
+    except ValueError:
+        raise ValueError(f"Invalid integer for {name}: '{val}'") from None
+
+
 @dataclass
 class Settings:
     """Centralized runtime configuration with sane defaults."""
-    flask_secret_key: str
-    encryption_key: str
-    dashboard_password: str
+    flask_secret_key: str = field(repr=False)
+    encryption_key: str = field(repr=False)
+    dashboard_password: str = field(repr=False)
     data_dir: str
     api_keys_file: str
     session_timeout_minutes: int
@@ -33,7 +44,7 @@ class Settings:
     behind_proxy: bool
     export_filename: str
     debug: bool
-    master_api_token: Optional[str]
+    master_api_token: Optional[str] = field(default=None, repr=False)
     cors_origins: List[str] = field(default_factory=list)
     frontend_url: str = ""
 
@@ -63,14 +74,15 @@ class Settings:
             dashboard_password=dashboard_password,
             data_dir=str(os.getenv("DATA_DIR", "data")),
             api_keys_file=str(os.getenv("API_KEYS_FILE", "api_keys.json")),
-            session_timeout_minutes=int(os.getenv("SESSION_TIMEOUT_MINUTES", "60")),
-            max_login_attempts=int(os.getenv("MAX_LOGIN_ATTEMPTS", "5")),
-            lockout_minutes=int(os.getenv("LOCKOUT_MINUTES", "15")),
+            session_timeout_minutes=_parse_int_env("SESSION_TIMEOUT_MINUTES", 60),
+            max_login_attempts=_parse_int_env("MAX_LOGIN_ATTEMPTS", 5),
+            lockout_minutes=_parse_int_env("LOCKOUT_MINUTES", 15),
             log_level=str(os.getenv("LOG_LEVEL", "INFO")).upper(),
             content_security_policy=str(os.getenv(
                 "CONTENT_SECURITY_POLICY",
-                "default-src 'self'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; "
-                "font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; script-src 'self' 'unsafe-inline';",
+                # Note: to allow inline scripts, override CONTENT_SECURITY_POLICY env var with 'unsafe-inline' in script-src
+                "default-src 'self'; style-src 'self' https://fonts.googleapis.com; "
+                "font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; script-src 'self';",
             )),
             session_cookie_secure=str(os.getenv("SESSION_COOKIE_SECURE", "true")).lower() == "true",
             behind_proxy=str(os.getenv("BEHIND_PROXY", "true")).lower() == "true",
@@ -105,5 +117,8 @@ DATA_LOCKS: defaultdict[str, Lock] = defaultdict(Lock)
 
 def spa_url(namespace: str, environment: str, *extra: str) -> str:
     """Deep-link paths into the Next.js web UI."""
-    tail = "/".join([namespace, environment, *extra])
+    from urllib.parse import quote
+    parts = [namespace, environment, *extra]
+    encoded = [quote(p, safe="") for p in parts]
+    tail = "/".join(encoded)
     return f"{settings.frontend_url}/{tail}"

@@ -126,7 +126,7 @@ def _regenerate_session_id(session_id: str, namespace: str, environment: str) ->
         _ACTIVE_SESSIONS[new_session_id] = {
             "namespace": namespace,
             "environment": environment,
-            "created": _tz_now().isoformat(),
+            "created": old_info.get("created", _tz_now().isoformat()),
             "last_active": _tz_now().isoformat(),
             "ip": request.remote_addr or old_info.get("ip", "unknown"),
             "user_agent": old_info.get("user_agent", "unknown"),
@@ -171,7 +171,13 @@ def mark_authenticated(namespace: str, environment: str) -> None:
 def clear_auth(namespace: str, environment: str) -> None:
     """Clear authentication from session."""
     from flask import session
-    session.pop(session_key_for(namespace, environment), None)
+    session_key = session_key_for(namespace, environment)
+    record = session.get(session_key, {})
+    session_id = record.get("id") if record else None
+    # Remove server-side session entry
+    if session_id:
+        _invalidate_session(session_id)
+    session.pop(session_key, None)
 
 
 def get_active_sessions() -> list:
@@ -185,7 +191,6 @@ def get_active_sessions() -> list:
                 is_valid = (_tz_now() - created) < SESSION_MAX_LIFETIME
                 sessions.append({
                     "id": sid[:16] + "...",
-                    "full_id": sid,
                     "namespace": info["namespace"],
                     "environment": info["environment"],
                     "created": created,

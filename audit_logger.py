@@ -7,7 +7,7 @@ and authentication events.
 import json
 import logging
 import os
-import re
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -51,16 +51,11 @@ class AuditLogger:
             rotated_name = f"audit_{timestamp}.jsonl"
             rotated_path = self.log_dir / rotated_name
 
-            # Read content, compress would be ideal but we just move
-            with open(self.log_file, 'r', encoding='utf-8') as f:
-                content = f.read()
+            # Atomic rotate: rename current file to rotated path
+            os.replace(self.log_file, rotated_path)
 
-            with open(rotated_path, 'w', encoding='utf-8') as f:
-                f.write(content)
-
-            # Truncate original
-            with open(self.log_file, 'w', encoding='utf-8') as f:
-                f.write("")
+            # Create fresh empty log file for new writes
+            self.log_file.touch()
 
             logger.info(f"Rotated audit log to {rotated_name}")
 
@@ -323,7 +318,7 @@ class AuditLogger:
             "user_id": "authenticated",
             "ip_address": ip_address,
             "details": {
-                "session_id": session_id[:16] + "...",
+                "session_id": session_id[:16] + "..." if session_id else "unknown",
                 "user_agent": user_agent[:100] if user_agent else "unknown"
             }
         }
@@ -346,7 +341,7 @@ class AuditLogger:
             "user_id": "authenticated",
             "ip_address": ip_address,
             "details": {
-                "session_id": session_id[:16] + "...",
+                "session_id": session_id[:16] + "..." if session_id else "unknown",
                 "reason": "user_revoked"
             }
         }
@@ -401,6 +396,32 @@ class AuditLogger:
                 yielded = 0
 
                 for line in f:
+                    try:
+                        log_entry = json.loads(line.strip())
+                    except json.JSONDecodeError:
+                        continue
+
+                    # Apply filters first
+                    if namespace and log_entry.get('namespace') != namespace:
+                        continue
+                    if environment and log_entry.get('environment') != environment:
+                        continue
+                    if action and log_entry.get('action') != action:
+                        continue
+                    if user_id and log_entry.get('user_id') != user_id:
+                        continue
+                    if ip_address and log_entry.get('ip_address') != ip_address:
+                        continue
+
+                    # Date range filter
+                    if start_date or end_date:
+                        ts = log_entry.get('timestamp', '')
+                        if start_date and ts < start_date:
+                            continue
+                        if end_date and ts > end_date:
+                            continue
+
+                    # Only count matching entries toward offset
                     if skipped < offset:
                         skipped += 1
                         continue
@@ -408,34 +429,9 @@ class AuditLogger:
                     if yielded >= limit:
                         break
 
-                    try:
-                        log_entry = json.loads(line.strip())
+                    yielded += 1
+                    yield log_entry
 
-                        # Apply filters
-                        if namespace and log_entry.get('namespace') != namespace:
-                            continue
-                        if environment and log_entry.get('environment') != environment:
-                            continue
-                        if action and log_entry.get('action') != action:
-                            continue
-                        if user_id and log_entry.get('user_id') != user_id:
-                            continue
-                        if ip_address and log_entry.get('ip_address') != ip_address:
-                            continue
-
-                        # Date range filter
-                        if start_date or end_date:
-                            ts = log_entry.get('timestamp', '')
-                            if start_date and ts < start_date:
-                                continue
-                            if end_date and ts > end_date:
-                                continue
-
-                        yielded += 1
-                        yield log_entry
-
-                    except json.JSONDecodeError:
-                        continue
         except Exception as e:
             logger.error(f"Failed to read audit logs: {e}")
 
@@ -500,7 +496,7 @@ class AuditLogger:
         count = 0
         for _ in self._read_lines_with_offset(
             offset=0,
-            limit=10000,  # Reasonable cap for counting
+            limit=sys.maxsize,
             namespace=namespace,
             environment=environment,
             action=action,
