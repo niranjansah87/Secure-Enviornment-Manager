@@ -1,0 +1,56 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../../../core/theme/app_colors.dart';
+
+/// Loading indicator with animation
+class AppLoader extends StatelessWidget {
+  final String? message;
+  final double size;
+
+  const AppLoader({
+    super.key,
+    this.message,
+    this.size = 40,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: size,
+            height: size,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.accent),
+            ),
+          )
+              .animate(onPlay: (controller) => controller.repeat())
+              .scale(
+                begin: const Offset(0.95, 0.95),
+                end: const Offset(1.05, 1.05),
+                duration: const Duration(milliseconds: 1000),
+              )
+              .then()
+              .scale(
+                begin: const Offset(1.05, 1.05),
+                end: const Offset(0.95, 0.95),
+                duration: const Duration(milliseconds: 1000),
+              ),
+          if (message != null) ...[
+            const SizedBox(height: 16),
+            Text(
+              message!,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
