@@ -192,9 +192,8 @@ def ensure_authenticated(fn):
     """Decorator ensuring user is authenticated for web dashboard access."""
     @wraps(fn)
     def wrapper(namespace: str, environment: str, *args, **kwargs):
-        from core import SESSION_MAX_LIFETIME, STEP_UP_AUTH_WINDOW
-        from core.config import SESSION_TIMEOUT
-        from core.sessions import _update_session_activity, _session_expired_redirect
+        from core import SESSION_MAX_LIFETIME
+        from core.sessions import _update_session_activity
 
         from utils.helpers import validate_segments
 
@@ -208,7 +207,8 @@ def ensure_authenticated(fn):
         if last_active:
             try:
                 last_dt = datetime.fromisoformat(last_active)
-                if _tz_now() - last_dt > SESSION_TIMEOUT:
+                from core.constants import get_session_timeout
+                if _tz_now() - last_dt > get_session_timeout():
                     clear_auth(namespace, environment)
                     if session_id:
                         _invalidate_session(session_id)
