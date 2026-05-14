@@ -125,9 +125,10 @@ class AuditLogger:
         """Write log entry to file, rotating if necessary."""
         try:
             sanitized = self._sanitize_for_storage(log_entry)
-            self._rotate_if_needed()
-            with open(self.log_file, 'a', encoding='utf-8') as f:
-                f.write(json.dumps(sanitized) + '\n')
+            with self._write_lock:
+                self._rotate_if_needed()
+                with open(self.log_file, 'a', encoding='utf-8') as f:
+                    f.write(json.dumps(sanitized) + '\n')
         except Exception as e:
             logger.error(f"Failed to write audit log: {e}")
     
