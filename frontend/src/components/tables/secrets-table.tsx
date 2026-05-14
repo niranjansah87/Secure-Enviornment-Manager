@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import {
   flexRender,
   getCoreRowModel,
@@ -18,12 +18,16 @@ import {
   Search,
   Download,
   ChevronDown,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { toast } from "sonner";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { maskValue, formatIso, cn } from "@/lib/utils";
+import { formatUserError } from "@/lib/error-translation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import * as Tooltip from "@radix-ui/react-tooltip";
 
 import {
   DropdownMenu,
@@ -69,13 +73,76 @@ export function SecretsTable({
   onRefresh,
 }: Props) {
   const [globalFilter, setGlobalFilter] = useState("");
-  const [showValues, setShowValues] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editKey, setEditKey] = useState<string | undefined>();
   const [editValue, setEditValue] = useState<string | undefined>();
   const [bulkOpen, setBulkOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [revealedSecrets, setRevealedSecrets] = useState<Record<string, boolean>>({});
+  const [secretTimers, setSecretTimers] = useState<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  // Auto-hide secret after 15 seconds
+  const AUTO_HIDE_DELAY_MS = 15000;
+
+  const clearSecretTimer = useCallback((key: string) => {
+    setSecretTimers((prev) => {
+      if (prev[key]) {
+        clearTimeout(prev[key]);
+        const { [key]: _, ...rest } = prev;
+        return rest;
+      }
+      return prev;
+    });
+  }, []);
+
+  const toggleReveal = useCallback((key: string) => {
+    setRevealedSecrets((prev) => {
+      const isCurrentlyRevealed = !!prev[key];
+      if (isCurrentlyRevealed) {
+        // Hiding: clear timer if exists
+        clearSecretTimer(key);
+        const { [key]: _, ...rest } = prev;
+        return rest;
+      } else {
+        // Revealing: set auto-hide timer
+        const timer = setTimeout(() => {
+          setRevealedSecrets((current) => {
+            const { [key]: __, ...remaining } = current;
+            return remaining;
+          });
+          setSecretTimers((currentTimers) => {
+            const { [key]: ___, ...remainingTimers } = currentTimers;
+            return remainingTimers;
+          });
+        }, AUTO_HIDE_DELAY_MS);
+        setSecretTimers((prevTimers) => ({ ...prevTimers, [key]: timer }));
+        return { ...prev, [key]: true };
+      }
+    });
+  }, [clearSecretTimer]);
+
+  // Clean up all timers on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(secretTimers).forEach(clearTimeout);
+    };
+  }, [secretTimers]);
+
+  // Hide all secrets when window loses focus (security measure)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setRevealedSecrets({});
+        Object.values(secretTimers).forEach(clearTimeout);
+        setSecretTimers({});
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [secretTimers]);
 
   const data: SecretRow[] = useMemo(
     () =>
@@ -88,12 +155,22 @@ export function SecretsTable({
     [variables, namespace, environment, lastUpdated]
   );
 
+  // globalReveal will be computed after table is defined
+
   const copyLine = useCallback((key: string, value: string) => {
     void navigator.clipboard.writeText(`${key}=${value}`);
     toast.success(`Copied ${key} to clipboard`, {
       description: "Variable pair copied in KEY=VALUE format.",
       icon: <Copy className="h-4 w-4 text-violet-400" />,
     });
+    // Auto-clear clipboard after 30 seconds for security
+    setTimeout(() => {
+      try {
+        navigator.clipboard.writeText("");
+      } catch {
+        // Clipboard API unavailable or blocked - silently ignore
+      }
+    }, 30000);
   }, []);
 
   const columns = useMemo<ColumnDef<SecretRow>[]>(
@@ -118,22 +195,18 @@ export function SecretsTable({
       {
         accessorKey: "value",
         header: "Current Value",
-        cell: ({ row }) => (
-          <div className="font-mono text-[11px] text-zinc-400 break-all max-w-[200px] sm:max-w-[300px] md:max-w-[400px] lg:max-w-[600px] relative group px-2 py-1 rounded bg-white/[0.02] border border-transparent hover:border-white/5 transition-colors">
-            {maskValue(row.original.value, showValues)}
-            {showValues && (
-               <button 
-                  onClick={() => {
-                    void navigator.clipboard.writeText(row.original.value);
-                    toast.success("Value copied");
-                  }}
-                  className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-zinc-800 rounded hover:bg-zinc-700"
-               >
-                  <Copy className="h-3 w-3" />
-               </button>
-            )}
-          </div>
-        ),
+        cell: ({ row }) => {
+          const isRevealed = !!revealedSecrets[row.original.key];
+          return (
+            <div className="font-mono text-[11px] text-zinc-400 break-all max-w-[200px] sm:max-w-[300px] md:max-w-[400px] lg:max-w-[600px] px-2 py-1 rounded bg-white/[0.02] border border-transparent hover:border-white/5 transition-colors">
+              {isRevealed ? (
+                <span>{row.original.value}</span>
+              ) : (
+                <span>{maskValue(row.original.value, false)}</span>
+              )}
+            </div>
+          );
+        },
       },
       {
         accessorKey: "environment",
@@ -159,49 +232,86 @@ export function SecretsTable({
       {
         id: "actions",
         header: () => null,
-        cell: ({ row }) => (
-          <div className="flex justify-end pr-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500 hover:text-white hover:bg-white/5 rounded-lg">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48 bg-zinc-900 border-white/5 shadow-2xl p-1">
-                <DropdownMenuItem
-                  className="rounded-md focus:bg-white/5 cursor-pointer text-xs"
-                  onSelect={() =>
-                    copyLine(row.original.key, row.original.value)
-                  }
-                >
-                  <Copy className="mr-3 h-3.5 w-3.5 text-zinc-500" />
-                  Copy KEY=value
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="rounded-md focus:bg-white/5 cursor-pointer text-xs"
-                  onSelect={() => {
-                    setEditKey(row.original.key);
-                    setEditValue(row.original.value);
-                    setDialogOpen(true);
-                  }}
-                >
-                  <Pencil className="mr-3 h-3.5 w-3.5 text-zinc-500" />
-                  Edit Variable
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="rounded-md text-red-400 focus:text-red-300 focus:bg-red-500/10 cursor-pointer text-xs"
-                  onSelect={() => setDeleteTarget(row.original.key)}
-                >
-                  <Trash2 className="mr-3 h-3.5 w-3.5" />
-                  Delete Variable
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        ),
+        cell: ({ row }) => {
+          const isRevealed = !!revealedSecrets[row.original.key];
+          return (
+            <div className="flex justify-end pr-2 gap-1">
+              <Tooltip.Provider delayDuration={200}>
+                <Tooltip.Root>
+                  <Tooltip.Trigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className={cn(
+                        "h-8 w-8 rounded-lg transition-all",
+                        isRevealed
+                          ? "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                          : "text-zinc-500 hover:text-white hover:bg-white/5"
+                      )}
+                      onClick={() => toggleReveal(row.original.key)}
+                      aria-label={isRevealed ? "Hide Secret" : "Reveal Secret"}
+                    >
+                      {isRevealed ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </Tooltip.Trigger>
+                  <Tooltip.Portal>
+                    <Tooltip.Content
+                      side="top"
+                      className="bg-zinc-800 border border-white/10 text-zinc-200 text-[10px] px-2 py-1 rounded-md shadow-xl z-50"
+                    >
+                      {isRevealed ? "Hide Secret" : "Reveal Secret"}
+                      <Tooltip.Arrow className="fill-zinc-800" />
+                    </Tooltip.Content>
+                  </Tooltip.Portal>
+                </Tooltip.Root>
+              </Tooltip.Provider>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500 hover:text-white hover:bg-white/5 rounded-lg">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48 bg-zinc-900 border-white/5 shadow-2xl p-1">
+                  <DropdownMenuItem
+                    className="rounded-md focus:bg-white/5 cursor-pointer text-xs"
+                    onSelect={() =>
+                      copyLine(row.original.key, row.original.value)
+                    }
+                  >
+                    <Copy className="mr-3 h-3.5 w-3.5 text-zinc-500" />
+                    Copy KEY=value
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="rounded-md focus:bg-white/5 cursor-pointer text-xs"
+                    onSelect={() => {
+                      setEditKey(row.original.key);
+                      setEditValue(row.original.value);
+                      setDialogOpen(true);
+                    }}
+                  >
+                    <Pencil className="mr-3 h-3.5 w-3.5 text-zinc-500" />
+                    Edit Variable
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="rounded-md text-red-400 focus:text-red-300 focus:bg-red-500/10 cursor-pointer text-xs"
+                    onSelect={() => setDeleteTarget(row.original.key)}
+                  >
+                    <Trash2 className="mr-3 h-3.5 w-3.5" />
+                    Delete Variable
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          );
+        },
       },
     ],
-    [showValues, copyLine]
+    [revealedSecrets, toggleReveal, copyLine]
   );
 
   const table = useReactTable({
@@ -220,6 +330,14 @@ export function SecretsTable({
     },
   });
 
+  // Compute globalReveal after table is defined
+  const globalReveal = useMemo(() => {
+    // Check against filtered rows so toggle respects the search filter
+    const filteredRows = table.getFilteredRowModel().rows;
+    if (filteredRows.length === 0) return false;
+    return filteredRows.every((row) => !!revealedSecrets[row.original.key]);
+  }, [revealedSecrets, table]);
+
   async function confirmDelete() {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -229,7 +347,10 @@ export function SecretsTable({
       setDeleteTarget(null);
       onRefresh();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Delete failed");
+      const err = formatUserError(e);
+      toast.error(err.title, {
+        description: err.description,
+      });
     } finally {
       setDeleting(false);
     }
@@ -248,32 +369,62 @@ export function SecretsTable({
           />
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex bg-black/40 p-1 rounded-xl border border-white/5 mr-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className={cn(
-                "h-8 px-3 rounded-lg text-[10px] uppercase tracking-wider font-bold transition-all",
-                !showValues ? "bg-white/5 text-white" : "text-zinc-500 hover:text-zinc-300"
-              )}
-              onClick={() => setShowValues(false)}
-            >
-              Masked
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className={cn(
-                "h-8 px-3 rounded-lg text-[10px] uppercase tracking-wider font-bold transition-all",
-                showValues ? "bg-white/5 text-white" : "text-zinc-500 hover:text-zinc-300"
-              )}
-              onClick={() => setShowValues(true)}
-            >
-              Reveal
-            </Button>
-          </div>
+          <Tooltip.Provider delayDuration={200}>
+            <Tooltip.Root>
+              <Tooltip.Trigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className={cn(
+                    "h-10 w-10 rounded-xl border transition-all",
+                    globalReveal
+                      ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+                      : "border-white/5 bg-white/[0.02] text-zinc-400 hover:bg-white/[0.05]"
+                  )}
+                  title={globalReveal ? "Hide All Secrets" : "Reveal All Secrets"}
+                  onClick={() => {
+                    // Toggle based on filtered rows only
+                    const filteredRows = table.getFilteredRowModel().rows;
+                    if (globalReveal) {
+                      // Hide all: clear only the filtered revealed keys
+                      setRevealedSecrets((prev) => {
+                        const next = { ...prev };
+                        for (const row of filteredRows) {
+                          delete next[row.original.key];
+                        }
+                        return next;
+                      });
+                    } else {
+                      // Reveal all: set filtered keys as revealed
+                      setRevealedSecrets((prev) => {
+                        const next = { ...prev };
+                        for (const row of filteredRows) {
+                          next[row.original.key] = true;
+                        }
+                        return next;
+                      });
+                    }
+                  }}
+                >
+                  {globalReveal ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
+              </Tooltip.Trigger>
+              <Tooltip.Portal>
+                <Tooltip.Content
+                  side="top"
+                  className="bg-zinc-800 border border-white/10 text-zinc-200 text-[10px] px-2 py-1 rounded-md shadow-xl z-50"
+                >
+                  {globalReveal ? "Hide All Secrets" : "Reveal All Secrets"}
+                  <Tooltip.Arrow className="fill-zinc-800" />
+                </Tooltip.Content>
+              </Tooltip.Portal>
+            </Tooltip.Root>
+          </Tooltip.Provider>
 
           <Button
             type="button"
@@ -309,10 +460,10 @@ export function SecretsTable({
           >
             Add Secret
           </Button>
-          <Button 
-            type="button" 
+          <Button
+            type="button"
             variant="outline"
-            className="h-10 px-4 border-violet-500/20 bg-violet-500/5 hover:bg-violet-500/10 text-violet-300 font-semibold rounded-xl hidden md:flex" 
+            className="h-10 px-4 border-violet-500/20 bg-violet-500/5 hover:bg-violet-500/10 text-violet-300 font-semibold rounded-xl hidden md:flex"
             onClick={() => setBulkOpen(true)}
           >
             Bulk Import

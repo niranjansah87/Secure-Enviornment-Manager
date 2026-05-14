@@ -70,3 +70,21 @@ out/
 .env.development
 .env.local
 nginx/dotenv_soundchan_ai.conf
+/.claude
+AGENTS.md
+ARCHITECTURE.md
+CLAUDE.md
+DESIGN.md
+DEBUGGING.md
+MEMORY.md
+SKILLS.md
+WORKFLOW.md
+# Added by code-review-graph
+.code-review-graph/
+GEMINI.md
+.windsurfrules
+.opencode.json
+.mcp.json
+.cursorrules
+/.cursor
+/tests

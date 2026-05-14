@@ -1,61 +1,10 @@
-const defaultBase = "http://localhost:8070";
-
-export function apiBase(): string {
-  if (typeof window !== "undefined") {
-    return process.env.NEXT_PUBLIC_API_URL ?? defaultBase;
-  }
-  return process.env.NEXT_PUBLIC_API_URL ?? defaultBase;
-}
-
-export class ApiError extends Error {
-  constructor(
-    message: string,
-    public status: number,
-    public body?: unknown
-  ) {
-    super(message);
-    this.name = "ApiError";
-  }
-}
-
-async function parseJson<T>(res: Response): Promise<T> {
-  const text = await res.text();
-  if (!text) return {} as T;
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    return {} as T;
-  }
-}
-
-async function request<T>(
-  path: string,
-  token: string,
-  init?: RequestInit
-): Promise<T> {
-  const url = `${apiBase()}${path}`;
-  const headers: HeadersInit = {
-    ...(init?.headers as Record<string, string>),
-  };
-  if (token) {
-    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
-  }
-  if (
-    init?.body &&
-    typeof init.body === "string" &&
-    !(headers as Record<string, string>)["Content-Type"]
-  ) {
-    (headers as Record<string, string>)["Content-Type"] = "application/json";
-  }
-  const res = await fetch(url, { ...init, headers });
-  const data = await parseJson<T & { error?: string }>(res);
-  if (!res.ok) {
-    const msg =
-      (data as { error?: string }).error ?? res.statusText ?? "Request failed";
-    throw new ApiError(msg, res.status, data);
-  }
-  return data as T;
-}
+/**
+ * API client for Secure Environment Manager.
+ * Centralizes all HTTP requests with unified error handling, logging, and auth.
+ */
+import { apiBase, ApiError } from "@/lib/api-base";
+import { log, trackApi } from "@/logging/logger";
+import { translateApiError, formatUnknownError } from "@/errors/translator";
 
 export type EnvironmentsResponse = {
   environments: Record<string, string[]>;
@@ -139,6 +88,88 @@ export type HealthResponse = {
   };
 };
 
+// Re-export ApiError and apiBase for convenience
+export { ApiError, apiBase };
+
+async function parseJson<T>(res: Response): Promise<T> {
+  const text = await res.text();
+  if (!text) return {} as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return {} as T;
+  }
+}
+
+async function request<T>(
+  path: string,
+  token: string,
+  init?: RequestInit,
+  meta?: { namespace?: string; environment?: string }
+): Promise<T> {
+  const url = `${apiBase()}${path}`;
+  const headers: Record<string, string> = {};
+  if (init?.headers) {
+    Object.assign(headers, init.headers as Record<string, string>);
+  }
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  if (
+    init?.body &&
+    typeof init.body === "string" &&
+    !headers["Content-Type"]
+  ) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  const tracker = trackApi(init?.method ?? "GET", path, {
+    namespace: meta?.namespace,
+    environment: meta?.environment,
+  });
+
+  let res: Response;
+  let duration = 0;
+  try {
+    const start = performance.now();
+    res = await fetch(url, { ...init, headers });
+    duration = performance.now() - start;
+  } catch (err) {
+    tracker.onResponse(0, duration, err as Error);
+    log.error(`Network error: ${(err as Error).message}`, err as Error);
+    const userErr = formatUnknownError(err);
+    throw new ApiError(userErr.description, 0, { code: userErr.code });
+  }
+
+  const data = await parseJson<T & { error?: string; code?: string }>(res);
+
+  // Check for API error in response body even when status is 200
+  if ((data as { error?: string }).error) {
+    const userErr = translateApiError({
+      message: (data as { error?: string }).error ?? "Request failed",
+      status: res.status,
+      body: data as Record<string, unknown>,
+    });
+    tracker.onResponse(res.status, duration, new Error(userErr.description));
+    log.warn(`API error ${res.status} on ${path}: ${userErr.title}`);
+    throw new ApiError(userErr.description, res.status, { code: userErr.code });
+  }
+
+  if (!res.ok) {
+    const userErr = translateApiError({
+      message: (data as { error?: string }).error ?? res.statusText ?? "Request failed",
+      status: res.status,
+      body: data as Record<string, unknown>,
+    });
+    tracker.onResponse(res.status, duration, new Error(userErr.description));
+    log.warn(`API error ${res.status} on ${path}: ${userErr.title}`);
+    throw new ApiError(userErr.description, res.status, { code: userErr.code });
+  }
+
+  tracker.onResponse(res.status, duration);
+  return data as T;
+}
+
 export const api = {
   metaEnvironments(token: string) {
     return request<EnvironmentsResponse>("/api/v1/meta/environments", token);
@@ -158,13 +189,17 @@ export const api = {
   getSecrets(token: string, namespace: string, environment: string) {
     return request<SecretsRecord>(
       `/api/v1/${encodeURIComponent(namespace)}/${encodeURIComponent(environment)}`,
-      token
+      token,
+      undefined,
+      { namespace, environment }
     );
   },
   getMeta(token: string, namespace: string, environment: string) {
     return request<MetaResponse>(
       `/api/v1/${encodeURIComponent(namespace)}/${encodeURIComponent(environment)}/meta`,
-      token
+      token,
+      undefined,
+      { namespace, environment }
     );
   },
   patchSecrets(
@@ -176,14 +211,16 @@ export const api = {
     return request<{ status: string; count: number }>(
       `/api/v1/${encodeURIComponent(namespace)}/${encodeURIComponent(environment)}`,
       token,
-      { method: "PATCH", body: JSON.stringify(partial) }
+      { method: "PATCH", body: JSON.stringify(partial) },
+      { namespace, environment }
     );
   },
   deleteKey(token: string, namespace: string, environment: string, key: string) {
     return request<{ status: string; key: string }>(
       `/api/v1/${encodeURIComponent(namespace)}/${encodeURIComponent(environment)}/keys/${encodeURIComponent(key)}`,
       token,
-      { method: "DELETE" }
+      { method: "DELETE" },
+      { namespace, environment }
     );
   },
   bulkReplace(
@@ -195,19 +232,39 @@ export const api = {
     return request<{ status: string; count: number }>(
       `/api/v1/${encodeURIComponent(namespace)}/${encodeURIComponent(environment)}/bulk`,
       token,
-      { method: "POST", body: JSON.stringify({ payload }) }
+      { method: "POST", body: JSON.stringify({ payload }) },
+      { namespace, environment }
     );
   },
   history(token: string, namespace: string, environment: string) {
     return request<{ history: HistoryEntry[] }>(
       `/api/v1/${encodeURIComponent(namespace)}/${encodeURIComponent(environment)}/history`,
-      token
+      token,
+      undefined,
+      { namespace, environment }
     );
   },
-  audit(token: string, namespace: string, environment: string, limit = 100) {
-    return request<{ logs: AuditEntry[] }>(
-      `/api/v1/${encodeURIComponent(namespace)}/${encodeURIComponent(environment)}/audit?limit=${limit}`,
-      token
+  audit(
+    token: string,
+    namespace: string,
+    environment: string,
+    limit = 50,
+    offset = 0,
+    action?: string
+  ) {
+    const params = new URLSearchParams({
+      limit: String(limit),
+      offset: String(offset),
+    });
+    if (action) params.set("action", action);
+    return request<{
+      logs: AuditEntry[];
+      pagination: { offset: number; limit: number; total: number; has_more: boolean };
+    }>(
+      `/api/v1/${encodeURIComponent(namespace)}/${encodeURIComponent(environment)}/audit?${params}`,
+      token,
+      undefined,
+      { namespace, environment }
     );
   },
   templatesList(token: string) {
@@ -222,7 +279,8 @@ export const api = {
     return request<{ status: string; template: string }>(
       `/api/v1/${encodeURIComponent(namespace)}/${encodeURIComponent(environment)}/templates/apply`,
       token,
-      { method: "POST", body: JSON.stringify({ template_key: templateKey }) }
+      { method: "POST", body: JSON.stringify({ template_key: templateKey }) },
+      { namespace, environment }
     );
   },
   rollback(
@@ -234,7 +292,83 @@ export const api = {
     return request<{ status: string; timestamp: string }>(
       `/api/v1/${encodeURIComponent(namespace)}/${encodeURIComponent(environment)}/rollback`,
       token,
-      { method: "POST", body: JSON.stringify({ snapshot_id: snapshotId }) }
+      { method: "POST", body: JSON.stringify({ snapshot_id: snapshotId }) },
+      { namespace, environment }
+    );
+  },
+  // Admin check (master token or dashboard password)
+  isAdmin(token: string) {
+    return request<{ is_admin: boolean }>("/api/v1/meta/is-admin", token);
+  },
+  // API Key Management (admin: master token or dashboard password)
+  listKeys(token: string, namespace: string) {
+    return request<{
+      keys: Array<{
+        key_id: string;
+        created_at: string;
+        last_used: string | null;
+        created_by: string;
+        description: string;
+        namespaces: string[];
+        expires_at: string | null;
+        status: string;
+        custom_key: boolean;
+      }>
+    }>(
+      `/api/v1/keys/${encodeURIComponent(namespace)}`,
+      token
+    );
+  },
+  createKey(
+    token: string,
+    namespace: string,
+    options?: {
+      description?: string;
+      validity_days?: number;
+      custom_key?: string;
+      namespaces?: string[];
+    }
+  ) {
+    return request<{
+      key: string;
+      key_id: string;
+      namespace: string;
+      description: string;
+      validity_days: number;
+      expires_at: string | null;
+      namespaces: string[];
+      message: string;
+    }>(
+      `/api/v1/keys/${encodeURIComponent(namespace)}`,
+      token,
+      {
+        method: "POST",
+        body: JSON.stringify(options || {}),
+      }
+    );
+  },
+  revokeKey(token: string, namespace: string, keyId: string) {
+    return request<{ status: string; key_id: string }>(
+      `/api/v1/keys/${encodeURIComponent(namespace)}/${encodeURIComponent(keyId)}`,
+      token,
+      { method: "DELETE" }
+    );
+  },
+  getKey(token: string, namespace: string, keyId: string) {
+    return request<{
+      key_id: string;
+      created_at: string;
+      last_used: string | null;
+      created_by: string;
+      description: string;
+      namespaces: string[];
+      expires_at: string | null;
+      status: string;
+      custom_key: boolean;
+      revoked_at: string | null;
+    }>(
+      `/api/v1/keys/${encodeURIComponent(namespace)}/${encodeURIComponent(keyId)}`,
+      token
     );
   },
 };

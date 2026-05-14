@@ -7,7 +7,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Lock, ArrowRight, ShieldCheck, Zap, Server, Eye, EyeOff } from "lucide-react";
 import { useWorkspace } from "@/context/workspace-context";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError, apiBase } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Login3DAnimation } from "@/components/animations/login-3d";
@@ -28,14 +28,41 @@ export default function LoginPage() {
     setError(null);
 
     try {
-      // Test the token
-      await api.metaEnvironments(tokenInput.trim());
-      // If it doesn't throw, token is valid
+      // First try API token auth
+      const result = await api.metaEnvironments(tokenInput.trim());
+      // If it doesn't throw, token is valid API key
       setToken(tokenInput.trim());
       router.push("/dashboard");
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(err.message || "Invalid password or token.");
+        // If API token rejected (401/403), try password-based auth
+        if (err.status === 401 || err.status === 403) {
+          try {
+            // Try password validation via API
+            const res = await fetch(
+              `${apiBase()}/api/v1/auth/validate-password`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ password: tokenInput.trim() }),
+              }
+            );
+
+            if (res.ok) {
+              // Password is valid - use it as the API token
+              setToken(tokenInput.trim());
+              router.push("/dashboard");
+            } else {
+              setError("Invalid password or token.");
+            }
+          } catch (fetchErr) {
+            setError("Invalid password or token.");
+          }
+        } else if (err.status === 0) {
+          setError("Failed to connect to the server.");
+        } else {
+          setError(err.message || "Authentication failed.");
+        }
       } else {
         setError("Failed to connect to the server.");
       }

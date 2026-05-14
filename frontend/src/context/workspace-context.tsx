@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { api, ApiError } from "@/lib/api";
+import { formatUserError } from "@/lib/error-translation";
 import {
   loadToken,
   loadWorkspace,
@@ -67,11 +68,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       const res = await api.metaEnvironments(t);
       setEnvironments(res.environments ?? {});
     } catch (e) {
-      if (e instanceof ApiError) {
-        setEnvError(e.message);
-      } else {
-        setEnvError("Failed to load environments.");
-      }
+      const err = formatUserError(e);
+      setEnvError(err.description);
       setEnvironments({});
     } finally {
       setLoadingEnvs(false);

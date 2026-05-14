@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { formatUserError } from "@/lib/error-translation";
 
 
 const KEY_RE = /^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$/;
@@ -76,7 +77,10 @@ export function SecretDialog({
       onOpenChange(false);
       onSaved();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Save failed");
+      const err = formatUserError(e);
+      toast.error(err.title, {
+        description: err.description,
+      });
     } finally {
       setLoading(false);
     }

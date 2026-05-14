@@ -21,6 +21,7 @@ import {
   type DiffRow,
 } from "@/lib/bulk-diff";
 import { toast } from "sonner";
+import { formatUserError } from "@/lib/error-translation";
 
 
 type Props = {
@@ -37,12 +38,10 @@ function rowBadge(type: DiffRow["type"]) {
   switch (type) {
     case "add":
       return <div className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 uppercase tracking-wider">Add</div>;
-    case "remove":
-      return <div className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold bg-red-500/10 text-red-500 border border-red-500/20 uppercase tracking-wider">Remove</div>;
     case "change":
-      return <div className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20 uppercase tracking-wider">Change</div>;
+      return <div className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20 uppercase tracking-wider">Update</div>;
     default:
-      return <div className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold bg-zinc-800 text-zinc-500 border border-white/5 uppercase tracking-wider">Same</div>;
+      return <div className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold bg-zinc-800 text-zinc-500 border border-white/5 uppercase tracking-wider">Unchanged</div>;
   }
 }
 
@@ -86,7 +85,10 @@ export function BulkImportDialog({
       setStep("edit");
       onApplied();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Bulk replace failed");
+      const err = formatUserError(e);
+      toast.error(err.title, {
+        description: err.description,
+      });
     } finally {
       setLoading(false);
     }
@@ -117,9 +119,9 @@ export function BulkImportDialog({
                     </div>
                   </DialogTitle>
                   <DialogDescription className="text-zinc-500 text-sm mt-2">
-                    {step === 'edit' 
-                      ? "Paste your .env content below. This will replace the entire environment configuration."
-                      : "Carefully review the changes before applying them to the production environment."}
+                    {step === 'edit'
+                      ? "Paste your .env content below. This will merge with existing secrets — only matching keys are updated."
+                      : "Review the changes below. New keys will be added, matching keys updated, and existing secrets kept intact."}
                   </DialogDescription>
                </div>
             </div>
@@ -191,9 +193,8 @@ export function BulkImportDialog({
                             <td className="px-6 py-3 text-right font-mono text-[10px] text-zinc-500">
                               <div className="flex items-center justify-end gap-2">
                                 {r.type === "add" && <><span className="text-zinc-700 italic">none</span> <span className="text-emerald-500 font-bold">→</span> <span className="text-zinc-300">present</span></>}
-                                {r.type === "remove" && <><span className="text-zinc-300">present</span> <span className="text-red-500 font-bold">→</span> <span className="text-zinc-700 italic">removed</span></>}
                                 {r.type === "change" && <><span className="line-through opacity-50">modified</span> <span className="text-amber-500 font-bold">→</span> <span className="text-zinc-200">updated</span></>}
-                                {r.type === "same" && <span className="opacity-30 italic">No change</span>}
+                                {r.type !== "add" && r.type !== "change" && <span className="opacity-30 italic">No change</span>}
                               </div>
                             </td>
                           </tr>
@@ -207,18 +208,18 @@ export function BulkImportDialog({
                   <Button variant="ghost" onClick={() => setStep("edit")} className="rounded-xl px-6 text-zinc-500 hover:text-white">
                     Return to Editor
                   </Button>
-                  <Button 
-                    variant="destructive" 
-                    onClick={() => void apply()} 
+                  <Button
+                    variant="default"
+                    onClick={() => void apply()}
                     disabled={loading}
-                    className="rounded-xl px-8 font-bold bg-red-600 hover:bg-red-500 shadow-lg shadow-red-900/20"
+                    className="rounded-xl px-8 font-bold bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-900/20"
                   >
                     {loading ? (
                        <div className="flex items-center gap-2">
                           <div className="h-3 w-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                          <span>Syncing...</span>
+                          <span>Merging...</span>
                        </div>
-                    ) : "Overwrite Environment"}
+                    ) : "Merge Changes"}
                   </Button>
                 </DialogFooter>
               </motion.div>
