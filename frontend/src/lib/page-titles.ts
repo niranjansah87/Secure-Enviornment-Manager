@@ -8,6 +8,7 @@ export function pageTitle(pathname: string): string {
     if (rest[0] === "compare") return "Compare environments";
     if (rest[0] === "history") return "Version history";
     if (rest[0] === "audit") return "Audit logs";
+    if (rest[0] === "keys") return "API Keys";
     if (rest[0] === "templates") return "Templates";
     return "Secrets";
   }
