@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, use } from "react";
-import { Shield, MonitorOff, UserCheck, SearchX } from "lucide-react";
+import { Shield, MonitorOff, UserCheck, SearchX, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { api, type AuditEntry } from "@/lib/api";
 import { useWorkspace } from "@/context/workspace-context";
 import { Timeline } from "@/components/layout/timeline";
@@ -11,6 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { formatIso } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+const PAGE_SIZE_OPTIONS = [25, 50, 100];
 
 function actionVariant(
   action: string
@@ -31,17 +34,27 @@ export default function AuditPage({
   const [logs, setLogs] = useState<AuditEntry[]>([]);
   const [logins, setLogins] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [filteredIp, setFilteredIp] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  // Filter state
+  const [actionFilter, setActionFilter] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Pagination state
+  const [pagination, setPagination] = useState({ offset: 0, limit: 50, total: 0, has_more: false });
+  const [pageSize, setPageSize] = useState(50);
+
+  const loadInitial = useCallback(async (size = pageSize) => {
     if (!token) return;
     setLoading(true);
     try {
       const [auditRes, loginRes] = await Promise.all([
-        api.audit(token, namespace, environment, 120),
+        api.audit(token, namespace, environment, size, 0, actionFilter || undefined),
         api.metaLogins(token)
       ]);
       setLogs(auditRes.logs ?? []);
+      setPagination(auditRes.pagination ?? { offset: 0, limit: size, total: 0, has_more: false });
       setLogins(loginRes.logins ?? []);
     } catch {
       setLogs([]);
@@ -49,11 +62,27 @@ export default function AuditPage({
     } finally {
       setLoading(false);
     }
-  }, [token, namespace, environment]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, namespace, environment, actionFilter]);
+
+  const loadMore = useCallback(async () => {
+    if (!token || !pagination.has_more || loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const nextOffset = pagination.offset + pagination.limit;
+      const auditRes = await api.audit(token, namespace, environment, pagination.limit, nextOffset);
+      setLogs(prev => [...prev, ...(auditRes.logs ?? [])]);
+      setPagination(auditRes.pagination ?? pagination);
+    } catch {
+      // Silently fail on load more - user can retry
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [token, namespace, environment, pagination, loadingMore]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    void loadInitial();
+  }, [loadInitial]);
 
   if (!token) {
     return (
@@ -128,14 +157,15 @@ export default function AuditPage({
                   const isFailure = login.action === "LOGIN_FAILURE";
                   const isActiveIp = filteredIp === login.ip_address;
                   return (
-                    <div 
+                    <div
                       key={`login-${idx}`}
                       onClick={() => setFilteredIp(isActiveIp ? null : (login.ip_address || null))}
-                      className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                        isActiveIp 
-                          ? "border-violet-500/50 bg-violet-500/10 shadow-[0_0_15px_rgba(139,92,246,0.15)]" 
+                      className={cn(
+                        "p-3 rounded-lg border cursor-pointer transition-all",
+                        isActiveIp
+                          ? "border-violet-500/50 bg-violet-500/10 shadow-[0_0_15px_rgba(139,92,246,0.15)]"
                           : "border-white/5 bg-white/5 hover:border-white/10 hover:bg-white/10"
-                      }`}
+                      )}
                     >
                       <div className="flex justify-between items-start mb-1">
                         <Badge variant={isFailure ? "destructive" : "secondary"} className="text-[10px] uppercase font-bold">
@@ -161,35 +191,132 @@ export default function AuditPage({
 
         {/* Right Column: Actions Timeline */}
         <div className="lg:col-span-3 space-y-4">
-          <div className="flex justify-between items-center bg-black/20 p-4 rounded-xl border border-white/5">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-black/20 p-4 rounded-xl border border-white/5">
             <div>
               <h3 className="font-semibold text-zinc-200">Action Trail</h3>
               <p className="text-xs text-zinc-400">
-                {filteredIp 
-                  ? `Filtering timeline strictly by IP: ${filteredIp}` 
-                  : "Showing all actions across this repository."}
+                {filteredIp
+                  ? `Filtering timeline strictly by IP: ${filteredIp}`
+                  : `Showing ${items.length} of ${pagination.total} actions across this repository.`}
               </p>
             </div>
-            {filteredIp && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setFilteredIp(null)}
-                className="bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20 hover:text-red-300"
-              >
-                Clear IP Filter
-              </Button>
-            )}
+            <div className="flex items-center gap-3">
+              {filteredIp && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFilteredIp(null)}
+                  className="bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20 hover:text-red-300"
+                >
+                  Clear IP Filter
+                </Button>
+              )}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-zinc-500">Action</span>
+                <select
+                  value={actionFilter}
+                  onChange={(e) => {
+                    setActionFilter(e.target.value);
+                    void loadInitial();
+                  }}
+                  className="h-8 px-2 bg-zinc-900 border border-white/10 rounded-lg text-xs text-zinc-300 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                >
+                  <option value="">All</option>
+                  <option value="CREATE_VARIABLE">Create</option>
+                  <option value="UPDATE_VARIABLE">Update</option>
+                  <option value="DELETE_VARIABLE">Delete</option>
+                  <option value="BULK_REPLACE">Bulk Replace</option>
+                  <option value="EXPORT_VARIABLES">Export</option>
+                  <option value="LOGIN_SUCCESS">Login Success</option>
+                  <option value="LOGIN_FAILURE">Login Failure</option>
+                  <option value="SESSION_CREATED">Session Created</option>
+                  <option value="SESSION_REVOKED">Session Revoked</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-zinc-500">Show</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    const newSize = Number(e.target.value);
+                    setPageSize(newSize);
+                    void loadInitial(newSize);
+                  }}
+                  className="h-8 px-2 bg-zinc-900 border border-white/10 rounded-lg text-xs text-zinc-300 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                >
+                  {PAGE_SIZE_OPTIONS.map(size => (
+                    <option key={size} value={size}>{size}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
-          
+
           {items.length > 0 ? (
-            <Timeline items={items} />
+            <>
+              <Timeline items={items} />
+              {pagination.has_more && (
+                <div className="flex justify-center pt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void loadMore()}
+                    disabled={loadingMore}
+                    className="border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300"
+                  >
+                    {loadingMore ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <ChevronRight className="w-4 h-4 mr-2" />
+                        Load More ({pagination.total - pagination.offset - pagination.limit} remaining)
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-xs text-zinc-600">
+                  Showing {pagination.offset + items.length} of {pagination.total}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => {
+                      const newOffset = Math.max(0, pagination.offset - pagination.limit);
+                      setPagination(prev => ({ ...prev, offset: newOffset }));
+                      void loadInitial();
+                    }}
+                    disabled={pagination.offset === 0}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-xs text-zinc-500 px-2">
+                    Page {Math.floor(pagination.offset / pagination.limit) + 1}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => void loadMore()}
+                    disabled={!pagination.has_more}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </>
           ) : (
             <EmptyState
               icon={SearchX}
               title="No Actions Found"
-              description={filteredIp 
-                ? "This IP address performed no subsequent actions in this specific environment." 
+              description={filteredIp
+                ? "This IP address performed no subsequent actions in this specific environment."
                 : "No operational history found for this environment."}
             />
           )}
