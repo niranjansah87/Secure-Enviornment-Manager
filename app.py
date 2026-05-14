@@ -162,7 +162,7 @@ def log_request_start():
     """Log incoming request details to access log."""
     from middleware.log_rotation import get_logger
     access_logger = get_logger("app.access")
-    g.start_time = datetime.now()
+    g.start_time = _tz_now()
     access_logger.info(
         f"request_start method={request.method} path={request.path} ip={request.remote_addr or 'unknown'} "
         f"user_agent={request.user_agent.string[:100] if request.user_agent else 'unknown'}"
@@ -175,7 +175,7 @@ def log_request_complete(response: Response):
     access_logger = get_logger("app.access")
     duration_ms = 0
     if hasattr(g, "start_time"):
-        duration_ms = (datetime.now() - g.start_time).total_seconds() * 1000
+        duration_ms = (_tz_now() - g.start_time).total_seconds() * 1000
 
     access_logger.info(
         f"request_complete method={request.method} path={request.path} status={response.status_code} "
@@ -205,13 +205,11 @@ def log_request_complete(response: Response):
             )
 
     # Log secret access to audit log
-    if request.path.startswith("/api/v1/") and any(method in request.method for method in ["GET", "PUT", "PATCH", "DELETE"]):
+    if request.path.startswith("/api/v1/") and request.method in ["GET", "PUT", "PATCH", "DELETE"]:
         if any(seg in request.path for seg in ["/keys/", "/bulk", "/rollback", "/templates/apply"]):
             audit_logger = get_logger("app.audit")
-            token = request.headers.get("Authorization", "unknown")
-            token_id = token[7:23] if token.startswith("Bearer ") else "unknown"
             audit_logger.info(
-                f"secret_access method={request.method} path={request.path} token={token_id} "
+                f"secret_access method={request.method} path={request.path} "
                 f"ip={request.remote_addr or 'unknown'} status={response.status_code}"
             )
 
