@@ -148,7 +148,7 @@ class EnvironmentBloc extends Bloc<EnvironmentEvent, EnvironmentState> {
     final namespacesResult = await repository.getNamespaces();
 
     switch (namespacesResult) {
-      case Success(:final data):
+      case Success(data: final data):
         emit(state.copyWith(
           namespaces: data,
           selectedNamespace: event.namespaceId != null
@@ -179,7 +179,7 @@ class EnvironmentBloc extends Bloc<EnvironmentEvent, EnvironmentState> {
     // Load recent and favorites
     final recentResult = await repository.getRecentEnvironments();
     switch (recentResult) {
-      case Success(:final data):
+      case Success(data: final data):
         emit(state.copyWith(recentEnvironments: data));
       case Error():
         break;
@@ -187,7 +187,7 @@ class EnvironmentBloc extends Bloc<EnvironmentEvent, EnvironmentState> {
 
     final favoritesResult = await repository.getFavoriteEnvironments();
     switch (favoritesResult) {
-      case Success(:final data):
+      case Success(data: final data):
         emit(state.copyWith(favoriteEnvironments: data));
       case Error():
         break;
@@ -201,7 +201,7 @@ class EnvironmentBloc extends Bloc<EnvironmentEvent, EnvironmentState> {
     final result = await repository.getEnvironments(namespaceId);
 
     switch (result) {
-      case Success(:final data):
+      case Success(data: final data):
         emit(state.copyWith(
           status: EnvironmentStatus.loaded,
           environments: data,
