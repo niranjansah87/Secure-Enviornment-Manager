@@ -19,7 +19,7 @@ export type DiffRow = {
   key: string;
   before: string | null;
   after: string | null;
-  type: "add" | "remove" | "change" | "same";
+  type: "add" | "change" | "same";
 };
 
 export function diffAgainstCurrent(
@@ -37,8 +37,6 @@ export function diffAgainstCurrent(
     const a = next[key] ?? null;
     if (b === null && a !== null) {
       rows.push({ key, before: null, after: a, type: "add" });
-    } else if (b !== null && a === null) {
-      rows.push({ key, before: b, after: null, type: "remove" });
     } else if (b !== null && a !== null && b !== a) {
       rows.push({ key, before: b, after: a, type: "change" });
     } else if (b !== null && a !== null) {
