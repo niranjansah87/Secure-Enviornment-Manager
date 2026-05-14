@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔐 Secure Environment Manager</title>
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #111118;
+            --bg-card: rgba(17, 17, 24, 0.8);
+            --border-color: rgba(255, 255, 255, 0.06);
+            --text-primary: #e4e4e7;
+            --text-secondary: #71717a;
+            --text-muted: #52525b;
+            --accent-violet: #8b5cf6;
+            --accent-fuchsia: #d946ef;
+            --accent-emerald: #10b981;
+            --accent-amber: #f59e0b;
+            --font-mono: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, 'DejaVu Sans Mono', monospace;
+            --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated background */
+        .bg-grid {
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(139, 92, 246, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(139, 92, 246, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            mask-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0,0,0,0.6), transparent);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .bg-glow {
+            position: fixed;
+            top: -40%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 600px;
+            background: radial-gradient(ellipse, rgba(139, 92, 246, 0.15) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 80px 24px;
+        }
+
+        /* Header */
+        .logo-section {
+            text-align: center;
+            margin-bottom: 64px;
+        }
+
+        .logo-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--accent-violet), var(--accent-fuchsia));
+            border-radius: 24px;
+            font-size: 36px;
+            margin-bottom: 24px;
+            box-shadow:
+                0 0 60px rgba(139, 92, 246, 0.4),
+                0 20px 40px rgba(0, 0, 0, 0.3);
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .logo-section h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.7) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 12px;
+        }
+
+        .logo-section p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            max-width: 500px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* Status badge */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 100px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #10b981;
+            margin-top: 24px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            50% { opacity: 0.8; box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+        }
+
+        /* Cards grid */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 48px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 28px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            margin-bottom: 20px;
+        }
+
+        .card-icon.web { background: rgba(139, 92, 246, 0.15); }
+        .card-icon.api { background: rgba(245, 158, 11, 0.15); }
+        .card-icon.health { background: rgba(16, 185, 129, 0.15); }
+        .card-icon.security { background: rgba(217, 70, 239, 0.15); }
+
+        .card h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        .card p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .card code {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 4px 10px;
+            border-radius: 8px;
+            color: var(--accent-violet);
+            margin-top: auto;
+        }
+
+        /* Usage section */
+        .usage-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 36px;
+            backdrop-filter: blur(10px);
+            margin-bottom: 48px;
+        }
+
+        .usage-section h2 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: #fff;
+        }
+
+        .usage-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .usage-item {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 20px;
+        }
+
+        .usage-item .label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .usage-item .value {
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            color: var(--accent-emerald);
+        }
+
+        /* Endpoints table */
+        .endpoints-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 36px;
+            backdrop-filter: blur(10px);
+            margin-bottom: 48px;
+        }
+
+        .endpoints-section h2 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: #fff;
+        }
+
+        .endpoint-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .endpoint-table th {
+            text-align: left;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .endpoint-table td {
+            padding: 16px;
+            font-size: 0.9rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            vertical-align: middle;
+        }
+
+        .endpoint-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .endpoint-table tr:hover td {
+            background: rgba(255, 255, 255, 0.01);
+        }
+
+        .method-badge {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 8px;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .method-badge.get { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+        .method-badge.post { background: rgba(139, 92, 246, 0.15); color: #8b5cf6; }
+        .method-badge.delete { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+        .method-badge.put { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+        .method-badge.patch { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+
+        .endpoint-path {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--text-primary);
+        }
+
+        .endpoint-desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .auth-badge {
+            display: inline-block;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 3px 8px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+        }
+
+        /* Features row */
+        .features-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .feature-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 100px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .feature-tag .icon {
+            font-size: 0.9rem;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding-top: 32px;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .footer a {
+            color: var(--accent-violet);
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 640px) {
+            .container { padding: 40px 16px; }
+            .logo-section h1 { font-size: 1.8rem; }
+            .card { padding: 20px; }
+            .endpoint-table { font-size: 0.8rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+    <div class="bg-glow"></div>
+
+    <div class="container">
+        <!-- Logo & Header -->
+        <div class="logo-section">
+            <div class="logo-icon">🔐</div>
+            <h1>Secure Environment Manager</h1>
+            <p>Centralized secrets management with Fernet encryption, audit logging, and role-based access control.</p>
+            <div class="status-badge">
+                <div class="status-dot"></div>
+                System Operational
+            </div>
+        </div>
+
+        <!-- Feature tags -->
+        <div class="features-row" style="margin-bottom: 48px;">
+            <div class="feature-tag"><span class="icon">🔒</span> Fernet Encryption</div>
+            <div class="feature-tag"><span class="icon">📋</span> Audit Logging</div>
+            <div class="feature-tag"><span class="icon">⏱️</span> Session Timeout</div>
+            <div class="feature-tag"><span class="icon">🔑</span> Step-up Auth</div>
+            <div class="feature-tag"><span class="icon">📊</span> Analytics</div>
+            <div class="feature-tag"><span class="icon">🌐</span> REST API</div>
+        </div>
+
+        <!-- Quick access cards -->
+        <div class="cards-grid">
+            <div class="card">
+                <div class="card-icon web">🌐</div>
+                <h3>Web Dashboard</h3>
+                <p>Access your environment variables through the Next.js web interface.</p>
+                <code>http://localhost:3000</code>
+            </div>
+
+            <div class="card">
+                <div class="card-icon api">⚡</div>
+                <h3>REST API</h3>
+                <p>Programmatic access to secrets with Bearer token authentication.</p>
+                <code>GET /api/v1/&lt;ns&gt;/&lt;env&gt;</code>
+            </div>
+
+            <div class="card">
+                <div class="card-icon health">✅</div>
+                <h3>Health Check</h3>
+                <p>Monitor system health and readiness for container orchestration.</p>
+                <code>GET /healthz</code>
+            </div>
+
+            <div class="card">
+                <div class="card-icon security">🛡️</div>
+                <h3>Security Features</h3>
+                <p>24h absolute sessions, 60min inactivity timeout, and step-up authentication.</p>
+                <code>Rate limiting enabled</code>
+            </div>
+        </div>
+
+        <!-- Usage -->
+        <div class="usage-section">
+            <h2>Quick Reference</h2>
+            <div class="usage-grid">
+                <div class="usage-item">
+                    <div class="label">Browser Access</div>
+                    <div class="value">/production/main</div>
+                </div>
+                <div class="usage-item">
+                    <div class="label">API Format</div>
+                    <div class="value">/api/v1/{ns}/{env}</div>
+                </div>
+                <div class="usage-item">
+                    <div class="label">Auth Method</div>
+                    <div class="value">Bearer token</div>
+                </div>
+                <div class="usage-item">
+                    <div class="label">Encryption</div>
+                    <div class="value">Fernet (AES-128)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- API Endpoints -->
+        <div class="endpoints-section">
+            <h2>API Endpoints</h2>
+            <table class="endpoint-table">
+                <thead>
+                    <tr>
+                        <th>Method</th>
+                        <th>Endpoint</th>
+                        <th>Description</th>
+                        <th>Auth</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="method-badge get">GET</span></td>
+                        <td>
+                            <div class="endpoint-path">/api/v1/meta/environments</div>
+                            <div class="endpoint-desc">List visible namespaces</div>
+                        </td>
+                        <td>API token</td>
+                    </tr>
+                    <tr>
+                        <td><span class="method-badge get">GET</span></td>
+                        <td>
+                            <div class="endpoint-path">/api/v1/{namespace}/{environment}</div>
+                            <div class="endpoint-desc">Fetch secrets</div>
+                        </td>
+                        <td>API token</td>
+                    </tr>
+                    <tr>
+                        <td><span class="method-badge put">PUT</span></td>
+                        <td>
+                            <div class="endpoint-path">/api/v1/{namespace}/{environment}</div>
+                            <div class="endpoint-desc">Replace all secrets</div>
+                        </td>
+                        <td>API token</td>
+                    </tr>
+                    <tr>
+                        <td><span class="method-badge patch">PATCH</span></td>
+                        <td>
+                            <div class="endpoint-path">/api/v1/{namespace}/{environment}</div>
+                            <div class="endpoint-desc">Partial update secrets</div>
+                        </td>
+                        <td>API token</td>
+                    </tr>
+                    <tr>
+                        <td><span class="method-badge post">POST</span></td>
+                        <td>
+                            <div class="endpoint-path">/api/v1/{ns}/{env}/bulk</div>
+                            <div class="endpoint-desc">Bulk merge .env payload</div>
+                        </td>
+                        <td>API token</td>
+                    </tr>
+                    <tr>
+                        <td><span class="method-badge delete">DEL</span></td>
+                        <td>
+                            <div class="endpoint-path">/api/v1/{ns}/{env}/keys/{key}</div>
+                            <div class="endpoint-desc">Delete a secret</div>
+                        </td>
+                        <td>API token</td>
+                    </tr>
+                    <tr>
+                        <td><span class="method-badge get">GET</span></td>
+                        <td>
+                            <div class="endpoint-path">/api/v1/{ns}/{env}/history</div>
+                            <div class="endpoint-desc">Version history</div>
+                        </td>
+                        <td>API token</td>
+                    </tr>
+                    <tr>
+                        <td><span class="method-badge get">GET</span></td>
+                        <td>
+                            <div class="endpoint-path">/api/v1/{ns}/{env}/audit</div>
+                            <div class="endpoint-desc">Audit trail</div>
+                        </td>
+                        <td>API token</td>
+                    </tr>
+                    <tr>
+                        <td><span class="method-badge post">POST</span></td>
+                        <td>
+                            <div class="endpoint-path">/api/v1/{ns}/{env}/rollback</div>
+                            <div class="endpoint-desc">Rollback to snapshot</div>
+                        </td>
+                        <td>API token</td>
+                    </tr>
+                    <tr>
+                        <td><span class="method-badge get">GET</span></td>
+                        <td>
+                            <div class="endpoint-path">/api/v1/meta/stats</div>
+                            <div class="endpoint-desc">Aggregated statistics</div>
+                        </td>
+                        <td>API token</td>
+                    </tr>
+                    <tr>
+                        <td><span class="method-badge get">GET</span></td>
+                        <td>
+                            <div class="endpoint-path">/api/v1/meta/analytics</div>
+                            <div class="endpoint-desc">Activity trends</div>
+                        </td>
+                        <td>API token</td>
+                    </tr>
+                    <tr>
+                        <td><span class="method-badge get">GET</span></td>
+                        <td>
+                            <div class="endpoint-path">/healthz</div>
+                            <div class="endpoint-desc">Health check</div>
+                        </td>
+                        <td>None</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>Secure Environment Manager &bull; Encrypted secrets at rest &bull; v1.0</p>
+            <p style="margin-top: 8px;">
+                <a href="http://localhost:3000">Open Web Dashboard</a>
+                &nbsp;&bull;&nbsp;
+                <a href="/healthz">Health Status</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

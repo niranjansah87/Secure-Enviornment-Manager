@@ -58,15 +58,17 @@ Managing `.env` files manually is a security nightmare and an operational headac
 
 ### 🔒 Security & Protection
 - **AES-256 Encryption**: All secrets are encrypted at rest using industry-standard Fernet encryption.
-- **Audit Logging**: Comprehensive trail of every access, modification, or deletion.
+- **Audit Logging**: Comprehensive trail of every access, modification, or deletion with user tracking.
 - **Bearer Token Auth**: Secure API access with granular, per-namespace tokens.
 - **Secret Isolation**: Organize variables into namespaces and environments for strict isolation.
+- **RBAC for API Keys**: Admin-controlled API keys with optional expiry dates, custom key support, and namespace-scoped access.
 
 ### 📊 Advanced Management
 - **Next.js 14 Web UI**: A sleek, high-performance interface for managing your secrets.
 - **Environment Comparison**: Instantly detect drift between production, staging, and development.
 - **Bulk Operations**: Import or export `.env`, JSON, or YAML in seconds.
 - **Variable Templates**: Quick-start templates for Django, React, Express, Flask, and more.
+- **API Key Management**: Create, view, and revoke API keys with full audit trail. Keys can be bound to specific namespaces and have optional validity periods.
 
 ### 🕰️ Versioning & Automation
 - **Snapshots & History**: Every change creates a versioned snapshot automatically.
@@ -126,6 +128,7 @@ graph TD
 *   **Encryption at Rest**: We use AES-256-CBC via the Fernet protocol. No plain-text secrets ever touch the disk.
 *   **Accountability**: Every action (create, update, delete, view) is logged with a timestamp, IP, and user context.
 *   **API Security**: Each namespace has its own Bearer token, ensuring one team cannot access another's secrets.
+*   **RBAC API Keys**: Admin-managed API keys with configurable validity, custom key support, and namespace binding.
 *   **Zero Dependencies on Databases**: By using secure file-based storage, we eliminate database-level attack vectors and simplify migration.
 
 ---
@@ -161,6 +164,53 @@ npm run dev
 ```
 
 Visit [http://localhost:3000](http://localhost:3000) and start managing your secrets!
+
+---
+
+## 🔑 API Key Management
+
+API keys provide programmatic access to the Secure Environment Manager API. Keys are managed by administrators (master token or dashboard password) and can be scoped to specific namespaces.
+
+### Creating an API Key
+```bash
+curl -X POST http://localhost:8070/api/v1/keys/{namespace} \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "description": "CI/CD Pipeline Key",
+    "validity_days": 90,
+    "namespaces": ["production", "staging"],
+    "custom_key": "my_custom_key_16chars_min"
+  }'
+```
+
+### API Key Response
+```json
+{
+  "key": "my_custom_key_16chars_min",
+  "key_id": "a1b2c3d4e5f6g7h8",
+  "namespace": "production",
+  "description": "CI/CD Pipeline Key",
+  "validity_days": 90,
+  "expires_at": "2026-08-12T12:00:00+00:00",
+  "namespaces": ["production", "staging"],
+  "message": "Store this key securely. It will not be shown again."
+}
+```
+
+### Key Features
+- **Validity Period**: 7, 30, 60, 90, 180, 365 days or no expiry
+- **Custom Keys**: Provide your own key (16-64 chars, alphanumeric + underscore/hyphen)
+- **Namespace Binding**: Grant access to specific namespaces (empty = all namespaces)
+- **Full Audit Trail**: Every key operation is logged with timestamp and admin identity
+
+### Managing Keys
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/keys/{namespace}` | GET | List all API keys for a namespace |
+| `/api/v1/keys/{namespace}` | POST | Create a new API key |
+| `/api/v1/keys/{namespace}/{key_id}` | GET | Get key details |
+| `/api/v1/keys/{namespace}/{key_id}` | DELETE | Revoke a key |
 
 ---
 
