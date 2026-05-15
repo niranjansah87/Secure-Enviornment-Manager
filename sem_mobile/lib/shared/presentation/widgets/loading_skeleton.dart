@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_dimensions.dart';
+import 'package:sem_mobile/core/theme/app_colors.dart';
+import 'package:sem_mobile/core/theme/app_dimensions.dart';
 
 /// Loading skeleton widget
 class LoadingSkeleton extends StatelessWidget {
@@ -52,6 +52,27 @@ class SkeletonList extends StatelessWidget {
       itemCount: itemCount,
       separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
       itemBuilder: (_, __) => LoadingSkeleton(height: itemHeight),
+    );
+  }
+}
+
+/// Skeleton box for custom-sized loading placeholders
+class SkeletonBox extends StatelessWidget {
+  final double width;
+  final double height;
+
+  const SkeletonBox({
+    super.key,
+    required this.width,
+    required this.height,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LoadingSkeleton(
+      width: width,
+      height: height,
+      borderRadius: 4,
     );
   }
 }
