@@ -99,7 +99,7 @@ class _LoginPageState extends State<LoginPage> {
           ),
         )
             .animate()
-            .fadeIn(duration: const Duration(milliseconds: 600))
+            .fadeIn(duration: const Duration(milliseconds: AppDurations.slower))
             .scale(
               begin: const Offset(0.9, 0.9),
               end: const Offset(1, 1),
@@ -110,14 +110,14 @@ class _LoginPageState extends State<LoginPage> {
           style: AppTypography.headlineMedium.copyWith(
             color: AppColors.textPrimary,
           ),
-        ).animate().fadeIn(delay: const Duration(milliseconds: 200)),
+        ).animate().fadeIn(delay: const Duration(milliseconds: AppDurations.fast)),
         const SizedBox(height: AppSpacing.xxs),
         Text(
           'Sign in to access your environments',
           style: AppTypography.bodyMedium.copyWith(
             color: AppColors.textSecondary,
           ),
-        ).animate().fadeIn(delay: const Duration(milliseconds: 300)),
+        ).animate().fadeIn(delay: const Duration(milliseconds: AppDurations.slow)),
       ],
     );
   }
@@ -195,7 +195,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ],
           ),
-        ).animate().fadeIn(delay: const Duration(milliseconds: 400));
+        ).animate().fadeIn(delay: const Duration(milliseconds: AppDurations.slower));
       },
     );
   }
@@ -243,7 +243,7 @@ class _LoginPageState extends State<LoginPage> {
               leadingIcon: Icons.fingerprint,
             ),
           ],
-        ).animate().fadeIn(delay: const Duration(milliseconds: 600));
+        ).animate().fadeIn(delay: const Duration(milliseconds: AppDurations.slower));
       },
     );
   }

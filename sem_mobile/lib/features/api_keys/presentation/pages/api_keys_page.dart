@@ -5,13 +5,16 @@ import 'package:local_auth/local_auth.dart';
 import 'package:sem_mobile/core/di/injection.dart';
 import 'package:sem_mobile/core/logging/app_logger.dart';
 import 'package:sem_mobile/core/security/secure_clipboard.dart';
-import 'package:sem_mobile/core/theme/app_theme.dart';
+import 'package:sem_mobile/core/theme/app_colors.dart';
+import 'package:sem_mobile/core/theme/app_dimensions.dart';
+import 'package:sem_mobile/core/theme/app_typography.dart';
 import 'package:sem_mobile/features/api_keys/domain/entities/api_key.dart';
 import 'package:sem_mobile/features/api_keys/presentation/bloc/api_key_bloc.dart';
 import 'package:sem_mobile/features/api_keys/presentation/bloc/api_key_event.dart';
 import 'package:sem_mobile/features/api_keys/presentation/bloc/api_key_state.dart';
 import 'package:sem_mobile/shared/presentation/widgets/app_loader.dart';
 import 'package:sem_mobile/shared/presentation/widgets/loading_skeleton.dart';
+import 'package:sem_mobile/shared/presentation/widgets/app_button.dart';
 
 class ApiKeysPage extends StatelessWidget {
   const ApiKeysPage({super.key});
@@ -53,13 +56,16 @@ class _ApiKeysPageContentState extends State<_ApiKeysPageContent> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('API Keys'),
-        backgroundColor: AppTheme.surfaceColor,
+        title: Text(
+          'API Keys',
+          style: AppTypography.titleLarge.copyWith(color: AppColors.textPrimary),
+        ),
+        backgroundColor: AppColors.background,
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, color: AppColors.textSecondary),
             onPressed: () => context.read<ApiKeyBloc>().add(const ApiKeyRefreshRequested()),
           ),
         ],
@@ -70,7 +76,9 @@ class _ApiKeysPageContentState extends State<_ApiKeysPageContent> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.errorMessage!),
-                backgroundColor: AppTheme.errorColor,
+                backgroundColor: AppColors.error,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sm)),
               ),
             );
           }
@@ -78,7 +86,9 @@ class _ApiKeysPageContentState extends State<_ApiKeysPageContent> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.successMessage!),
-                backgroundColor: AppTheme.successColor,
+                backgroundColor: AppColors.success,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.sm)),
               ),
             );
           }
@@ -102,12 +112,12 @@ class _ApiKeysPageContentState extends State<_ApiKeysPageContent> {
               RefreshIndicator(
                 onRefresh: () async {
                   context.read<ApiKeyBloc>().add(const ApiKeyRefreshRequested());
-                  await Future.delayed(const Duration(milliseconds: 500));
+                  await Future.delayed(const Duration(milliseconds: AppDurations.toastDuration));
                 },
                 child: CustomScrollView(
                   slivers: [
                     SliverPadding(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(AppSpacing.md),
                       sliver: SliverList(
                         delegate: SliverChildBuilderDelegate(
                           (context, index) {
@@ -123,21 +133,19 @@ class _ApiKeysPageContentState extends State<_ApiKeysPageContent> {
                     ),
                     if (state.inactiveKeys.isNotEmpty) ...[
                       SliverPadding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
                         sliver: SliverToBoxAdapter(
                           child: Text(
                             'INACTIVE KEYS',
-                            style: TextStyle(
-                              color: AppTheme.textSecondary,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
+                            style: AppTypography.labelSmall.copyWith(
+                              color: AppColors.textTertiary,
                               letterSpacing: 1,
                             ),
                           ),
                         ),
                       ),
                       SliverPadding(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(AppSpacing.md),
                         sliver: SliverList(
                           delegate: SliverChildBuilderDelegate(
                             (context, index) {
@@ -168,9 +176,9 @@ class _ApiKeysPageContentState extends State<_ApiKeysPageContent> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showCreateDialog(context),
-        backgroundColor: AppTheme.primaryColor,
-        icon: const Icon(Icons.add),
-        label: const Text('Create Key'),
+        backgroundColor: AppColors.accent,
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text('Create Key', style: TextStyle(color: Colors.white)),
       ),
     );
   }
@@ -180,12 +188,20 @@ class _ApiKeysPageContentState extends State<_ApiKeysPageContent> {
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppTheme.surfaceColor,
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.modal),
+        ),
         title: Row(
           children: [
-            Icon(Icons.check_circle, color: AppTheme.successColor),
-            const SizedBox(width: 8),
-            const Text('API Key Created'),
+            Icon(Icons.check_circle, color: AppColors.success),
+            const SizedBox(width: AppSpacing.sm),
+            Text(
+              'API Key Created',
+              style: AppTypography.titleMedium.copyWith(
+                color: AppColors.textPrimary,
+              ),
+            ),
           ],
         ),
         content: Column(
@@ -194,21 +210,22 @@ class _ApiKeysPageContentState extends State<_ApiKeysPageContent> {
           children: [
             Text(
               'Copy this key now. It will not be shown again.',
-              style: TextStyle(color: AppTheme.textSecondary),
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
-                color: AppTheme.backgroundColor,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppTheme.dividerColor),
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+                border: Border.all(color: AppColors.border),
               ),
               child: SelectableText(
                 state.rawKeyForDisplay ?? '',
-                style: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 12,
+                style: AppTypography.codeMedium.copyWith(
+                  color: AppColors.textPrimary,
                 ),
               ),
             ),
@@ -223,14 +240,14 @@ class _ApiKeysPageContentState extends State<_ApiKeysPageContent> {
                 state.rawKeyForDisplay ?? '',
               );
             },
-            child: const Text('COPY'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
+            child: Text(
+              'COPY',
+              style: AppTypography.labelLarge.copyWith(color: AppColors.accent),
             ),
-            child: const Text('DONE'),
+          ),
+          AppButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            label: 'DONE',
           ),
         ],
       ),
@@ -245,16 +262,16 @@ class _ApiKeysPageContentState extends State<_ApiKeysPageContent> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.surfaceColor,
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
       ),
       builder: (sheetContext) => Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
-          left: 24,
-          right: 24,
-          top: 24,
+          left: AppSpacing.lg,
+          right: AppSpacing.lg,
+          top: AppSpacing.lg,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -262,31 +279,32 @@ class _ApiKeysPageContentState extends State<_ApiKeysPageContent> {
           children: [
             Text(
               'Create API Key',
-              style: Theme.of(context).textTheme.headlineSmall,
+              style: AppTypography.titleLarge.copyWith(
+                color: AppColors.textPrimary,
+              ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.lg),
             TextField(
               controller: nameController,
               decoration: InputDecoration(
                 labelText: 'Key Name',
                 hintText: 'e.g., Production Backend',
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             Text(
               'Permissions',
-              style: TextStyle(
-                color: AppTheme.textSecondary,
-                fontWeight: FontWeight.w600,
+              style: AppTypography.titleSmall.copyWith(
+                color: AppColors.textSecondary,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.xs),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
               children: [
                 'read', 'write', 'delete', 'admin',
               ].map((perm) {
@@ -305,18 +323,19 @@ class _ApiKeysPageContentState extends State<_ApiKeysPageContent> {
                 );
               }).toList(),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.lg),
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
+                  child: AppButton(
                     onPressed: () => Navigator.pop(sheetContext),
-                    child: const Text('Cancel'),
+                    label: 'Cancel',
+                    variant: AppButtonVariant.outlined,
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
-                  child: ElevatedButton(
+                  child: AppButton(
                     onPressed: () {
                       if (nameController.text.isNotEmpty && selectedPermissions.isNotEmpty) {
                         context.read<ApiKeyBloc>().add(ApiKeyCreateRequested(
@@ -327,15 +346,12 @@ class _ApiKeysPageContentState extends State<_ApiKeysPageContent> {
                         Navigator.pop(sheetContext);
                       }
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                    ),
-                    child: const Text('Create'),
+                    label: 'Create',
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.lg),
           ],
         ),
       ),
@@ -346,25 +362,40 @@ class _ApiKeysPageContentState extends State<_ApiKeysPageContent> {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppTheme.surfaceColor,
-        title: const Text('Revoke API Key?'),
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.modal),
+        ),
+        title: Text(
+          'Revoke API Key?',
+          style: AppTypography.titleMedium.copyWith(
+            color: AppColors.textPrimary,
+          ),
+        ),
         content: Text(
           'This will immediately invalidate the key "${key.name}". This action cannot be undone.',
+          style: AppTypography.bodyMedium.copyWith(
+            color: AppColors.textSecondary,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            child: Text(
+              'Cancel',
+              style: AppTypography.labelLarge.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
           ),
-          ElevatedButton(
+          AppButton(
             onPressed: () {
               Navigator.pop(dialogContext);
               context.read<ApiKeyBloc>().add(ApiKeyRevokeRequested(key.id));
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.errorColor,
-            ),
-            child: const Text('Revoke'),
+            label: 'Revoke',
+            variant: AppButtonVariant.danger,
+            size: AppButtonSize.small,
           ),
         ],
       ),
@@ -385,115 +416,113 @@ class _ApiKeyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: isInactive
-            ? Border.all(color: AppTheme.dividerColor.withValues(alpha: 0.5))
-            : null,
-      ),
-      child: Opacity(
-        opacity: isInactive ? 0.6 : 1.0,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.key,
-                      color: AppTheme.primaryColor,
-                      size: 20,
-                    ),
+    return Opacity(
+      opacity: isInactive ? 0.6 : 1.0,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+          border: isInactive
+              ? Border.all(color: AppColors.border.withValues(alpha: 0.5))
+              : Border.all(color: AppColors.border),
+        ),
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: AppColors.accent.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          apiKey.name,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
+                  child: Icon(
+                    Icons.key,
+                    color: AppColors.accent,
+                    size: AppSpacing.iconSizeSm,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        apiKey.name,
+                        style: AppTypography.titleSmall.copyWith(
+                          color: AppColors.textPrimary,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          apiKey.maskedDisplay,
-                          style: TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 12,
-                            color: AppTheme.textSecondary,
-                          ),
+                      ),
+                      const SizedBox(height: AppSpacing.xxs),
+                      Text(
+                        apiKey.maskedDisplay,
+                        style: AppTypography.codeMedium.copyWith(
+                          color: AppColors.textSecondary,
                         ),
-                      ],
-                    ),
-                  ),
-                  _StatusBadge(status: apiKey.statusLabel),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: apiKey.permissions.map((p) {
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      p.toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.primaryColor,
                       ),
-                    ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Icon(
-                    Icons.access_time,
-                    size: 14,
-                    color: AppTheme.textSecondary,
+                    ],
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Last used ${apiKey.relativeLastUsed}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.textSecondary,
+                ),
+                _StatusBadge(status: apiKey.statusLabel),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: AppSpacing.xxs,
+              runSpacing: AppSpacing.xxs,
+              children: apiKey.permissions.map((p) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xs,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.accent.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(AppRadius.xs),
+                  ),
+                  child: Text(
+                    p.toUpperCase(),
+                    style: AppTypography.labelSmall.copyWith(
+                      color: AppColors.accent,
                     ),
                   ),
-                  const Spacer(),
-                  if (onRevoke != null)
-                    TextButton.icon(
-                      onPressed: onRevoke,
-                      icon: Icon(Icons.delete_outline, size: 16, color: AppTheme.errorColor),
-                      label: Text('Revoke', style: TextStyle(color: AppTheme.errorColor)),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                      ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              children: [
+                Icon(
+                  Icons.access_time,
+                  size: AppSpacing.iconSizeSm,
+                  color: AppColors.textTertiary,
+                ),
+                const SizedBox(width: AppSpacing.xxs),
+                Text(
+                  'Last used ${apiKey.relativeLastUsed}',
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+                const Spacer(),
+                if (onRevoke != null)
+                  TextButton.icon(
+                    onPressed: onRevoke,
+                    icon: Icon(Icons.delete_outline, size: AppSpacing.iconSizeSm, color: AppColors.error),
+                    label: Text(
+                      'Revoke',
+                      style: AppTypography.labelMedium.copyWith(color: AppColors.error),
                     ),
-                ],
-              ),
-            ],
-          ),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                    ),
+                  ),
+              ],
+            ),
+          ],
         ),
       ),
     );
@@ -510,26 +539,27 @@ class _StatusBadge extends StatelessWidget {
     Color color;
     switch (status.toLowerCase()) {
       case 'active':
-        color = AppTheme.successColor;
+        color = AppColors.success;
         break;
       case 'expired':
-        color = AppTheme.warningColor;
+        color = AppColors.warning;
         break;
       default:
-        color = AppTheme.textSecondary;
+        color = AppColors.textSecondary;
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xs,
+        vertical: 2,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(AppRadius.xs),
       ),
       child: Text(
         status,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
+        style: AppTypography.labelSmall.copyWith(
           color: color,
         ),
       ),
@@ -546,42 +576,42 @@ class _EmptyApiKeysView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(AppSpacing.xxl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(AppSpacing.lg),
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                color: AppColors.accent.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.key_off,
-                size: 64,
-                color: AppTheme.primaryColor,
+                size: AppSpacing.iconSizeXl,
+                color: AppColors.accent,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.lg),
             Text(
               'No API Keys',
-              style: Theme.of(context).textTheme.headlineSmall,
+              style: AppTypography.titleLarge.copyWith(
+                color: AppColors.textPrimary,
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.xs),
             Text(
               'Create your first API key to integrate with external services.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppTheme.textSecondary),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: onCreatePressed,
-              icon: const Icon(Icons.add),
-              label: const Text('Create API Key'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
               ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            AppButton(
+              onPressed: onCreatePressed,
+              label: 'Create API Key',
+              leadingIcon: Icons.add,
             ),
           ],
         ),
@@ -596,41 +626,62 @@ class _ApiKeysSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.md),
       itemCount: 5,
       itemBuilder: (context, index) {
         return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
+          margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+          padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
-            color: AppTheme.cardColor,
-            borderRadius: BorderRadius.circular(12),
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(color: AppColors.border),
           ),
-          child: const Column(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  SkeletonBox(width: 40, height: 40),
-                  SizedBox(width: 12),
+                  LoadingSkeleton(
+                    height: 40,
+                    width: 40,
+                    borderRadius: AppRadius.sm,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        SkeletonBox(width: 150, height: 16),
-                        SizedBox(height: 8),
-                        SkeletonBox(width: 200, height: 12),
+                        LoadingSkeleton(
+                          height: 16,
+                          width: 150,
+                          borderRadius: AppRadius.xs,
+                        ),
+                        const SizedBox(height: AppSpacing.xxs),
+                        LoadingSkeleton(
+                          height: 12,
+                          width: 200,
+                          borderRadius: AppRadius.xs,
+                        ),
                       ],
                     ),
                   ),
                 ],
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.sm),
               Row(
                 children: [
-                  SkeletonBox(width: 60, height: 24),
-                  SizedBox(width: 8),
-                  SkeletonBox(width: 60, height: 24),
+                  LoadingSkeleton(
+                    height: 24,
+                    width: 60,
+                    borderRadius: AppRadius.xs,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  LoadingSkeleton(
+                    height: 24,
+                    width: 60,
+                    borderRadius: AppRadius.xs,
+                  ),
                 ],
               ),
             ],

@@ -110,7 +110,7 @@ class _EnvironmentsViewState extends State<_EnvironmentsView> {
             context.read<EnvironmentBloc>().add(EnvironmentSearchRequested(query));
           },
         ),
-      ).animate().fadeIn(duration: const Duration(milliseconds: 300)),
+      ).animate().fadeIn(duration: const Duration(milliseconds: AppDurations.normal)),
     );
   }
 
@@ -394,13 +394,13 @@ class _EnvironmentCard extends StatelessWidget {
         ),
       ),
     ).animate().fadeIn(
-      delay: Duration(milliseconds: 50 * index),
-      duration: const Duration(milliseconds: 300),
+      delay: Duration(milliseconds: AppDurations.fast ~/ 2 * index),
+      duration: const Duration(milliseconds: AppDurations.normal),
     ).slideX(
       begin: 0.1,
       end: 0,
-      delay: Duration(milliseconds: 50 * index),
-      duration: const Duration(milliseconds: 300),
+      delay: Duration(milliseconds: AppDurations.fast ~/ 2 * index),
+      duration: const Duration(milliseconds: AppDurations.normal),
       curve: Curves.easeOut,
     );
   }
