@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
-import 'package:sem_mobile/core/theme/app_theme.dart';
+import 'package:sem_mobile/core/theme/app_colors.dart';
+import 'package:sem_mobile/core/theme/app_dimensions.dart';
+import 'package:sem_mobile/core/theme/app_typography.dart';
 import 'package:sem_mobile/features/security/domain/entities/security_alert.dart';
 
 /// Security banner widget for displaying suspicious activity warnings
@@ -19,69 +21,65 @@ class SecurityBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.all(16),
+      margin: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppTheme.warningColor.withValues(alpha: 0.15),
-            AppTheme.warningColor.withValues(alpha: 0.05),
+            AppColors.warning.withValues(alpha: 0.15),
+            AppColors.warning.withValues(alpha: 0.05),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.warningColor.withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onViewDetails,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.card),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(AppSpacing.sm),
                   decoration: BoxDecoration(
-                    color: AppTheme.warningColor.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(10),
+                    color: AppColors.warning.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
                   ),
                   child: Icon(
                     _getAlertIcon(),
-                    color: AppTheme.warningColor,
-                    size: 24,
+                    color: AppColors.warning,
+                    size: AppSpacing.iconSizeLg,
                   ),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         alert.title,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                          color: Colors.white,
+                        style: AppTypography.titleSmall.copyWith(
+                          color: AppColors.textPrimary,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpacing.xxs),
                       Text(
                         alert.message,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.white.withValues(alpha: 0.8),
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: AppSpacing.xxs),
                       Text(
                         alert.relativeTime,
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.white.withValues(alpha: 0.6),
+                        style: AppTypography.labelSmall.copyWith(
+                          color: AppColors.textTertiary,
                         ),
                       ),
                     ],
@@ -91,8 +89,8 @@ class SecurityBanner extends StatelessWidget {
                   IconButton(
                     icon: Icon(
                       Icons.close,
-                      color: Colors.white.withValues(alpha: 0.6),
-                      size: 20,
+                      color: AppColors.textTertiary,
+                      size: AppSpacing.iconSizeSm,
                     ),
                     onPressed: onDismiss,
                   ),
@@ -144,7 +142,7 @@ class _InactivityWarningDialogState extends State<InactivityWarningDialog>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: AppDurations.fast),
       vsync: this,
     );
     _scaleAnimation = CurvedAnimation(
@@ -165,22 +163,27 @@ class _InactivityWarningDialogState extends State<InactivityWarningDialog>
     return ScaleTransition(
       scale: _scaleAnimation,
       child: AlertDialog(
-        backgroundColor: AppTheme.surfaceColor,
+        backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(AppRadius.modal),
         ),
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
-                color: AppTheme.warningColor.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(8),
+                color: AppColors.warning.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(AppRadius.sm),
               ),
-              child: Icon(Icons.timer, color: AppTheme.warningColor),
+              child: Icon(Icons.timer, color: AppColors.warning),
             ),
-            const SizedBox(width: 12),
-            const Text('Session Timeout'),
+            const SizedBox(width: AppSpacing.sm),
+            Text(
+              'Session Timeout',
+              style: AppTypography.titleMedium.copyWith(
+                color: AppColors.textPrimary,
+              ),
+            ),
           ],
         ),
         content: Column(
@@ -188,9 +191,11 @@ class _InactivityWarningDialogState extends State<InactivityWarningDialog>
           children: [
             Text(
               'Your session will expire due to inactivity.',
-              style: TextStyle(color: AppTheme.textSecondary),
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+              ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xxl),
             TweenAnimationBuilder<double>(
               tween: Tween(begin: 1.0, end: 0.0),
               duration: Duration(seconds: widget.remainingSeconds),
@@ -204,15 +209,14 @@ class _InactivityWarningDialogState extends State<InactivityWarningDialog>
                       child: CircularProgressIndicator(
                         value: value,
                         strokeWidth: 6,
-                        backgroundColor: AppTheme.dividerColor,
-                        valueColor: AlwaysStoppedAnimation<Color>(AppTheme.warningColor),
+                        backgroundColor: AppColors.border,
+                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.warning),
                       ),
                     ),
                     Text(
                       '${(value * widget.remainingSeconds).ceil()}',
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
+                      style: AppTypography.headlineMedium.copyWith(
+                        color: AppColors.textPrimary,
                       ),
                     ),
                   ],
@@ -225,16 +229,16 @@ class _InactivityWarningDialogState extends State<InactivityWarningDialog>
           TextButton(
             onPressed: widget.onLogout,
             style: TextButton.styleFrom(
-              foregroundColor: AppTheme.errorColor,
+              foregroundColor: AppColors.error,
             ),
-            child: const Text('LOGOUT'),
+            child: Text(
+              'LOGOUT',
+              style: AppTypography.labelLarge.copyWith(color: AppColors.error),
+            ),
           ),
-          ElevatedButton(
+          AppButton(
             onPressed: widget.onStayLoggedIn,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-            ),
-            child: const Text('STAY LOGGED IN'),
+            label: 'STAY LOGGED IN',
           ),
         ],
       ),
@@ -254,22 +258,27 @@ class ForcedLogoutDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: AppTheme.surfaceColor,
+      backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppRadius.modal),
       ),
       title: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(AppSpacing.sm),
             decoration: BoxDecoration(
-              color: AppTheme.errorColor.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(8),
+              color: AppColors.error.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
-            child: Icon(Icons.logout, color: AppTheme.errorColor),
+            child: Icon(Icons.logout, color: AppColors.error),
           ),
-          const SizedBox(width: 12),
-          const Text('Session Ended'),
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            'Session Ended',
+            style: AppTypography.titleMedium.copyWith(
+              color: AppColors.textPrimary,
+            ),
+          ),
         ],
       ),
       content: Column(
@@ -278,22 +287,23 @@ class ForcedLogoutDialog extends StatelessWidget {
         children: [
           Text(
             reason ?? 'Your session has been revoked.',
-            style: TextStyle(color: AppTheme.textSecondary),
+            style: AppTypography.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           Text(
             'Please log in again to continue.',
-            style: TextStyle(color: AppTheme.textSecondary),
+            style: AppTypography.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
         ],
       ),
       actions: [
-        ElevatedButton(
+        AppButton(
           onPressed: () => Navigator.of(context).pop(),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.primaryColor,
-          ),
-          child: const Text('LOG IN'),
+          label: 'LOG IN',
         ),
       ],
     );
@@ -316,52 +326,61 @@ class BiometricRequiredDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: AppTheme.surfaceColor,
+      backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppRadius.modal),
       ),
       title: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(AppSpacing.sm),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(8),
+              color: AppColors.accent.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
-            child: Icon(Icons.fingerprint, color: AppTheme.primaryColor),
+            child: Icon(Icons.fingerprint, color: AppColors.accent),
           ),
-          const SizedBox(width: 12),
-          const Text('Authentication Required'),
+          const SizedBox(width: AppSpacing.sm),
+          Text(
+            'Authentication Required',
+            style: AppTypography.titleMedium.copyWith(
+              color: AppColors.textPrimary,
+            ),
+          ),
         ],
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(
+          Icon(
             Icons.lock_outline,
-            size: 48,
-            color: Colors.white54,
+            size: AppSpacing.iconSizeXl,
+            color: AppColors.textTertiary,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           Text(
             'Verify your identity to $action.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppTheme.textSecondary),
+            style: AppTypography.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
         ],
       ),
       actions: [
         TextButton(
           onPressed: onCancel,
-          child: const Text('CANCEL'),
-        ),
-        ElevatedButton.icon(
-          onPressed: onAuthenticate,
-          icon: const Icon(Icons.fingerprint),
-          label: const Text('VERIFY'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.primaryColor,
+          child: Text(
+            'CANCEL',
+            style: AppTypography.labelLarge.copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
+        ),
+        AppButton(
+          onPressed: onAuthenticate,
+          label: 'VERIFY',
+          leadingIcon: Icons.fingerprint,
         ),
       ],
     );
@@ -388,7 +407,7 @@ class _SecureCopyIndicatorState extends State<SecureCopyIndicator>
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: AppDurations.shimmerCycle),
       vsync: this,
     );
     _scaleAnimation = Tween<double>(begin: 0.5, end: 1.2).animate(
@@ -422,22 +441,27 @@ class _SecureCopyIndicatorState extends State<SecureCopyIndicator>
           child: Transform.scale(
             scale: _scaleAnimation.value,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.xxs,
+              ),
               decoration: BoxDecoration(
-                color: AppTheme.successColor,
-                borderRadius: BorderRadius.circular(16),
+                color: AppColors.success,
+                borderRadius: BorderRadius.circular(AppRadius.lg),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.check, size: 14, color: Colors.white),
-                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.check,
+                    size: AppSpacing.iconSizeSm,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(width: AppSpacing.xxs),
                   Text(
                     '${widget.label} copied',
-                    style: const TextStyle(
+                    style: AppTypography.labelMedium.copyWith(
                       color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
@@ -464,50 +488,51 @@ class SessionRevokedNotification extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.errorColor.withValues(alpha: 0.3)),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(AppSpacing.sm),
             decoration: BoxDecoration(
-              color: AppTheme.errorColor.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(8),
+              color: AppColors.error.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
-            child: Icon(Icons.device_unknown, color: AppTheme.errorColor),
+            child: Icon(Icons.device_unknown, color: AppColors.error),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Session Revoked',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                  style: AppTypography.titleSmall.copyWith(
+                    color: AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: AppSpacing.xxs),
                 Text(
                   'Session on $deviceName has been revoked.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.textSecondary,
+                  style: AppTypography.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
                   ),
                 ),
               ],
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.close, size: 18),
+            icon: Icon(
+              Icons.close,
+              size: AppSpacing.iconSizeSm,
+              color: AppColors.textSecondary,
+            ),
             onPressed: onDismiss,
-            color: AppTheme.textSecondary,
           ),
         ],
       ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sem_mobile/core/constants/app_constants.dart';
+import 'package:sem_mobile/core/theme/app_dimensions.dart';
 import 'package:sem_mobile/features/auth/presentation/pages/splash_page.dart';
 import 'package:sem_mobile/features/auth/presentation/pages/login_page.dart';
 import 'package:sem_mobile/features/dashboard/presentation/pages/dashboard_page.dart';
@@ -31,44 +32,79 @@ class AppRouter {
       GoRoute(
         path: RoutePaths.splash,
         name: RouteNames.splash,
-        builder: (context, state) => const SplashPage(),
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const SplashPage(),
+          transitionsBuilder: _fadeTransition,
+          transitionDuration: const Duration(milliseconds: AppDurations.slow),
+        ),
       ),
       GoRoute(
         path: RoutePaths.offline,
         name: 'offline',
-        builder: (context, state) => const OfflinePage(),
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const OfflinePage(),
+          transitionsBuilder: _fadeTransition,
+          transitionDuration: const Duration(milliseconds: AppDurations.fast),
+        ),
       ),
       GoRoute(
         path: RoutePaths.login,
         name: RouteNames.login,
-        builder: (context, state) => const LoginPage(),
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const LoginPage(),
+          transitionsBuilder: _fadeTransition,
+          transitionDuration: const Duration(milliseconds: AppDurations.slow),
+        ),
       ),
       GoRoute(
         path: RoutePaths.dashboard,
         name: RouteNames.dashboard,
-        builder: (context, state) => const DashboardPage(),
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const DashboardPage(),
+          transitionsBuilder: _fadeTransition,
+          transitionDuration: const Duration(milliseconds: AppDurations.pageTransition),
+        ),
       ),
       GoRoute(
         path: RoutePaths.environments,
         name: RouteNames.environments,
-        builder: (context, state) => const EnvironmentsPage(),
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const EnvironmentsPage(),
+          transitionsBuilder: _fadeTransition,
+          transitionDuration: const Duration(milliseconds: AppDurations.pageTransition),
+        ),
       ),
       GoRoute(
         path: '/secrets/:namespaceId/:environmentId',
         name: 'secrets_detail',
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           final namespaceId = state.pathParameters['namespaceId']!;
           final environmentId = state.pathParameters['environmentId']!;
-          return SecretsPage(
-            namespaceId: namespaceId,
-            environmentId: environmentId,
+          return CustomTransitionPage(
+            key: state.pageKey,
+            child: SecretsPage(
+              namespaceId: namespaceId,
+              environmentId: environmentId,
+            ),
+            transitionsBuilder: _slideTransition,
+            transitionDuration: const Duration(milliseconds: AppDurations.pageTransition),
           );
         },
       ),
       GoRoute(
         path: RoutePaths.settings,
         name: RouteNames.settings,
-        builder: (context, state) => const SettingsPage(),
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const SettingsPage(),
+          transitionsBuilder: _slideTransition,
+          transitionDuration: const Duration(milliseconds: AppDurations.pageTransition),
+        ),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(
@@ -77,6 +113,36 @@ class AppRouter {
       ),
     ),
   );
+
+  static Widget _fadeTransition(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    return FadeTransition(
+      opacity: CurveTween(curve: Curves.easeInOut).animate(animation),
+      child: child,
+    );
+  }
+
+  static Widget _slideTransition(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    return SlideTransition(
+      position: Tween<Offset>(
+        begin: const Offset(1.0, 0.0),
+        end: Offset.zero,
+      ).chain(CurveTween(curve: Curves.easeInOut)).animate(animation),
+      child: FadeTransition(
+        opacity: animation,
+        child: child,
+      ),
+    );
+  }
 }
 
 /// Navigation helper extension

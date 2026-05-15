@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_dimensions.dart';
-import '../../../../core/theme/app_typography.dart';
-import '../../../../core/di/injection.dart';
-import '../bloc/auth_bloc.dart';
-import '../../../../routes/app_router.dart';
+import 'package:sem_mobile/core/theme/app_colors.dart';
+import 'package:sem_mobile/core/theme/app_dimensions.dart';
+import 'package:sem_mobile/core/theme/app_typography.dart';
+import 'package:sem_mobile/core/di/injection.dart';
+import 'package:sem_mobile/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:sem_mobile/routes/app_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 /// Splash screen - initializes app on startup
@@ -25,7 +25,7 @@ class _SplashPageState extends State<SplashPage> {
 
   Future<void> _initialize() async {
     // Check auth status after animation completes
-    await Future.delayed(const Duration(milliseconds: 2500));
+    await Future.delayed(const Duration(milliseconds: AppDurations.slower));
 
     if (!mounted) return;
 
@@ -58,7 +58,7 @@ class _SplashPageState extends State<SplashPage> {
                   boxShadow: [
                     BoxShadow(
                       color: AppColors.accent.withValues(alpha: 0.3),
-                      blurRadius: 30,
+                      blurRadius: AppShadows.xlBlur,
                       spreadRadius: 5,
                     ),
                   ],
@@ -74,7 +74,7 @@ class _SplashPageState extends State<SplashPage> {
                         color: AppColors.accent.withValues(alpha: 0.1),
                         child: Icon(
                           Icons.shield_outlined,
-                          size: 50,
+                          size: AppSpacing.iconSizeXl,
                           color: AppColors.accent,
                         ),
                       );
@@ -83,16 +83,16 @@ class _SplashPageState extends State<SplashPage> {
                 ),
               )
                   .animate()
-                  .fadeIn(duration: const Duration(milliseconds: 800))
+                  .fadeIn(duration: const Duration(milliseconds: AppDurations.slower))
                   .scale(
                     begin: const Offset(0.6, 0.6),
                     end: const Offset(1, 1),
-                    duration: const Duration(milliseconds: 800),
+                    duration: const Duration(milliseconds: AppDurations.slower),
                     curve: Curves.elasticOut,
                   )
                   .then()
                   .shimmer(
-                    duration: const Duration(milliseconds: 1200),
+                    duration: const Duration(milliseconds: AppDurations.shimmerCycle),
                     color: AppColors.accentLight.withValues(alpha: 0.3),
                   ),
               const SizedBox(height: AppSpacing.xl),
@@ -106,14 +106,14 @@ class _SplashPageState extends State<SplashPage> {
               )
                   .animate()
                   .fadeIn(
-                    delay: const Duration(milliseconds: 500),
-                    duration: const Duration(milliseconds: 600),
+                    delay: const Duration(milliseconds: AppDurations.fast),
+                    duration: const Duration(milliseconds: AppDurations.normal),
                   )
                   .slideY(
                     begin: 0.3,
                     end: 0,
-                    delay: const Duration(milliseconds: 500),
-                    duration: const Duration(milliseconds: 600),
+                    delay: const Duration(milliseconds: AppDurations.fast),
+                    duration: const Duration(milliseconds: AppDurations.normal),
                     curve: Curves.easeOut,
                   ),
               const SizedBox(height: AppSpacing.xxs),
@@ -129,20 +129,20 @@ class _SplashPageState extends State<SplashPage> {
                   )
                       .animate()
                       .fadeIn(
-                        delay: const Duration(milliseconds: 700),
-                        duration: const Duration(milliseconds: 600),
+                        delay: const Duration(milliseconds: AppDurations.slow),
+                        duration: const Duration(milliseconds: AppDurations.normal),
                       )
                       .scale(
                         begin: const Offset(0.8, 0.8),
                         end: const Offset(1, 1),
-                        delay: const Duration(milliseconds: 700),
-                        duration: const Duration(milliseconds: 600),
+                        delay: const Duration(milliseconds: AppDurations.slow),
+                        duration: const Duration(milliseconds: AppDurations.normal),
                         curve: Curves.easeOut,
                       ),
                   const SizedBox(width: AppSpacing.xs),
                   Container(
-                    width: 8,
-                    height: 32,
+                    width: AppSpacing.xs,
+                    height: AppSpacing.xxl,
                     decoration: BoxDecoration(
                       color: AppColors.accent,
                       borderRadius: BorderRadius.circular(AppRadius.xs),
@@ -150,16 +150,16 @@ class _SplashPageState extends State<SplashPage> {
                   )
                       .animate(onPlay: (controller) => controller.repeat())
                       .fadeIn(
-                        delay: const Duration(milliseconds: 1000),
-                        duration: const Duration(milliseconds: 300),
+                        delay: const Duration(milliseconds: AppDurations.slower),
+                        duration: const Duration(milliseconds: AppDurations.fast),
                       )
                       .then()
                       .fadeOut(
-                        duration: const Duration(milliseconds: 300),
+                        duration: const Duration(milliseconds: AppDurations.fast),
                       )
                       .then()
                       .fadeIn(
-                        duration: const Duration(milliseconds: 300),
+                        duration: const Duration(milliseconds: AppDurations.fast),
                       ),
                 ],
               ),
@@ -169,8 +169,8 @@ class _SplashPageState extends State<SplashPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   SizedBox(
-                    width: 20,
-                    height: 20,
+                    width: AppSpacing.iconSizeSm,
+                    height: AppSpacing.iconSizeSm,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       valueColor: AlwaysStoppedAnimation<Color>(AppColors.accent),
@@ -187,8 +187,8 @@ class _SplashPageState extends State<SplashPage> {
               )
                   .animate()
                   .fadeIn(
-                    delay: const Duration(milliseconds: 1000),
-                    duration: const Duration(milliseconds: 400),
+                    delay: const Duration(milliseconds: AppDurations.slower),
+                    duration: const Duration(milliseconds: AppDurations.normal),
                   ),
             ],
           ),
