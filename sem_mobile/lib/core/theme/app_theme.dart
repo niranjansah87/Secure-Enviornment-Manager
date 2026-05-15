@@ -8,6 +8,19 @@ import 'app_dimensions.dart';
 class AppTheme {
   AppTheme._();
 
+  // Convenience getters for colors used throughout the app
+  static Color get backgroundColor => AppColors.background;
+  static Color get surfaceColor => AppColors.surface;
+  static Color get cardColor => AppColors.surface;
+  static Color get primaryColor => AppColors.accent;
+  static Color get errorColor => AppColors.error;
+  static Color get successColor => AppColors.success;
+  static Color get warningColor => AppColors.warning;
+  static Color get textPrimary => AppColors.textPrimary;
+  static Color get textSecondary => AppColors.textSecondary;
+  static Color get dividerColor => AppColors.divider;
+  static Color get borderColor => AppColors.border;
+
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,

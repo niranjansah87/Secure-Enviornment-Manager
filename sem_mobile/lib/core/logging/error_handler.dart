@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'dart:isolate';
 import 'package:flutter/foundation.dart';
 import 'package:sem_mobile/core/logging/app_logger.dart';
-import 'package:sem_mobile/core/security/lifecycle_security_manager.dart';
 
 /// Global error handler for the application
 class GlobalErrorHandler {
@@ -17,7 +15,6 @@ class GlobalErrorHandler {
   void initialize() {
     // Set up Flutter error handling
     FlutterError.onError = _handleFlutterError;
-    Isolate.current.addErrorListener(_handleIsolateError);
 
     _logger.info('Global error handlers initialized');
   }
@@ -39,12 +36,6 @@ class GlobalErrorHandler {
 
     // In production, would send to crash reporting service
     _reportError(details);
-  }
-
-  /// Handle isolate errors
-  void _handleIsolateError(dynamic error) {
-    _logger.error('Isolate error: $error');
-    _reportError(error);
   }
 
   /// Report error to crash reporting service
