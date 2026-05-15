@@ -25,7 +25,7 @@ class AppErrorWidget extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
+              padding: const EdgeInsets.all(AppSpacing.lg),
               decoration: BoxDecoration(
                 color: AppColors.error.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
@@ -53,10 +53,21 @@ class AppErrorWidget extends StatelessWidget {
             ),
             if (code != null) ...[
               const SizedBox(height: AppSpacing.xxs),
-              Text(
-                'Error code: $code',
-                style: AppTypography.codeMedium.copyWith(
-                  color: AppColors.textTertiary,
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: AppSpacing.xxs,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(AppRadius.xs),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Text(
+                  'Error code: $code',
+                  style: AppTypography.codeMedium.copyWith(
+                    color: AppColors.textTertiary,
+                  ),
                 ),
               ),
             ],
@@ -69,6 +80,13 @@ class AppErrorWidget extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.textPrimary,
                   side: const BorderSide(color: AppColors.border),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.button),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                    vertical: AppSpacing.sm,
+                  ),
                 ),
               ),
             ],

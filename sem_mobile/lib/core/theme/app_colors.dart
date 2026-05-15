@@ -29,21 +29,25 @@ abstract final class AppColors {
   static const Color infoLight = Color(0xFF22D3EE);
   static const Color infoDark = Color(0xFF0891B2);
 
-  // Neutrals
-  static const Color background = Color(0xFF0F172A);
-  static const Color surface = Color(0xFF1E293B);
-  static const Color surfaceLight = Color(0xFF334155);
+  // Neutrals - Refined for enterprise polish
+  static const Color background = Color(0xFF0A0F1C);
+  static const Color backgroundSecondary = Color(0xFF0D1321);
+  static const Color surface = Color(0xFF111827);
+  static const Color surfaceLight = Color(0xFF1F2937);
   static const Color surfaceElevated = Color(0xFF1E293B);
+  static const Color surfaceHover = Color(0xFF374151);
 
-  static const Color border = Color(0xFF334155);
-  static const Color borderLight = Color(0xFF475569);
-  static const Color divider = Color(0xFF1E293B);
+  static const Color border = Color(0xFF2D3748);
+  static const Color borderLight = Color(0xFF4A5568);
+  static const Color borderFocus = Color(0xFF3B82F6);
+  static const Color divider = Color(0xFF1F2937);
 
-  // Text
-  static const Color textPrimary = Color(0xFFF8FAFC);
-  static const Color textSecondary = Color(0xFF94A3B8);
-  static const Color textTertiary = Color(0xFF64748B);
-  static const Color textDisabled = Color(0xFF475569);
+  // Text - Clear hierarchy
+  static const Color textPrimary = Color(0xFFF9FAFB);
+  static const Color textSecondary = Color(0xFF9CA3AF);
+  static const Color textTertiary = Color(0xFF6B7280);
+  static const Color textDisabled = Color(0xFF4B5563);
+  static const Color textInverse = Color(0xFF0A0F1C);
 
   // Status-specific for secrets management
   static const Color secret = Color(0xFF8B5CF6);
@@ -52,8 +56,14 @@ abstract final class AppColors {
   static const Color environmentLight = Color(0xFF2DD4BF);
 
   // Overlay
-  static const Color overlay = Color(0x80000000);
+  static const Color overlay = Color(0xCC000000);
+  static const Color overlayLight = Color(0x80000000);
   static const Color scrim = Color(0x40000000);
+
+  // Interactive states
+  static const Color pressed = Color(0x0DFFFFFF);
+  static const Color focused = Color(0x1AFFFFFF);
+  static const Color hovered = Color(0x0FFFFFFF);
 }
 
 /// Light theme colors

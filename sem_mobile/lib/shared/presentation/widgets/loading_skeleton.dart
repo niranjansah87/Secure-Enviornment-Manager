@@ -3,7 +3,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:sem_mobile/core/theme/app_colors.dart';
 import 'package:sem_mobile/core/theme/app_dimensions.dart';
 
-/// Loading skeleton widget
+/// Loading skeleton widget with shimmer effect
 class LoadingSkeleton extends StatelessWidget {
   final double height;
   final double width;
@@ -19,13 +19,13 @@ class LoadingSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Shimmer.fromColors(
-      baseColor: AppColors.surfaceLight,
-      highlightColor: AppColors.surface,
+      baseColor: AppColors.surface,
+      highlightColor: AppColors.surfaceLight,
       child: Container(
         height: height,
         width: width,
         decoration: BoxDecoration(
-          color: AppColors.surfaceLight,
+          color: AppColors.surface,
           borderRadius: BorderRadius.circular(borderRadius),
         ),
       ),
@@ -37,11 +37,13 @@ class LoadingSkeleton extends StatelessWidget {
 class SkeletonList extends StatelessWidget {
   final int itemCount;
   final double itemHeight;
+  final double borderRadius;
 
   const SkeletonList({
     super.key,
     this.itemCount = 6,
     this.itemHeight = 72,
+    this.borderRadius = AppRadius.md,
   });
 
   @override
@@ -51,7 +53,10 @@ class SkeletonList extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       itemCount: itemCount,
       separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-      itemBuilder: (_, __) => LoadingSkeleton(height: itemHeight),
+      itemBuilder: (_, __) => LoadingSkeleton(
+        height: itemHeight,
+        borderRadius: borderRadius,
+      ),
     );
   }
 }
@@ -60,11 +65,13 @@ class SkeletonList extends StatelessWidget {
 class SkeletonBox extends StatelessWidget {
   final double width;
   final double height;
+  final double borderRadius;
 
   const SkeletonBox({
     super.key,
     required this.width,
     required this.height,
+    this.borderRadius = AppRadius.xs,
   });
 
   @override
@@ -72,7 +79,7 @@ class SkeletonBox extends StatelessWidget {
     return LoadingSkeleton(
       width: width,
       height: height,
-      borderRadius: 4,
+      borderRadius: borderRadius,
     );
   }
 }
