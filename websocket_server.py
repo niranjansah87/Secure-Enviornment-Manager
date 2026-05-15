@@ -96,9 +96,14 @@ def _register_handlers(sio):
 
     @sio.on('subscribe')
     def handle_subscribe(data):
-        """Subscribe to specific namespace:environment room."""
-        namespace = data.get('namespace', request.environ.get('namespace', 'global'))
-        environment = data.get('environment', request.environ.get('environment', 'main'))
+        """Subscribe to specific namespace:environment room.
+
+        Accepts both parameter naming conventions:
+        - namespace/environment (web standard)
+        - namespace_id/environment_id (Flutter convention)
+        """
+        namespace = data.get('namespace') or data.get('namespace_id', request.environ.get('namespace', 'global'))
+        environment = data.get('environment') or data.get('environment_id', request.environ.get('environment', 'main'))
 
         room_id = f"{namespace}:{environment}"
         join_room(room_id)
