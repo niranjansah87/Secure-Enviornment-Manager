@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:sem_mobile/core/di/injection.dart';
-import 'package:sem_mobile/core/theme/app_theme.dart';
+import 'package:sem_mobile/core/theme/app_colors.dart';
+import 'package:sem_mobile/core/theme/app_dimensions.dart';
+import 'package:sem_mobile/core/theme/app_typography.dart';
 import 'package:sem_mobile/features/audit/domain/entities/audit_log.dart';
 import 'package:sem_mobile/features/audit/domain/repositories/audit_repository.dart';
 import 'package:sem_mobile/features/audit/presentation/bloc/audit_bloc.dart';
 import 'package:sem_mobile/features/audit/presentation/bloc/audit_event.dart';
 import 'package:sem_mobile/features/audit/presentation/bloc/audit_state.dart';
-import 'package:sem_mobile/shared/presentation/widgets/app_loader.dart';
+import 'package:sem_mobile/shared/presentation/widgets/app_card.dart';
+import 'package:sem_mobile/shared/presentation/widgets/app_button.dart';
+import 'package:sem_mobile/shared/presentation/widgets/empty_state.dart';
 import 'package:sem_mobile/shared/presentation/widgets/loading_skeleton.dart';
 
 class AuditLogsPage extends StatelessWidget {
@@ -62,17 +66,20 @@ class _AuditLogsPageContentState extends State<_AuditLogsPageContent> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Audit Logs'),
-        backgroundColor: AppTheme.surfaceColor,
+        title: Text(
+          'Audit Logs',
+          style: AppTypography.titleLarge.copyWith(color: AppColors.textPrimary),
+        ),
+        backgroundColor: AppColors.background,
         actions: [
           IconButton(
-            icon: const Icon(Icons.filter_list),
+            icon: Icon(Icons.filter_list, color: AppColors.textSecondary, size: AppSpacing.iconSize),
             onPressed: () => _showFilterSheet(context),
           ),
           IconButton(
-            icon: const Icon(Icons.download),
+            icon: Icon(Icons.download, color: AppColors.textSecondary, size: AppSpacing.iconSize),
             onPressed: () => _showExportDialog(context),
           ),
         ],
@@ -104,7 +111,7 @@ class _AuditLogsPageContentState extends State<_AuditLogsPageContent> {
                     controller: _scrollController,
                     slivers: [
                       SliverPadding(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(AppSpacing.md),
                         sliver: SliverList(
                           delegate: SliverChildBuilderDelegate(
                             (context, index) {
@@ -125,23 +132,23 @@ class _AuditLogsPageContentState extends State<_AuditLogsPageContent> {
                       if (state.status == AuditStatus.loading)
                         const SliverToBoxAdapter(
                           child: Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Center(child: AppLoader(size: 24)),
+                            padding: EdgeInsets.all(AppSpacing.md),
+                            child: Center(child: CircularProgressIndicator()),
                           ),
                         ),
                       if (state.hasReachedMax)
                         SliverToBoxAdapter(
                           child: Padding(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(AppSpacing.md),
                             child: Center(
                               child: Text(
                                 'No more logs',
-                                style: TextStyle(color: AppTheme.textSecondary),
+                                style: AppTypography.bodySmall.copyWith(color: AppColors.textTertiary),
                               ),
                             ),
                           ),
                         ),
-                      const SliverPadding(padding: EdgeInsets.only(bottom: 32)),
+                      const SliverPadding(padding: EdgeInsets.only(bottom: AppSpacing.xxl)),
                     ],
                   ),
                 );
@@ -157,9 +164,9 @@ class _AuditLogsPageContentState extends State<_AuditLogsPageContent> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.surfaceColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
       ),
       builder: (sheetContext) => BlocProvider.value(
         value: context.read<AuditBloc>(),
@@ -169,30 +176,41 @@ class _AuditLogsPageContentState extends State<_AuditLogsPageContent> {
   }
 
   void _showExportDialog(BuildContext context) {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppTheme.surfaceColor,
-        title: const Text('Export Audit Logs'),
-        content: Column(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
+      ),
+      builder: (sheetContext) => BlocProvider.value(
+        value: context.read<AuditBloc>(),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Text(
+                'Export Audit Logs',
+                style: AppTypography.titleMedium.copyWith(color: AppColors.textPrimary),
+              ),
+            ),
             ListTile(
-              leading: const Icon(Icons.description),
-              title: const Text('CSV'),
+              leading: Icon(Icons.description, color: AppColors.textSecondary),
+              title: Text('CSV', style: AppTypography.bodyMedium.copyWith(color: AppColors.textPrimary)),
               onTap: () {
-                Navigator.pop(dialogContext);
+                Navigator.pop(sheetContext);
                 context.read<AuditBloc>().add(const AuditExportRequested(format: 'csv'));
               },
             ),
             ListTile(
-              leading: const Icon(Icons.code),
-              title: const Text('JSON'),
+              leading: Icon(Icons.code, color: AppColors.textSecondary),
+              title: Text('JSON', style: AppTypography.bodyMedium.copyWith(color: AppColors.textPrimary)),
               onTap: () {
-                Navigator.pop(dialogContext);
+                Navigator.pop(sheetContext);
                 context.read<AuditBloc>().add(const AuditExportRequested(format: 'json'));
               },
             ),
+            SizedBox(height: MediaQuery.of(sheetContext).padding.bottom + AppSpacing.md),
           ],
         ),
       ),
@@ -203,9 +221,9 @@ class _AuditLogsPageContentState extends State<_AuditLogsPageContent> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.surfaceColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.sheet)),
       ),
       builder: (sheetContext) => _LogDetailsSheet(log: log),
     );
@@ -220,16 +238,17 @@ class _SearchBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      color: AppTheme.surfaceColor,
+      padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.md, AppSpacing.sm),
+      color: AppColors.background,
       child: TextField(
         controller: controller,
         decoration: InputDecoration(
           hintText: 'Search audit logs...',
-          prefixIcon: const Icon(Icons.search),
+          hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.textTertiary),
+          prefixIcon: Icon(Icons.search, color: AppColors.textTertiary, size: AppSpacing.iconSizeSm),
           suffixIcon: controller.text.isNotEmpty
               ? IconButton(
-                  icon: const Icon(Icons.clear),
+                  icon: Icon(Icons.clear, color: AppColors.textTertiary, size: AppSpacing.iconSizeSm),
                   onPressed: () {
                     controller.clear();
                     context.read<AuditBloc>().add(const AuditSearchRequested(''));
@@ -237,12 +256,12 @@ class _SearchBar extends StatelessWidget {
                 )
               : null,
           filled: true,
-          fillColor: AppTheme.backgroundColor,
+          fillColor: AppColors.surface,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppRadius.md),
             borderSide: BorderSide.none,
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
         ),
         onSubmitted: (value) {
           context.read<AuditBloc>().add(AuditSearchRequested(value));
@@ -272,7 +291,7 @@ class _AuditTimelineItem extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _TimelineIndicator(log: log, isFirst: isFirst, isLast: isLast),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: _AuditEventCard(log: log, onTap: onTap),
           ),
@@ -331,9 +350,9 @@ class _TimelineIndicator extends StatelessWidget {
 
   Color _getSeverityColor() {
     return switch (log.severity) {
-      AuditSeverity.info => AppTheme.primaryColor,
-      AuditSeverity.warning => AppTheme.warningColor,
-      AuditSeverity.error => AppTheme.errorColor,
+      AuditSeverity.info => AppColors.accent,
+      AuditSeverity.warning => AppColors.warning,
+      AuditSeverity.error => AppColors.error,
       AuditSeverity.critical => Colors.red.shade900,
     };
   }
@@ -352,34 +371,27 @@ class _AuditEventCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        decoration: BoxDecoration(
-          color: AppTheme.cardColor,
-          borderRadius: BorderRadius.circular(12),
-          border: log.isSuspicious
-              ? Border.all(color: AppTheme.warningColor.withValues(alpha: 0.5))
-              : null,
-        ),
+      child: AppCard(
+        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+        isHighlighted: log.isSuspicious,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (log.isSuspicious)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xxs),
                 decoration: BoxDecoration(
-                  color: AppTheme.warningColor.withValues(alpha: 0.1),
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                  color: AppColors.warning.withValues(alpha: 0.1),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.card)),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.warning, size: 14, color: AppTheme.warningColor),
-                    const SizedBox(width: 6),
+                    Icon(Icons.warning, size: 14, color: AppColors.warning),
+                    const SizedBox(width: AppSpacing.xxs),
                     Text(
                       'Suspicious Activity Detected',
-                      style: TextStyle(
-                        color: AppTheme.warningColor,
-                        fontSize: 11,
+                      style: AppTypography.labelSmall.copyWith(
+                        color: AppColors.warning,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -387,31 +399,29 @@ class _AuditEventCard extends StatelessWidget {
                 ),
               ),
             Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(AppSpacing.md),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
                       _ActionIcon(action: log.action),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               log.actionDisplayName,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
+                              style: AppTypography.titleSmall.copyWith(
+                                color: AppColors.textPrimary,
                               ),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               log.relativeTime,
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: AppTheme.textSecondary,
+                              style: AppTypography.bodySmall.copyWith(
+                                color: AppColors.textSecondary,
                               ),
                             ),
                           ],
@@ -421,38 +431,38 @@ class _AuditEventCard extends StatelessWidget {
                     ],
                   ),
                   if (log.actorName != null) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.sm),
                     Row(
                       children: [
-                        Icon(Icons.person_outline, size: 12, color: AppTheme.textSecondary),
+                        Icon(Icons.person_outline, size: 12, color: AppColors.textTertiary),
                         const SizedBox(width: 4),
                         Text(
                           log.actorName!,
-                          style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                          style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
                         ),
                         if (log.actorEmail != null) ...[
                           Text(
                             ' (${log.actorEmail})',
-                            style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                            style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
                           ),
                         ],
                       ],
                     ),
                   ],
                   if (log.resourceName != null) ...[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSpacing.xxs),
                     Row(
                       children: [
-                        Icon(Icons.folder_outlined, size: 12, color: AppTheme.textSecondary),
+                        Icon(Icons.folder_outlined, size: 12, color: AppColors.textTertiary),
                         const SizedBox(width: 4),
                         Text(
                           '${log.resourceType ?? 'Resource'}: ${log.resourceName}',
-                          style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                          style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
                         ),
                       ],
                     ),
                   ],
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   Row(
                     children: [
                       _InfoChip(
@@ -460,7 +470,7 @@ class _AuditEventCard extends StatelessWidget {
                         label: log.timestamp.toString().substring(0, 16),
                       ),
                       if (log.ipAddress != null) ...[
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpacing.xs),
                         _InfoChip(icon: Icons.location_on, label: log.ipAddress!),
                       ],
                     ],
@@ -489,52 +499,52 @@ class _ActionIcon extends StatelessWidget {
       case AuditAction.login:
       case AuditAction.logout:
         icon = Icons.login;
-        color = AppTheme.primaryColor;
+        color = AppColors.accent;
         break;
       case AuditAction.loginFailed:
         icon = Icons.login;
-        color = AppTheme.errorColor;
+        color = AppColors.error;
         break;
       case AuditAction.secretCreated:
       case AuditAction.secretUpdated:
       case AuditAction.secretDeleted:
         icon = Icons.lock_outline;
-        color = AppTheme.primaryColor;
+        color = AppColors.accent;
         break;
       case AuditAction.secretViewed:
         icon = Icons.visibility;
-        color = AppTheme.primaryColor;
+        color = AppColors.accent;
         break;
       case AuditAction.apiKeyCreated:
       case AuditAction.apiKeyRevoked:
         icon = Icons.key;
-        color = AppTheme.warningColor;
+        color = AppColors.warning;
         break;
       case AuditAction.sessionCreated:
       case AuditAction.sessionRevoked:
         icon = Icons.devices;
-        color = AppTheme.primaryColor;
+        color = AppColors.accent;
         break;
       case AuditAction.deviceAdded:
       case AuditAction.deviceRemoved:
         icon = Icons.phone_android;
-        color = AppTheme.primaryColor;
+        color = AppColors.accent;
         break;
       case AuditAction.securityAlert:
       case AuditAction.suspiciousActivity:
         icon = Icons.warning;
-        color = AppTheme.errorColor;
+        color = AppColors.error;
         break;
       default:
         icon = Icons.event_note;
-        color = AppTheme.textSecondary;
+        color = AppColors.textSecondary;
     }
 
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
       child: Icon(icon, size: 18, color: color),
     );
@@ -553,15 +563,15 @@ class _SeverityBadge extends StatelessWidget {
 
     switch (severity) {
       case AuditSeverity.info:
-        color = AppTheme.primaryColor;
+        color = AppColors.accent;
         label = 'INFO';
         break;
       case AuditSeverity.warning:
-        color = AppTheme.warningColor;
+        color = AppColors.warning;
         label = 'WARN';
         break;
       case AuditSeverity.error:
-        color = AppTheme.errorColor;
+        color = AppColors.error;
         label = 'ERROR';
         break;
       case AuditSeverity.critical:
@@ -574,14 +584,14 @@ class _SeverityBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(AppRadius.xs),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Text(
         label,
-        style: TextStyle(
-          fontSize: 9,
-          fontWeight: FontWeight.w700,
+        style: AppTypography.labelSmall.copyWith(
           color: color,
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
@@ -597,19 +607,19 @@ class _InfoChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs, vertical: 2),
       decoration: BoxDecoration(
-        color: AppTheme.backgroundColor,
-        borderRadius: BorderRadius.circular(4),
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(AppRadius.xs),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 10, color: AppTheme.textSecondary),
+          Icon(icon, size: 10, color: AppColors.textTertiary),
           const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+            style: AppTypography.labelSmall.copyWith(color: AppColors.textTertiary),
           ),
         ],
       ),
@@ -647,7 +657,7 @@ class _FilterSheetState extends State<_FilterSheet> {
       expand: false,
       builder: (context, scrollController) => SingleChildScrollView(
         controller: scrollController,
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -656,30 +666,29 @@ class _FilterSheetState extends State<_FilterSheet> {
               children: [
                 Text(
                   'Filter Logs',
-                  style: Theme.of(context).textTheme.headlineSmall,
+                  style: AppTypography.titleLarge.copyWith(color: AppColors.textPrimary),
                 ),
                 TextButton(
                   onPressed: _clearFilters,
-                  child: const Text('Clear All'),
+                  child: Text('Clear All', style: AppTypography.labelLarge.copyWith(color: AppColors.accent)),
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.lg),
             Text(
               'Action Type',
-              style: TextStyle(
-                color: AppTheme.textSecondary,
-                fontWeight: FontWeight.w600,
-              ),
+              style: AppTypography.labelMedium.copyWith(color: AppColors.textSecondary),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.xs),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
               children: AuditAction.values.take(12).map((action) {
                 return FilterChip(
-                  label: Text(_getActionLabel(action)),
+                  label: Text(_getActionLabel(action), style: AppTypography.labelSmall.copyWith(color: AppColors.textPrimary)),
                   selected: _selectedAction == action,
+                  selectedColor: AppColors.accent.withValues(alpha: 0.2),
+                  checkmarkColor: AppColors.accent,
                   onSelected: (selected) {
                     setState(() {
                       _selectedAction = selected ? action : null;
@@ -688,22 +697,21 @@ class _FilterSheetState extends State<_FilterSheet> {
                 );
               }).toList(),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.lg),
             Text(
               'Severity',
-              style: TextStyle(
-                color: AppTheme.textSecondary,
-                fontWeight: FontWeight.w600,
-              ),
+              style: AppTypography.labelMedium.copyWith(color: AppColors.textSecondary),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.xs),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
               children: AuditSeverity.values.map((severity) {
                 return FilterChip(
-                  label: Text(_getSeverityLabel(severity)),
+                  label: Text(_getSeverityLabel(severity), style: AppTypography.labelSmall.copyWith(color: AppColors.textPrimary)),
                   selected: _selectedSeverity == severity,
+                  selectedColor: _getSeverityChipColor(severity).withValues(alpha: 0.2),
+                  checkmarkColor: _getSeverityChipColor(severity),
                   onSelected: (selected) {
                     setState(() {
                       _selectedSeverity = selected ? severity : null;
@@ -712,22 +720,29 @@ class _FilterSheetState extends State<_FilterSheet> {
                 );
               }).toList(),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: AppSpacing.xl),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
+              child: AppButton(
+                label: 'Apply Filters',
                 onPressed: _applyFilters,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: const Text('Apply Filters'),
+                isExpanded: true,
               ),
             ),
+            SizedBox(height: MediaQuery.of(context).padding.bottom + AppSpacing.md),
           ],
         ),
       ),
     );
+  }
+
+  Color _getSeverityChipColor(AuditSeverity severity) {
+    return switch (severity) {
+      AuditSeverity.info => AppColors.accent,
+      AuditSeverity.warning => AppColors.warning,
+      AuditSeverity.error => AppColors.error,
+      AuditSeverity.critical => Colors.red.shade900,
+    };
   }
 
   String _getActionLabel(AuditAction action) {
@@ -791,7 +806,7 @@ class _LogDetailsSheet extends StatelessWidget {
       expand: false,
       builder: (context, scrollController) => SingleChildScrollView(
         controller: scrollController,
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -800,27 +815,27 @@ class _LogDetailsSheet extends StatelessWidget {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppTheme.dividerColor,
+                  color: AppColors.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.lg),
             Row(
               children: [
                 _ActionIcon(action: log.action),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         log.actionDisplayName,
-                        style: Theme.of(context).textTheme.headlineSmall,
+                        style: AppTypography.titleMedium.copyWith(color: AppColors.textPrimary),
                       ),
                       Text(
                         log.relativeTime,
-                        style: TextStyle(color: AppTheme.textSecondary),
+                        style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
                       ),
                     ],
                   ),
@@ -828,7 +843,7 @@ class _LogDetailsSheet extends StatelessWidget {
                 _SeverityBadge(severity: log.severity),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.lg),
             _DetailSection(
               title: 'Event Details',
               items: [
@@ -852,7 +867,7 @@ class _LogDetailsSheet extends StatelessWidget {
               ],
             ),
             if (log.metadata != null && log.metadata!.isNotEmpty) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               _DetailSection(
                 title: 'Metadata',
                 items: log.metadata!.entries
@@ -860,6 +875,7 @@ class _LogDetailsSheet extends StatelessWidget {
                     .toList(),
               ),
             ],
+            SizedBox(height: MediaQuery.of(context).padding.bottom + AppSpacing.lg),
           ],
         ),
       ),
@@ -882,23 +898,21 @@ class _DetailSection extends StatelessWidget {
       children: [
         Text(
           title,
-          style: TextStyle(
-            color: AppTheme.textSecondary,
-            fontWeight: FontWeight.w600,
-            fontSize: 12,
+          style: AppTypography.labelMedium.copyWith(
+            color: AppColors.textSecondary,
             letterSpacing: 1,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.xs),
         Container(
           decoration: BoxDecoration(
-            color: AppTheme.backgroundColor,
-            borderRadius: BorderRadius.circular(8),
+            color: AppColors.background,
+            borderRadius: BorderRadius.circular(AppRadius.sm),
           ),
           child: Column(
             children: items
                 .map((item) => Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -906,16 +920,13 @@ class _DetailSection extends StatelessWidget {
                             width: 100,
                             child: Text(
                               item.label,
-                              style: TextStyle(
-                                color: AppTheme.textSecondary,
-                                fontSize: 12,
-                              ),
+                              style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
                             ),
                           ),
                           Expanded(
                             child: Text(
                               item.value,
-                              style: const TextStyle(fontSize: 12),
+                              style: AppTypography.bodySmall.copyWith(color: AppColors.textPrimary),
                             ),
                           ),
                         ],
@@ -943,38 +954,11 @@ class _EmptyAuditView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.history,
-                size: 64,
-                color: AppTheme.primaryColor,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'No Audit Logs',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Activity will appear here as actions are performed.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppTheme.textSecondary),
-            ),
-          ],
-        ),
-      ),
+    return EmptyState(
+      icon: Icons.history,
+      title: 'No Audit Logs',
+      description: 'Activity will appear here as actions are performed',
+      iconColor: AppColors.accent,
     );
   }
 }
@@ -985,7 +969,7 @@ class _AuditLogsSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.md),
       itemCount: 10,
       itemBuilder: (context, index) {
         return IntrinsicHeight(
@@ -1000,48 +984,43 @@ class _AuditLogsSkeleton extends StatelessWidget {
                       width: 12,
                       height: 12,
                       decoration: BoxDecoration(
-                        color: AppTheme.dividerColor,
+                        color: AppColors.surface,
                         shape: BoxShape.circle,
                       ),
                     ),
                     Expanded(
                       child: Container(
                         width: 2,
-                        color: AppTheme.dividerColor,
+                        color: AppColors.surface,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppTheme.cardColor,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Column(
+                child: AppCard(
+                  margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
                           SkeletonBox(width: 36, height: 36),
-                          SizedBox(width: 10),
+                          const SizedBox(width: AppSpacing.sm),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 SkeletonBox(width: 150, height: 14),
-                                SizedBox(height: 4),
+                                const SizedBox(height: 4),
                                 SkeletonBox(width: 80, height: 10),
                               ],
                             ),
                           ),
                         ],
                       ),
-                      SizedBox(height: 8),
+                      const SizedBox(height: AppSpacing.sm),
                       SkeletonBox(width: double.infinity, height: 10),
                     ],
                   ),

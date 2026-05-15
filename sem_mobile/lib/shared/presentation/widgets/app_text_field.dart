@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimensions.dart';
+import '../../../core/theme/app_typography.dart';
 
-/// Custom styled text field
-class AppTextField extends StatelessWidget {
+/// Custom styled text field with focus handling
+class AppTextField extends StatefulWidget {
   final TextEditingController? controller;
   final String? label;
   final String? hint;
@@ -19,6 +21,7 @@ class AppTextField extends StatelessWidget {
   final VoidCallback? onTap;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
+  final FocusNode? focusNode;
   final int maxLines;
   final int? maxLength;
 
@@ -39,9 +42,48 @@ class AppTextField extends StatelessWidget {
     this.onTap,
     this.onChanged,
     this.onSubmitted,
+    this.focusNode,
     this.maxLines = 1,
     this.maxLength,
   });
+
+  @override
+  State<AppTextField> createState() => _AppTextFieldState();
+}
+
+class _AppTextFieldState extends State<AppTextField> {
+  late bool _obscureText;
+  late FocusNode _focusNode;
+  bool _isFocused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _obscureText = widget.obscureText;
+    _focusNode = widget.focusNode ?? FocusNode();
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  @override
+  void dispose() {
+    if (widget.focusNode == null) {
+      _focusNode.dispose();
+    }
+    super.dispose();
+  }
+
+  void _onFocusChange() {
+    setState(() {
+      _isFocused = _focusNode.hasFocus;
+    });
+  }
+
+  void _toggleObscure() {
+    setState(() {
+      _obscureText = !_obscureText;
+    });
+    HapticFeedback.lightImpact();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,41 +91,48 @@ class AppTextField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (label != null) ...[
+        if (widget.label != null) ...[
           Text(
-            label!,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textSecondary,
+            widget.label!,
+            style: AppTypography.labelMedium.copyWith(
+              color: _isFocused ? AppColors.accent : AppColors.textSecondary,
             ),
           ),
-          const SizedBox(height: AppSpacing.xs),
+          const SizedBox(height: AppSpacing.xxs),
         ],
         TextField(
-          controller: controller,
-          obscureText: obscureText,
-          enabled: enabled,
-          readOnly: readOnly,
-          keyboardType: keyboardType,
-          textInputAction: textInputAction,
-          maxLines: obscureText ? 1 : maxLines,
-          maxLength: maxLength,
-          onTap: onTap,
-          onChanged: onChanged,
-          onSubmitted: onSubmitted,
-          style: const TextStyle(
-            fontSize: 16,
+          controller: widget.controller,
+          obscureText: _obscureText,
+          enabled: widget.enabled,
+          readOnly: widget.readOnly,
+          keyboardType: widget.keyboardType,
+          textInputAction: widget.textInputAction,
+          focusNode: _focusNode,
+          maxLines: widget.obscureText ? 1 : widget.maxLines,
+          maxLength: widget.maxLength,
+          onTap: widget.onTap,
+          onChanged: widget.onChanged,
+          onSubmitted: widget.onSubmitted,
+          style: AppTypography.bodyMedium.copyWith(
             color: AppColors.textPrimary,
           ),
           decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: const TextStyle(color: AppColors.textTertiary),
-            errorText: errorText,
-            prefixIcon: prefixIcon,
-            suffixIcon: suffixIcon,
+            hintText: widget.hint,
+            hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.textTertiary),
+            errorText: widget.errorText,
+            prefixIcon: widget.prefixIcon,
+            suffixIcon: widget.showVisibilityToggle
+                ? IconButton(
+                    icon: Icon(
+                      _obscureText ? Icons.visibility_off : Icons.visibility,
+                      color: AppColors.textTertiary,
+                      size: AppSpacing.iconSizeSm,
+                    ),
+                    onPressed: _toggleObscure,
+                  )
+                : widget.suffixIcon,
             filled: true,
-            fillColor: enabled
+            fillColor: widget.enabled
                 ? AppColors.surfaceLight.withValues(alpha: 0.5)
                 : AppColors.surfaceLight.withValues(alpha: 0.3),
             border: OutlineInputBorder(
@@ -96,7 +145,7 @@ class AppTextField extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppRadius.input),
-              borderSide: const BorderSide(color: AppColors.accent, width: 2),
+              borderSide: const BorderSide(color: AppColors.borderFocus, width: 2),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppRadius.input),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimensions.dart';
+import '../../../../core/theme/app_typography.dart';
 import '../../../../core/di/injection.dart';
 import '../bloc/auth_bloc.dart';
 import '../../../../routes/app_router.dart';
@@ -53,7 +54,7 @@ class _SplashPageState extends State<SplashPage> {
                 width: 100,
                 height: 100,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
                   boxShadow: [
                     BoxShadow(
                       color: AppColors.accent.withValues(alpha: 0.3),
@@ -63,7 +64,7 @@ class _SplashPageState extends State<SplashPage> {
                   ],
                 ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
                   child: Image.asset(
                     'assets/icons/logo.png',
                     fit: BoxFit.cover,
@@ -98,9 +99,7 @@ class _SplashPageState extends State<SplashPage> {
               // App name with typing effect
               Text(
                 'Secure Environment',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w600,
+                style: AppTypography.headlineMedium.copyWith(
                   color: AppColors.textPrimary,
                   letterSpacing: -0.5,
                 ),
@@ -117,15 +116,13 @@ class _SplashPageState extends State<SplashPage> {
                     duration: const Duration(milliseconds: 600),
                     curve: Curves.easeOut,
                   ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xxs),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     'Manager',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w700,
+                    style: AppTypography.headlineLarge.copyWith(
                       color: AppColors.accent,
                       letterSpacing: -1,
                     ),
@@ -142,13 +139,13 @@ class _SplashPageState extends State<SplashPage> {
                         duration: const Duration(milliseconds: 600),
                         curve: Curves.easeOut,
                       ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.xs),
                   Container(
                     width: 8,
                     height: 32,
                     decoration: BoxDecoration(
                       color: AppColors.accent,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(AppRadius.xs),
                     ),
                   )
                       .animate(onPlay: (controller) => controller.repeat())
@@ -179,11 +176,10 @@ class _SplashPageState extends State<SplashPage> {
                       valueColor: AlwaysStoppedAnimation<Color>(AppColors.accent),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpacing.sm),
                   Text(
                     'Loading...',
-                    style: TextStyle(
-                      fontSize: 14,
+                    style: AppTypography.bodyMedium.copyWith(
                       color: AppColors.textSecondary,
                     ),
                   ),

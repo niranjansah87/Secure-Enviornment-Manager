@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -23,15 +24,22 @@ class _LoginPageState extends State<LoginPage> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  final _usernameFocus = FocusNode();
+  final _passwordFocus = FocusNode();
 
   @override
   void dispose() {
     _usernameController.dispose();
     _passwordController.dispose();
+    _usernameFocus.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
   void _login() {
+    // Dismiss keyboard
+    FocusScope.of(context).unfocus();
+    HapticFeedback.lightImpact();
     getIt<AuthBloc>().add(AuthLoginRequested(
       username: _usernameController.text.trim(),
       password: _passwordController.text,
@@ -43,6 +51,7 @@ class _LoginPageState extends State<LoginPage> {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state.status == AuthStatus.authenticated) {
+          HapticFeedback.mediumImpact();
           context.goToDashboard();
         }
       },
@@ -85,7 +94,7 @@ class _LoginPageState extends State<LoginPage> {
           ),
           child: const Icon(
             Icons.shield_outlined,
-            size: 32,
+            size: AppSpacing.iconSizeLg,
             color: AppColors.accent,
           ),
         )
@@ -131,6 +140,8 @@ class _LoginPageState extends State<LoginPage> {
                 prefixIcon: const Icon(Icons.person_outline,
                     color: AppColors.textTertiary),
                 enabled: !isLoading,
+                textInputAction: TextInputAction.next,
+                onSubmitted: (_) => _passwordFocus.requestFocus(),
               ),
               const SizedBox(height: AppSpacing.md),
               AppTextField(
@@ -142,6 +153,9 @@ class _LoginPageState extends State<LoginPage> {
                 prefixIcon: const Icon(Icons.lock_outline,
                     color: AppColors.textTertiary),
                 enabled: !isLoading,
+                focusNode: _passwordFocus,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _login(),
               ),
               if (errorMessage != null) ...[
                 const SizedBox(height: AppSpacing.md),
@@ -150,6 +164,9 @@ class _LoginPageState extends State<LoginPage> {
                   decoration: BoxDecoration(
                     color: AppColors.error.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(AppRadius.sm),
+                    border: Border.all(
+                      color: AppColors.error.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -171,9 +188,10 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: AppSpacing.lg),
               AppButton(
                 label: 'Sign In',
-                onPressed: _login,
+                onPressed: isLoading ? null : _login,
                 isLoading: isLoading,
                 isExpanded: true,
+                leadingIcon: Icons.login,
               ),
             ],
           ),
@@ -189,20 +207,40 @@ class _LoginPageState extends State<LoginPage> {
 
         return Column(
           children: [
-            Text(
-              'or',
-              style: AppTypography.bodySmall.copyWith(
-                color: AppColors.textTertiary,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 40,
+                  height: 1,
+                  color: AppColors.border,
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  child: Text(
+                    'or',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                ),
+                Container(
+                  width: 40,
+                  height: 1,
+                  color: AppColors.border,
+                ),
+              ],
             ),
             const SizedBox(height: AppSpacing.md),
             AppButton(
               label: 'Sign in with Biometrics',
               onPressed: () {
+                HapticFeedback.lightImpact();
                 getIt<AuthBloc>().add(const AuthBiometricRequested());
               },
               variant: AppButtonVariant.outlined,
               isExpanded: true,
+              leadingIcon: Icons.fingerprint,
             ),
           ],
         ).animate().fadeIn(delay: const Duration(milliseconds: 600));
