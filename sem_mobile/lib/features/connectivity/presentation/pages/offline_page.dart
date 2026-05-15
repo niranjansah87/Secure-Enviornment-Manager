@@ -1,10 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sem_mobile/core/theme/app_colors.dart';
+import 'package:sem_mobile/core/theme/app_dimensions.dart';
+import 'package:sem_mobile/core/theme/app_typography.dart';
 import 'package:sem_mobile/core/utils/connectivity_service.dart';
+import 'package:sem_mobile/shared/presentation/widgets/app_button.dart';
 
 /// Offline page shown when network is unavailable
 class OfflinePage extends StatefulWidget {
@@ -44,6 +48,7 @@ class _OfflinePageState extends State<OfflinePage> {
   }
 
   Future<void> _handleRetry() async {
+    HapticFeedback.mediumImpact();
     setState(() => _isRetrying = true);
 
     // Check current connectivity status
@@ -62,7 +67,7 @@ class _OfflinePageState extends State<OfflinePage> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -76,7 +81,7 @@ class _OfflinePageState extends State<OfflinePage> {
                 ),
                 child: Icon(
                   Icons.cloud_off_rounded,
-                  size: 60,
+                  size: AppSpacing.iconSizeXl,
                   color: AppColors.warning,
                 ),
               )
@@ -88,13 +93,11 @@ class _OfflinePageState extends State<OfflinePage> {
                     duration: const Duration(milliseconds: 600),
                     curve: Curves.easeOut,
                   ),
-              const SizedBox(height: 32),
+              const SizedBox(height: AppSpacing.xxl),
               // Title
               Text(
                 'You\'re Offline',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
+                style: AppTypography.titleLarge.copyWith(
                   color: AppColors.textPrimary,
                 ),
               )
@@ -110,12 +113,11 @@ class _OfflinePageState extends State<OfflinePage> {
                     duration: const Duration(milliseconds: 600),
                     curve: Curves.easeOut,
                   ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.sm),
               Text(
                 'Please check your internet connection\nand try again.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
+                style: AppTypography.bodyMedium.copyWith(
                   color: AppColors.textSecondary,
                   height: 1.5,
                 ),
@@ -125,32 +127,16 @@ class _OfflinePageState extends State<OfflinePage> {
                     delay: const Duration(milliseconds: 400),
                     duration: const Duration(milliseconds: 600),
                   ),
-              const SizedBox(height: 48),
+              const SizedBox(height: AppSpacing.xxl),
               // Retry button
               SizedBox(
                 width: double.infinity,
-                height: 52,
-                child: ElevatedButton.icon(
+                height: AppSpacing.buttonHeightMd,
+                child: AppButton(
                   onPressed: _isRetrying ? null : _handleRetry,
-                  icon: _isRetrying
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        )
-                      : const Icon(Icons.refresh_rounded),
-                  label: Text(_isRetrying ? 'Checking...' : 'Retry'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
+                  label: _isRetrying ? 'Checking...' : 'Retry',
+                  leadingIcon: _isRetrying ? null : Icons.refresh_rounded,
+                  isLoading: _isRetrying,
                 ),
               )
                   .animate()
@@ -165,21 +151,20 @@ class _OfflinePageState extends State<OfflinePage> {
                     duration: const Duration(milliseconds: 400),
                     curve: Curves.easeOut,
                   ),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpacing.lg),
               // Info text
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
                     Icons.info_outline,
-                    size: 16,
+                    size: AppSpacing.iconSizeSm,
                     color: AppColors.textTertiary,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.xs),
                   Text(
                     'Your data is stored securely offline',
-                    style: TextStyle(
-                      fontSize: 13,
+                    style: AppTypography.bodySmall.copyWith(
                       color: AppColors.textTertiary,
                     ),
                   ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../../core/theme/app_colors.dart';
+import 'package:sem_mobile/core/theme/app_colors.dart';
+import 'package:sem_mobile/core/theme/app_dimensions.dart';
+import 'package:sem_mobile/core/theme/app_typography.dart';
 
 /// Loading indicator with animation
 class AppLoader extends StatelessWidget {
@@ -40,12 +42,11 @@ class AppLoader extends StatelessWidget {
                 duration: const Duration(milliseconds: 1000),
               ),
           if (message != null) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             Text(
               message!,
-              style: const TextStyle(
+              style: AppTypography.bodyMedium.copyWith(
                 color: AppColors.textSecondary,
-                fontSize: 14,
               ),
             ),
           ],
