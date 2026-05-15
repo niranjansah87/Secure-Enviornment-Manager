@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:sem_mobile/app.dart';
 import 'package:sem_mobile/core/di/injection.dart';
 import 'package:sem_mobile/core/theme/app_theme.dart';
-import 'package:sem_mobile/core/logging/app_logger.dart';
-import 'package:sem_mobile/core/storage/hive_service.dart';
 import 'package:sem_mobile/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:sem_mobile/routes/app_router.dart';
 
