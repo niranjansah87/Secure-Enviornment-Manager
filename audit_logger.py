@@ -30,6 +30,11 @@ class AuditLogger:
     def __init__(self, log_dir: str = "audit_logs"):
         self._service = AuditService(log_dir)
 
+    @property
+    def log_file(self):
+        """Expose log file path for backward compatibility."""
+        return self._service._file_logger.log_file
+
     def _get_timestamp(self) -> str:
         """Get current UTC timestamp in ISO format."""
         return self._service._get_timestamp()
