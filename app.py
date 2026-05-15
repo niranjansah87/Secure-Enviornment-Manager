@@ -110,11 +110,12 @@ except Exception as e:
 
 # --- Register Blueprints ---
 app.register_blueprint(api_bp)
-app.register_blueprint(auth_bp)
 app.register_blueprint(secret_bp)
 app.register_blueprint(export_bp)
 app.register_blueprint(redirect_bp)
+# JWT auth must be registered before generic auth so its routes take precedence
 app.register_blueprint(jwt_auth_bp)
+app.register_blueprint(auth_bp)
 
 # --- Helper Functions (delegated to modules) ---
 def _tz_now() -> datetime:
@@ -272,14 +273,16 @@ def handle_errors(err):
     return body, code
 
 # --- WebSocket Support (Production) ---
-try:
-    from websocket_server import init_websocket
-    init_websocket(app)
-    logger.info("WebSocket support enabled")
-except ImportError as e:
-    logger.warning(f"WebSocket support not available: {e}")
-except Exception as e:
-    logger.warning(f"WebSocket initialization failed: {e}")
+# Skip WebSocket init during testing to avoid eventlet conflicts with test client
+if not settings.debug and os.environ.get("TESTING") != "1":
+    try:
+        from websocket_server import init_websocket
+        init_websocket(app)
+        logger.info("WebSocket support enabled")
+    except ImportError as e:
+        logger.warning(f"WebSocket support not available: {e}")
+    except Exception as e:
+        logger.warning(f"WebSocket initialization failed: {e}")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8070, debug=settings.debug, use_reloader=True)

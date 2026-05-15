@@ -594,8 +594,27 @@ def extract_jwt_from_header() -> Optional[str]:
     if not auth.startswith("Bearer "):
         return None
     token_part = auth[7:].strip()
-    # For combined tokens, return just the access token part
-    return token_part.split()[0] if token_part else None
+    if " " in token_part:
+        return token_part.split()[0]
+    return token_part
+
+
+def extract_bearer_token(auth_header: str) -> Optional[str]:
+    """Extract JWT token from Authorization header string.
+
+    Supports formats:
+    - Bearer <token>
+    - Bearer <access_token> <refresh_token>  (space-separated for combined)
+
+    Args:
+        auth_header: The Authorization header value (not the full header, just the value)
+    """
+    if not auth_header.startswith("Bearer "):
+        return None
+    token_part = auth_header[7:].strip()
+    if " " in token_part:
+        return token_part.split()[0]
+    return token_part
 
 
 def extract_refresh_token_from_header() -> Optional[str]:
