@@ -17,7 +17,7 @@ class OfflinePage extends StatefulWidget {
 }
 
 class _OfflinePageState extends State<OfflinePage> {
-  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  StreamSubscription<bool>? _connectivitySubscription;
   bool _isRetrying = false;
 
   @override

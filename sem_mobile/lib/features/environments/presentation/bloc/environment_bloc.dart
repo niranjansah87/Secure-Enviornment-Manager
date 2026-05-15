@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:sem_mobile/core/errors/failures.dart';
 import 'package:sem_mobile/core/errors/result.dart';
+import 'package:sem_mobile/core/logging/app_logger.dart';
+import 'package:sem_mobile/core/network/websocket_service.dart';
 import 'package:sem_mobile/features/environments/domain/entities/environment.dart';
 import 'package:sem_mobile/features/environments/domain/repositories/environment_repository.dart';
 
@@ -55,6 +58,15 @@ class EnvironmentSearchRequested extends EnvironmentEvent {
 
 class EnvironmentRefreshRequested extends EnvironmentEvent {
   const EnvironmentRefreshRequested();
+}
+
+class EnvironmentWebSocketEvent extends EnvironmentEvent {
+  final WsEvent event;
+
+  const EnvironmentWebSocketEvent(this.event);
+
+  @override
+  List<Object?> get props => [event];
 }
 
 // States
@@ -126,9 +138,12 @@ class EnvironmentState extends Equatable {
       ];
 }
 
-// BLoC
+// BLoC - Production ready with WebSocket support
 class EnvironmentBloc extends Bloc<EnvironmentEvent, EnvironmentState> {
   final EnvironmentRepository repository;
+  final AppLogger _logger = AppLogger.instance;
+
+  StreamSubscription<WsEvent>? _wsSubscription;
 
   EnvironmentBloc({required this.repository}) : super(const EnvironmentState()) {
     on<EnvironmentsLoadRequested>(_onLoadRequested);
@@ -136,6 +151,21 @@ class EnvironmentBloc extends Bloc<EnvironmentEvent, EnvironmentState> {
     on<EnvironmentFavoriteToggled>(_onFavoriteToggled);
     on<EnvironmentSearchRequested>(_onSearchRequested);
     on<EnvironmentRefreshRequested>(_onRefreshRequested);
+    on<EnvironmentWebSocketEvent>(_onWebSocketEvent);
+
+    _setupWebSocket();
+  }
+
+  void _setupWebSocket() {
+    _wsSubscription = WebSocketService.instance.eventStream.listen((event) {
+      add(EnvironmentWebSocketEvent(event));
+    });
+  }
+
+  @override
+  Future<void> close() {
+    _wsSubscription?.cancel();
+    return super.close();
   }
 
   Future<void> _onLoadRequested(
@@ -144,53 +174,51 @@ class EnvironmentBloc extends Bloc<EnvironmentEvent, EnvironmentState> {
   ) async {
     emit(state.copyWith(status: EnvironmentStatus.loading));
 
-    // Load namespaces
-    final namespacesResult = await repository.getNamespaces();
+    try {
+      // Load namespaces
+      final namespacesResult = await repository.getNamespaces();
 
-    switch (namespacesResult) {
-      case Success(data: final data):
-        emit(state.copyWith(
-          namespaces: data,
-          selectedNamespace: event.namespaceId != null
+      switch (namespacesResult) {
+        case Success(data: final data):
+          final selectedNamespace = event.namespaceId != null
               ? data.firstWhere(
                   (n) => n.id == event.namespaceId,
                   orElse: () => data.first,
                 )
               : data.isNotEmpty
                   ? data.first
-                  : null,
-        ));
+                  : null;
 
-        // Load environments for selected namespace
-        if (state.selectedNamespace != null) {
-          await _loadEnvironments(
-            state.selectedNamespace!.id,
-            emit,
-          );
-        }
+          emit(state.copyWith(
+            namespaces: data,
+            selectedNamespace: selectedNamespace,
+          ));
 
-      case Error(:final failure):
-        emit(state.copyWith(
-          status: EnvironmentStatus.error,
-          failure: failure,
-        ));
-    }
+          // Load environments for selected namespace
+          if (selectedNamespace != null) {
+            await _loadEnvironments(selectedNamespace.id, emit);
+          } else {
+            emit(state.copyWith(status: EnvironmentStatus.loaded));
+          }
 
-    // Load recent and favorites
-    final recentResult = await repository.getRecentEnvironments();
-    switch (recentResult) {
-      case Success(data: final data):
-        emit(state.copyWith(recentEnvironments: data));
-      case Error():
-        break;
-    }
+        case Error(:final failure):
+          emit(state.copyWith(
+            status: EnvironmentStatus.error,
+            failure: failure,
+          ));
+      }
 
-    final favoritesResult = await repository.getFavoriteEnvironments();
-    switch (favoritesResult) {
-      case Success(data: final data):
-        emit(state.copyWith(favoriteEnvironments: data));
-      case Error():
-        break;
+      // Load recent and favorites in parallel
+      await Future.wait([
+        _loadRecentEnvironments(emit),
+        _loadFavoriteEnvironments(emit),
+      ]);
+    } catch (e, stack) {
+      _logger.error('Failed to load environments: $e\nStack: $stack');
+      emit(state.copyWith(
+        status: EnvironmentStatus.error,
+        failure: UnknownFailure(originalError: e),
+      ));
     }
   }
 
@@ -198,21 +226,53 @@ class EnvironmentBloc extends Bloc<EnvironmentEvent, EnvironmentState> {
     String namespaceId,
     Emitter<EnvironmentState> emit,
   ) async {
-    final result = await repository.getEnvironments(namespaceId);
+    try {
+      final result = await repository.getEnvironments(namespaceId);
 
-    switch (result) {
-      case Success(data: final data):
-        emit(state.copyWith(
-          status: EnvironmentStatus.loaded,
-          environments: data,
-          filteredEnvironments: data,
-        ));
+      switch (result) {
+        case Success(data: final data):
+          emit(state.copyWith(
+            status: EnvironmentStatus.loaded,
+            environments: data,
+            filteredEnvironments: _filterEnvironments(data, state.searchQuery),
+          ));
 
-      case Error(:final failure):
-        emit(state.copyWith(
-          status: EnvironmentStatus.error,
-          failure: failure,
-        ));
+        case Error(:final failure):
+          emit(state.copyWith(
+            status: EnvironmentStatus.error,
+            failure: failure,
+          ));
+      }
+    } catch (e, stack) {
+      _logger.error('Failed to load environments: $e\nStack: $stack');
+    }
+  }
+
+  Future<void> _loadRecentEnvironments(Emitter<EnvironmentState> emit) async {
+    try {
+      final result = await repository.getRecentEnvironments();
+      switch (result) {
+        case Success(data: final data):
+          emit(state.copyWith(recentEnvironments: data));
+        case Error():
+          break;
+      }
+    } catch (e, stack) {
+      _logger.error('Failed to load recent environments: $e\nStack: $stack');
+    }
+  }
+
+  Future<void> _loadFavoriteEnvironments(Emitter<EnvironmentState> emit) async {
+    try {
+      final result = await repository.getFavoriteEnvironments();
+      switch (result) {
+        case Success(data: final data):
+          emit(state.copyWith(favoriteEnvironments: data));
+        case Error():
+          break;
+      }
+    } catch (e, stack) {
+      _logger.error('Failed to load favorite environments: $e\nStack: $stack');
     }
   }
 
@@ -227,31 +287,35 @@ class EnvironmentBloc extends Bloc<EnvironmentEvent, EnvironmentState> {
     EnvironmentFavoriteToggled event,
     Emitter<EnvironmentState> emit,
   ) async {
-    final result = await repository.toggleFavorite(
-      event.namespaceId,
-      event.environmentId,
-    );
+    try {
+      final result = await repository.toggleFavorite(
+        event.namespaceId,
+        event.environmentId,
+      );
 
-    switch (result) {
-      case Success(:final updated):
-        final updatedEnvironments = state.environments.map((e) {
-          return e.id == updated.id ? updated : e;
-        }).toList();
+      switch (result) {
+        case Success(data: final env):
+          final updatedEnvironments = state.environments.map((e) {
+            return e.id == env.id ? env : e;
+          }).toList();
 
-        final updatedFavorites = updated.isFavorite
-            ? [...state.favoriteEnvironments, updated]
-            : state.favoriteEnvironments
-                .where((e) => e.id != updated.id)
-                .toList();
+          final updatedFavorites = env.isFavorite
+              ? <Environment>[...state.favoriteEnvironments, env]
+              : state.favoriteEnvironments
+                  .where((e) => e.id != env.id)
+                  .toList();
 
-        emit(state.copyWith(
-          environments: updatedEnvironments,
-          filteredEnvironments: _filterEnvironments(updatedEnvironments, state.searchQuery),
-          favoriteEnvironments: updatedFavorites,
-        ));
+          emit(state.copyWith(
+            environments: updatedEnvironments,
+            filteredEnvironments: _filterEnvironments(updatedEnvironments, state.searchQuery),
+            favoriteEnvironments: updatedFavorites,
+          ));
 
-      case Error():
-        break;
+        case Error():
+          break;
+      }
+    } catch (e, stack) {
+      _logger.error('Failed to toggle favorite: $e\nStack: $stack');
     }
   }
 
@@ -272,6 +336,34 @@ class EnvironmentBloc extends Bloc<EnvironmentEvent, EnvironmentState> {
   ) async {
     if (state.selectedNamespace != null) {
       await _loadEnvironments(state.selectedNamespace!.id, emit);
+    }
+  }
+
+  Future<void> _onWebSocketEvent(
+    EnvironmentWebSocketEvent event,
+    Emitter<EnvironmentState> emit,
+  ) async {
+    final wsEvent = event.event;
+
+    switch (wsEvent.type) {
+      case WsEventType.environmentUpdated:
+        _logger.debug('WebSocket: Environment updated');
+        if (wsEvent.namespaceId == state.selectedNamespace?.id) {
+          // Refresh environments
+          if (state.selectedNamespace != null) {
+            await _loadEnvironments(state.selectedNamespace!.id, emit);
+          }
+        }
+        break;
+
+      case WsEventType.sessionRevoked:
+        _logger.warning('WebSocket: Session revoked');
+        // Clear environments
+        emit(const EnvironmentState());
+        break;
+
+      default:
+        break;
     }
   }
 
