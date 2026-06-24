@@ -83,13 +83,14 @@ def validate_csrf() -> None:
 # --- API Authentication ---
 
 
-def require_api_auth(namespace: str, token: str | None) -> bool:
-    """Check if the API token is valid for the given namespace."""
+def require_api_auth(namespace: str, token: str | None, environment: str | None = None) -> bool:
+    """Check if the API token is valid for the given namespace (and optionally environment)."""
     if not token:
         return False
-    # Use the new ApiKeyService for RBAC-aware verification
     from services.api_key_service import api_key_service
-    is_valid, key_info = api_key_service.verify_key(token, required_namespace=namespace)
+    is_valid, key_info = api_key_service.verify_key(
+        token, required_namespace=namespace, required_environment=environment
+    )
     return is_valid
 
 
@@ -101,32 +102,39 @@ def extract_bearer_token() -> str | None:
     return None
 
 
-def api_auth_ok(namespace: str, token: str | None) -> bool:
-    """Verify API authentication is valid."""
+def api_auth_ok(namespace: str, token: str | None, environment: str | None = None) -> bool:
+    """Verify API authentication is valid for the given namespace (and optionally environment)."""
     if not token:
         return False
 
-    # Master API token has full access (only if explicitly configured)
     master = settings.master_api_token
     if master and hmac.compare_digest(master, token):
         return True
 
-    # Dashboard password grants access to all namespaces (same as meta/environments)
     from core.constants_patch import get_dashboard_password_hash
     if check_password_hash(get_dashboard_password_hash(), token):
         return True
 
-    # JWT access token - check if valid for this namespace
     from core.jwt_auth import token_manager
     payload = token_manager.validate_access_token(token)
     if payload:
-        # JWT is valid - check namespace/environment access
+        if payload.is_admin:
+            return True
+        if payload.scopes:
+            if "*" in payload.scopes:
+                return True
+            # Environment-level scope check ("namespace/environment")
+            if environment and f"{namespace}/{environment}" in payload.scopes:
+                return True
+            # Namespace-level scope check
+            if namespace in payload.scopes:
+                return True
+            return False
         if payload.namespace and payload.namespace != namespace:
             return False
         return True
 
-    # API keys with RBAC - check via ApiKeyService
-    return require_api_auth(namespace, token)
+    return require_api_auth(namespace, token, environment)
 
 
 def namespaces_visible_to_token(token: str | None) -> list[str]:
@@ -141,11 +149,27 @@ def namespaces_visible_to_token(token: str | None) -> list[str]:
     if check_password_hash(get_dashboard_password_hash(), token):
         # Dashboard password grants access to all namespaces
         return list(_list_all_environments().keys())
-    # JWT access token - return the token's namespace if set
+    # JWT access token
     from core.jwt_auth import token_manager
     payload = token_manager.validate_access_token(token)
     if payload:
-        if payload.namespace:
+        # Admin tokens always see all namespaces
+        if payload.is_admin:
+            return list(_list_all_environments().keys())
+        # Scoped API-key tokens: honour the scopes list
+        if payload.scopes:
+            if "*" in payload.scopes:
+                return list(_list_all_environments().keys())
+            valid_ns = set(_list_all_environments().keys())
+            # Support both "namespace" and "namespace/environment" scope formats
+            result = set()
+            for scope in payload.scopes:
+                ns = scope.split("/")[0] if "/" in scope else scope
+                if ns in valid_ns:
+                    result.add(ns)
+            return list(result)
+        # Non-admin token with a specific namespace
+        if payload.namespace and payload.namespace != "global":
             return [payload.namespace]
         return list(_list_all_environments().keys())
     # API keys with RBAC - determine visible namespaces
@@ -168,19 +192,24 @@ def namespaces_visible_to_token(token: str | None) -> list[str]:
                         continue
                 except (ValueError, TypeError):
                     pass
-            # Verify key matches
-            provided_hash = hashlib.sha256(token.encode()).hexdigest()
-            if hmac.compare_digest(key_data["key"], provided_hash):
-                # Key is valid - determine namespace access
+            # Verify key matches (supports both legacy SHA-256 and current PBKDF2)
+            if api_key_service._verify_key(key_data["key"], token):
+                allowed_environments = key_data.get("environments", [])
                 allowed_namespaces = key_data.get("namespaces", [])
-                if not allowed_namespaces:
-                    # Empty list means all namespaces
-                    return list(_list_all_environments().keys())
-                # Use the key's allowed_namespaces, filtered to valid namespaces
                 valid_ns = set(_list_all_environments().keys())
-                for ns_item in allowed_namespaces:
-                    if ns_item in valid_ns:
-                        visible.append(ns_item)
+                if allowed_environments:
+                    # Environment-level scopes: extract unique namespaces
+                    for scope in allowed_environments:
+                        ns_part = scope.split("/")[0] if "/" in scope else scope
+                        if ns_part in valid_ns:
+                            visible.append(ns_part)
+                elif allowed_namespaces:
+                    for ns_item in allowed_namespaces:
+                        if ns_item in valid_ns:
+                            visible.append(ns_item)
+                else:
+                    # No restrictions = all namespaces
+                    return list(valid_ns)
 
     return list(set(visible))
 

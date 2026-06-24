@@ -29,8 +29,15 @@ Every action—from a single variable update to a bulk export—is logged with t
 *   **Multi-Format Export**: Download secrets as `.env`, `JSON`, or `YAML`.
 *   **Templates**: Bootstrap new environments using pre-defined patterns for Docker, Node.js, Python, and more.
 
+### 👥 Multi-Developer User Management
+*   **Developer Accounts**: Create individual accounts for every team member with unique credentials.
+*   **Role-Based Access**: Admins get full system access; developers get scoped namespace/environment access.
+*   **Secure Authentication**: PBKDF2-SHA256 (480k iterations) with per-user random 16-byte salts.
+*   **Optional Email**: SMTP integration for welcome emails and password resets (non-blocking if not configured).
+
 ## Who is it for?
 SEM is designed for:
+*   **Development Teams**: Who need per-developer accounts with scoped access to specific namespaces/environments.
 *   **Development Teams**: Who need a shared, secure "source of truth" for secrets.
 *   **DevOps Engineers**: Automating environment setup and ensuring security compliance.
 *   **Individual Developers**: Who want a professional way to manage their local and staging credentials.

@@ -8,6 +8,7 @@ export type LoginRequest = {
   namespace?: string;
   environment?: string;
   password: string;
+  username?: string;
   device_name?: string;
   device_type?: "mobile" | "desktop" | "cli" | "sdk" | "web";
   platform?: string;
@@ -19,6 +20,13 @@ export type LoginResponse = {
   expires_in: number;
   token_type: string;
   device_id: string | null;
+  is_admin: boolean;
+  credential_type: "dashboard_password" | "master_token" | "api_key" | "user_password";
+  allowed_namespaces: string[];
+  must_change_password: boolean;
+  user_id: string | null;
+  username: string | null;
+  email: string | null;
 };
 
 export type RefreshRequest = {
@@ -115,6 +123,7 @@ export async function login(request: LoginRequest): Promise<LoginResponse> {
       namespace: request.namespace ?? "global",
       environment: request.environment ?? "main",
       password: request.password,
+      username: request.username ?? "",
       device_name: request.device_name ?? "Web Browser",
       device_type: request.device_type ?? "web",
       platform: request.platform ?? (typeof navigator !== "undefined" ? navigator.platform : "unknown"),

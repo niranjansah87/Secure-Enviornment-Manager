@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { KeyRound, Plus, Trash2, Copy, CheckCircle2, AlertCircle, RefreshCw, Clock, Eye, EyeOff } from "lucide-react";
+import { KeyRound, Plus, Trash2, Copy, CheckCircle2, AlertCircle, RefreshCw, Clock, Eye, EyeOff, Globe, ChevronDown } from "lucide-react";
 import { api } from "@/lib/api";
 import { useWorkspace } from "@/context/workspace-context";
 import { Button } from "@/components/ui/button";
@@ -22,9 +22,11 @@ type ApiKeyInfo = {
   created_by: string;
   description: string;
   namespaces: string[];
+  environments: string[];
   expires_at: string | null;
   status: string;
   custom_key: boolean;
+  bound_user_id?: string | null;
 };
 
 type NewKeyResult = {
@@ -35,6 +37,8 @@ type NewKeyResult = {
   validity_days: number;
   expires_at: string | null;
   namespaces: string[];
+  environments: string[];
+  bound_user_id: string | null;
   message: string;
 } | null;
 
@@ -56,19 +60,22 @@ export default function ApiKeysPage() {
   const [newKey, setNewKey] = useState<NewKeyResult>(null);
   const [showNewKey, setShowNewKey] = useState(false);
   const [revoking, setRevoking] = useState<string | null>(null);
-  const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
-
   // Create dialog state
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [selectedNamespace, setSelectedNamespace] = useState("");
   const [description, setDescription] = useState("");
   const [validityDays, setValidityDays] = useState(30);
   const [useCustomKey, setUseCustomKey] = useState(false);
   const [customKey, setCustomKey] = useState("");
-  const [selectedNamespaces, setSelectedNamespaces] = useState<Set<string>>(new Set());
-  const [availableNamespaces, setAvailableNamespaces] = useState<string[]>([]);
+  // selectedEnvironments stores "namespace/environment" strings
+  const [selectedEnvironments, setSelectedEnvironments] = useState<Set<string>>(new Set());
+  const [availableEnvPairs, setAvailableEnvPairs] = useState<{ns: string; env: string}[]>([]);
   const [loadingNamespaces, setLoadingNamespaces] = useState(false);
   const [customKeyError, setCustomKeyError] = useState("");
+  const [users, setUsers] = useState<{ user_id: string; username: string }[]>([]);
+  const [boundUserId, setBoundUserId] = useState("");
+  // Environments inherited from bound user's scopes (pre-selected, can't be removed)
+  const [inheritedScopes, setInheritedScopes] = useState<Set<string>>(new Set());
+  const [expandedNs, setExpandedNs] = useState<Set<string>>(new Set());
 
   const loadKeys = useCallback(async () => {
     if (!token) return;
@@ -99,10 +106,34 @@ export default function ApiKeysPage() {
     void loadKeys();
   }, [loadKeys]);
 
+  // Fetch users for bound-user display in key list
+  useEffect(() => {
+    if (!token) return;
+    api.listUsers(token)
+      .then(res => setUsers(res.users.map(u => ({ user_id: u.user_id, username: u.username }))))
+      .catch(() => setUsers([]));
+  }, [token]);
+
+  // When bound user changes, fetch their scopes and pre-select them as inherited
+  useEffect(() => {
+    if (!boundUserId || !token) {
+      setInheritedScopes(new Set());
+      return;
+    }
+    api.getUser(token, boundUserId)
+      .then(res => {
+        const scopes = res.user?.scopes ?? [];
+        setInheritedScopes(new Set(scopes));
+        // Also pre-select these in the visible selector
+        setSelectedEnvironments(new Set(scopes));
+      })
+      .catch(() => setInheritedScopes(new Set()));
+  }, [boundUserId, token]);
+
   const validateCustomKey = (key: string): boolean => {
     if (!key) return false;
-    if (key.length < 16) {
-      setCustomKeyError("Key must be at least 16 characters");
+    if (key.length < 8) {
+      setCustomKeyError("Key must be at least 8 characters");
       return false;
     }
     if (key.length > 64) {
@@ -118,7 +149,7 @@ export default function ApiKeysPage() {
   };
 
   const handleCreateKey = async () => {
-    if (!token || !selectedNamespace) return;
+    if (!token) return;
 
     // Validate custom key if provided
     if (useCustomKey && customKey) {
@@ -127,6 +158,12 @@ export default function ApiKeysPage() {
       }
     }
 
+    // Derive storage namespace: first selected env's ns, first available, or fallback
+    const storageNs =
+      selectedEnvironments.size > 0
+        ? Array.from(selectedEnvironments)[0].split("/")[0]
+        : (availableEnvPairs[0]?.ns ?? "global");
+
     setCreating(true);
     setNewKey(null);
     try {
@@ -134,22 +171,28 @@ export default function ApiKeysPage() {
         description: string;
         validity_days: number;
         custom_key?: string;
-        namespaces?: string[];
+        environments?: string[];
+        bound_user_id?: string;
       } = {
         description,
         validity_days: validityDays,
       };
 
+      if (boundUserId) {
+        options.bound_user_id = boundUserId;
+      }
+
       if (useCustomKey && customKey) {
         options.custom_key = customKey;
       }
 
-      // If specific namespaces selected, use them; otherwise empty = all namespaces
-      if (selectedNamespaces.size > 0) {
-        options.namespaces = Array.from(selectedNamespaces);
+      // Combine inherited scopes + selected environments (union)
+      const allSelected = new Set([...inheritedScopes, ...selectedEnvironments]);
+      if (allSelected.size > 0) {
+        options.environments = Array.from(allSelected);
       }
 
-      const res = await api.createKey(token, selectedNamespace, options);
+      const res = await api.createKey(token, storageNs, options);
       setNewKey(res);
       toast.success("API key created", {
         description: "Copy and store this key securely. It will not be shown again.",
@@ -169,45 +212,56 @@ export default function ApiKeysPage() {
   };
 
   const resetForm = () => {
-    setSelectedNamespace("");
     setDescription("");
     setValidityDays(30);
     setUseCustomKey(false);
     setCustomKey("");
-    setSelectedNamespaces(new Set());
+    setSelectedEnvironments(new Set());
     setCustomKeyError("");
+    setBoundUserId("");
+    setInheritedScopes(new Set());
+    setExpandedNs(new Set());
   };
 
   const openCreateDialog = async () => {
     setShowCreateDialog(true);
     resetForm();
-    // Load available namespaces
+    // Load available namespaces and users
     setLoadingNamespaces(true);
     try {
       const envs = await api.metaEnvironments(token);
-      const allNamespaces = Object.keys(envs.environments || {});
-      setAvailableNamespaces(allNamespaces);
-      if (allNamespaces.length > 0) {
-        setSelectedNamespace(allNamespaces[0]);
+      const pairs: {ns: string; env: string}[] = [];
+      for (const [ns, envList] of Object.entries(envs.environments || {})) {
+        for (const env of (envList as string[])) {
+          pairs.push({ ns, env });
+        }
       }
+      setAvailableEnvPairs(pairs);
     } catch {
-      setAvailableNamespaces([]);
+      setAvailableEnvPairs([]);
     } finally {
       setLoadingNamespaces(false);
     }
+    // Fetch users for bound user dropdown
+    try {
+      const usersRes = await api.listUsers(token!);
+      setUsers(usersRes.users.map(u => ({ user_id: u.user_id, username: u.username })));
+    } catch {
+      setUsers([]);
+    }
   };
 
-  const handleRevokeKey = async (namespace: string, keyId: string) => {
+  const handleDeleteKey = async (namespace: string, keyId: string) => {
     if (!token) return;
     setRevoking(keyId);
     try {
       await api.revokeKey(token, namespace, keyId);
-      toast.success("API key revoked", {
-        description: `Key ${keyId} has been permanently revoked.`,
+      toast.success("API key deleted", {
+        description: `Key ${keyId} has been permanently deleted.`,
       });
       void loadKeys();
     } catch {
-      toast.error("Failed to revoke API key", {
+      toast.error("Failed to delete API key", {
         description: "You may not have administrator privileges.",
       });
     } finally {
@@ -236,21 +290,9 @@ export default function ApiKeysPage() {
     }
   };
 
-  const toggleKeyVisibility = (keyId: string) => {
-    const newVisible = new Set(visibleKeys);
-    if (newVisible.has(keyId)) {
-      newVisible.delete(keyId);
-    } else {
-      newVisible.add(keyId);
-    }
-    setVisibleKeys(newVisible);
-  };
-
-  const isKeyVisible = (keyId: string) => visibleKeys.has(keyId);
-
   const getStatusBadge = (key: ApiKeyInfo) => {
     if (key.status === "revoked") {
-      return <Badge variant="destructive" className="text-[10px] bg-red-500/20 text-red-400 border-red-500/30">Revoked</Badge>;
+      return null;
     }
     if (key.status === "expired" || (key.expires_at && new Date(key.expires_at) < new Date())) {
       return <Badge variant="secondary" className="text-[10px] bg-amber-500/20 text-amber-400 border-amber-500/30">Expired</Badge>;
@@ -309,15 +351,19 @@ export default function ApiKeysPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2 text-emerald-400">
               <CheckCircle2 className="w-5 h-5" />
-              New API Key Created
+              API Key Created — Copy It Now
             </CardTitle>
             <CardDescription className="text-zinc-400">
-              Copy this key now. It will not be shown again.
+              ⚠️ This is the <strong className="text-emerald-300">only time</strong> the full API key is shown.
+              You will <strong className="text-red-400">not</strong> be able to view it again.
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="mb-2">
+              <span className="text-[11px] text-emerald-500/80 uppercase tracking-wider font-semibold">API Key (secret — use this to authenticate)</span>
+            </div>
             <div className="flex items-center gap-3">
-              <code className="flex-1 font-mono text-sm text-emerald-300 bg-black/30 rounded-lg px-4 py-3 break-all">
+              <code className="flex-1 font-mono text-sm text-emerald-300 bg-black/30 rounded-lg px-4 py-3 break-all select-all">
                 {showNewKey ? newKey.key : "•".repeat(24)}
               </code>
               <Button
@@ -339,6 +385,7 @@ export default function ApiKeysPage() {
             </div>
             <div className="mt-3 flex items-center gap-4 text-xs text-zinc-500">
               <span>Key ID: <code className="text-violet-400">{newKey.key_id}</code></span>
+              <span className="text-zinc-600">(identifier — not the secret)</span>
               <span>Namespace: <code className="text-violet-400">{newKey.namespace}</code></span>
               {newKey.expires_at && (
                 <span>Expires: <code className="text-amber-400">{formatIso(newKey.expires_at)}</code></span>
@@ -350,10 +397,18 @@ export default function ApiKeysPage() {
               onClick={() => setNewKey(null)}
               className="mt-3 text-zinc-400 hover:text-zinc-200"
             >
-              Dismiss
+              I&apos;ve saved the key — Dismiss
             </Button>
           </CardContent>
         </Card>
+      )}
+
+      {/* Notice */}
+      {totalKeys > 0 && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400/90">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>API keys are <strong>only shown once</strong> at creation. The Key ID below is just an identifier — it <strong>cannot</strong> be used to authenticate.</span>
+        </div>
       )}
 
       {/* Keys List */}
@@ -387,28 +442,15 @@ export default function ApiKeysPage() {
                           </div>
                           <div>
                             <div className="flex items-center gap-2 mb-1">
-                              <code className="text-sm font-mono text-zinc-200">
-                                {isKeyVisible(key.key_id) ? key.key_id : "•".repeat(key.key_id.length)}
-                              </code>
-                              <button
-                                type="button"
-                                onClick={() => toggleKeyVisibility(key.key_id)}
-                                className="text-zinc-500 hover:text-zinc-300 transition-colors"
-                                title={isKeyVisible(key.key_id) ? "Hide key ID" : "Show key ID"}
-                              >
-                                {isKeyVisible(key.key_id) ? (
-                                  <EyeOff className="w-3.5 h-3.5" />
-                                ) : (
-                                  <Eye className="w-3.5 h-3.5" />
-                                )}
-                              </button>
+                              <span className="text-[10px] text-zinc-600 uppercase tracking-wider">Key ID</span>
+                              <code className="text-xs font-mono text-zinc-400">{key.key_id}</code>
                               <button
                                 type="button"
                                 onClick={() => copyKey(key.key_id)}
-                                className="text-zinc-500 hover:text-zinc-300 transition-colors"
+                                className="text-zinc-600 hover:text-zinc-400 transition-colors"
                                 title="Copy key ID"
                               >
-                                <Copy className="w-3.5 h-3.5" />
+                                <Copy className="w-3 h-3" />
                               </button>
                               {getStatusBadge(key)}
                               {key.custom_key && (
@@ -424,7 +466,23 @@ export default function ApiKeysPage() {
                               {key.description && (
                                 <div className="text-zinc-400 mt-1">Description: {key.description}</div>
                               )}
-                              {key.namespaces && key.namespaces.length > 0 ? (
+                              {key.bound_user_id && (
+                                <div className="text-violet-400 mt-1 text-xs">
+                                  Bound to: {users.find(u => u.user_id === key.bound_user_id)?.username ?? key.bound_user_id}
+                                </div>
+                              )}
+                              {key.environments && key.environments.length > 0 ? (
+                                <div className="mt-1">
+                                  <span className="text-zinc-500">Allowed environments: </span>
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {key.environments.map(e => (
+                                      <Badge key={e} variant="secondary" className="text-[10px] bg-amber-500/20 text-amber-400 border-amber-500/30 font-mono">
+                                        {e}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : key.namespaces && key.namespaces.length > 0 ? (
                                 <div className="mt-1">
                                   <span className="text-zinc-500">Allowed namespaces: </span>
                                   <div className="flex flex-wrap gap-1 mt-1">
@@ -438,7 +496,7 @@ export default function ApiKeysPage() {
                               ) : (
                                 <div className="mt-1">
                                   <Badge variant="secondary" className="text-[10px] bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
-                                    All Namespaces
+                                    All Access
                                   </Badge>
                                 </div>
                               )}
@@ -455,12 +513,12 @@ export default function ApiKeysPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => void handleRevokeKey(ns, key.key_id)}
+                            onClick={() => void handleDeleteKey(ns, key.key_id)}
                             disabled={revoking === key.key_id}
                             className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
                           >
                             <Trash2 className="w-4 h-4 mr-2" />
-                            {revoking === key.key_id ? "Revoking..." : "Revoke"}
+                            {revoking === key.key_id ? "Deleting..." : "Delete"}
                           </Button>
                         )}
                       </div>
@@ -492,7 +550,7 @@ export default function ApiKeysPage() {
             </li>
             <li className="flex items-start gap-2">
               <span className="text-blue-400 mt-0.5">•</span>
-              Custom keys can be provided (16-64 chars, alphanumeric + underscore/hyphen).
+              Custom keys can be provided (8-64 chars, alphanumeric + underscore/hyphen).
             </li>
             <li className="flex items-start gap-2">
               <span className="text-zinc-400 mt-0.5">•</span>
@@ -504,178 +562,261 @@ export default function ApiKeysPage() {
 
       {/* Create Key Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="bg-zinc-900 border-white/10 text-zinc-100">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <KeyRound className="w-5 h-5 text-violet-400" />
+        <DialogContent className="bg-zinc-900 border-white/10 text-zinc-100 max-w-2xl max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <DialogHeader className="pb-1">
+            <DialogTitle className="flex items-center gap-3 text-base">
+              <div className="w-8 h-8 rounded-lg bg-violet-500/20 border border-violet-500/30 flex items-center justify-center shrink-0">
+                <KeyRound className="w-4 h-4 text-violet-400" />
+              </div>
               Create API Key
             </DialogTitle>
-            <DialogDescription className="text-zinc-400">
-              Configure and create a new API key.
+            <DialogDescription className="text-zinc-500 text-xs ml-11">
+              Grant programmatic access to specific environments.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            {/* Namespace Selection */}
-            <div className="space-y-2">
-              <Label htmlFor="namespace" className="text-sm font-medium text-zinc-300">Namespace</Label>
-              <select
-                id="namespace"
-                value={selectedNamespace}
-                onChange={(e) => setSelectedNamespace(e.target.value)}
-                className="w-full px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-zinc-100 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 cursor-pointer"
-              >
-                <option value="">Select a namespace...</option>
-                {availableNamespaces.map((ns) => (
-                  <option key={ns} value={ns}>
-                    {ns}
-                  </option>
-                ))}
-              </select>
-            </div>
-
+          <div className="space-y-5 py-2">
             {/* Description */}
-            <div className="space-y-2">
-              <Label htmlFor="description" className="text-sm font-medium text-zinc-300">Description (optional)</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Description</Label>
               <Input
-                id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="e.g., Production CI/CD pipeline"
-                className="w-full px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+                className="bg-black/40 border-white/10 text-zinc-100 placeholder:text-zinc-600 focus:border-violet-500/60 focus:ring-1 focus:ring-violet-500/20 h-9"
               />
             </div>
 
-            {/* Validity Period */}
-            <div className="space-y-2">
-              <Label htmlFor="validity" className="text-sm font-medium text-zinc-300">Validity Period</Label>
-              <select
-                id="validity"
-                value={validityDays}
-                onChange={(e) => setValidityDays(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-zinc-100 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 cursor-pointer"
-              >
-                {VALIDITY_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Allowed Namespaces */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium text-zinc-300">Allowed Namespaces (for this key)</Label>
-              {loadingNamespaces ? (
-                <div className="text-sm text-zinc-500">Loading namespaces...</div>
-              ) : availableNamespaces.length === 0 ? (
-                <div className="text-sm text-zinc-500">No namespaces available</div>
-              ) : (
-                <div className="space-y-2 max-h-48 overflow-y-auto border border-white/10 rounded-lg p-3 bg-black/20">
-                  <div className="flex items-center gap-2 pb-2 border-b border-white/10">
-                    <input
-                      type="checkbox"
-                      id="selectAllNamespaces"
-                      checked={selectedNamespaces.size === availableNamespaces.length}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedNamespaces(new Set(availableNamespaces));
-                        } else {
-                          setSelectedNamespaces(new Set());
-                        }
-                      }}
-                      className="rounded border-zinc-600 bg-zinc-800 text-violet-500 focus:ring-violet-500"
-                    />
-                    <Label htmlFor="selectAllNamespaces" className="text-zinc-300 font-medium cursor-pointer">
-                      Select All
-                    </Label>
-                  </div>
-                  {availableNamespaces.map((ns) => (
-                    <div key={ns} className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id={`ns-${ns}`}
-                        checked={selectedNamespaces.has(ns)}
-                        onChange={(e) => {
-                          const newSet = new Set(selectedNamespaces);
-                          if (e.target.checked) {
-                            newSet.add(ns);
-                          } else {
-                            newSet.delete(ns);
-                          }
-                          setSelectedNamespaces(newSet);
-                        }}
-                        className="rounded border-zinc-600 bg-zinc-800 text-violet-500 focus:ring-violet-500"
-                      />
-                      <Label htmlFor={`ns-${ns}`} className="text-zinc-300 cursor-pointer">
-                        <span className="font-mono text-violet-400">{ns}</span>
-                      </Label>
-                    </div>
+            {/* Bound User */}
+            {users.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Bound User</Label>
+                <select
+                  value={boundUserId}
+                  onChange={(e) => setBoundUserId(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 text-zinc-100 rounded-lg px-3 py-2 text-sm focus:border-violet-500/60 focus:ring-1 focus:ring-violet-500/20 h-9 appearance-none"
+                >
+                  <option value="" className="bg-zinc-900">None (unbound key)</option>
+                  {users.map((u) => (
+                    <option key={u.user_id} value={u.user_id} className="bg-zinc-900">
+                      {u.username}
+                    </option>
                   ))}
-                </div>
-              )}
-              <p className="text-xs text-zinc-500">
-                {selectedNamespaces.size === 0
-                  ? "No selection = access to all namespaces"
-                  : `${selectedNamespaces.size} namespace(s) selected`}
-              </p>
+                </select>
+              </div>
+            )}
+
+            {/* Validity Period - pill buttons */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Validity Period</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {VALIDITY_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setValidityDays(opt.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                      validityDays === opt.value
+                        ? "bg-violet-600/80 text-white border-violet-500 shadow-sm shadow-violet-500/20"
+                        : "bg-white/5 text-zinc-400 border-white/8 hover:border-white/20 hover:text-zinc-200 hover:bg-white/8"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Custom Key Toggle */}
+            {/* Access Scope */}
             <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="useCustomKey"
-                  checked={useCustomKey}
-                  onChange={(e) => setUseCustomKey(e.target.checked)}
-                  className="rounded border-zinc-600 bg-zinc-800 text-violet-500 focus:ring-violet-500"
-                />
-                <Label htmlFor="useCustomKey" className="text-zinc-300">
-                  Provide custom API key
-                </Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Access Scope</Label>
+                {selectedEnvironments.size > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedEnvironments(new Set(inheritedScopes))}
+                    className="text-xs text-zinc-600 hover:text-violet-400 transition-colors"
+                  >
+                    Clear extra → user defaults only
+                  </button>
+                )}
               </div>
 
+              {/* Show full-access banner only when no bound user and nothing selected */}
+              {inheritedScopes.size === 0 && selectedEnvironments.size === 0 && !loadingNamespaces && availableEnvPairs.length > 0 && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-violet-500/10 border border-violet-500/20">
+                  <Globe className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                  <span className="text-xs text-violet-300">Full access — all namespaces and environments</span>
+                </div>
+              )}
+
+              {/* Show inherited scopes hint when bound user has scopes */}
+              {inheritedScopes.size > 0 && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                  <Globe className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="text-xs text-emerald-300">
+                    Inherited {inheritedScopes.size} scope(s) from user. Select additional environments to extend access.
+                  </span>
+                </div>
+              )}
+
+              {loadingNamespaces ? (
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-3.5 w-20 bg-white/5" />
+                    <div className="flex gap-2">
+                      <Skeleton className="h-7 w-14 rounded-lg bg-white/5" />
+                      <Skeleton className="h-7 w-18 rounded-lg bg-white/5" />
+                      <Skeleton className="h-7 w-16 rounded-lg bg-white/5" />
+                    </div>
+                  </div>
+                </div>
+              ) : availableEnvPairs.length === 0 ? (
+                <p className="text-xs text-zinc-600 italic">No environments found</p>
+              ) : (
+                <div className="max-h-48 overflow-y-auto rounded-lg border border-white/10 bg-black/30 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  {Object.entries(
+                    availableEnvPairs.reduce<Record<string, string[]>>((acc, { ns, env }) => {
+                      (acc[ns] = acc[ns] || []).push(env);
+                      return acc;
+                    }, {})
+                  ).map(([ns, envList]) => {
+                    const isOpen = expandedNs.has(ns);
+                    const selectedInNs = envList.filter(env => selectedEnvironments.has(`${ns}/${env}`)).length;
+                    const allNsSelected = selectedInNs === envList.length;
+                    return (
+                      <div key={ns} className="border-b border-white/5 last:border-b-0">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedNs(prev => {
+                            const next = new Set(prev);
+                            if (next.has(ns)) next.delete(ns); else next.add(ns);
+                            return next;
+                          })}
+                          className="w-full flex items-center justify-between px-3 py-2 hover:bg-white/[0.03] transition-colors text-left"
+                        >
+                          <span className="flex items-center gap-2">
+                            <ChevronDown className={`h-3 w-3 text-zinc-500 transition-transform ${isOpen ? "" : "-rotate-90"}`} />
+                            <span className="text-xs font-medium text-zinc-300">{ns}</span>
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            {selectedInNs > 0 && (
+                              <span className={`text-[10px] font-medium ${allNsSelected ? "text-violet-400" : "text-zinc-500"}`}>
+                                {selectedInNs}/{envList.length}
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const newSet = new Set(selectedEnvironments);
+                                if (allNsSelected) {
+                                  envList.forEach(env => {
+                                    const key = `${ns}/${env}`;
+                                    if (!inheritedScopes.has(key)) newSet.delete(key);
+                                  });
+                                } else {
+                                  envList.forEach(env => newSet.add(`${ns}/${env}`));
+                                }
+                                setSelectedEnvironments(newSet);
+                              }}
+                              className="text-[10px] text-zinc-600 hover:text-violet-400 transition-colors"
+                            >
+                              {allNsSelected ? "clear" : "all"}
+                            </button>
+                          </span>
+                        </button>
+                        {isOpen && (
+                          <div className="flex flex-wrap gap-1 px-3 pb-2">
+                            {envList.map(env => {
+                              const scopeKey = `${ns}/${env}`;
+                              const selected = selectedEnvironments.has(scopeKey);
+                              const inherited = inheritedScopes.has(scopeKey);
+                              return (
+                                <button
+                                  key={scopeKey}
+                                  type="button"
+                                  disabled={inherited}
+                                  onClick={() => {
+                                    if (inherited) return;
+                                    const newSet = new Set(selectedEnvironments);
+                                    if (selected) newSet.delete(scopeKey);
+                                    else newSet.add(scopeKey);
+                                    setSelectedEnvironments(newSet);
+                                  }}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-mono transition-all border ${
+                                    inherited
+                                      ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300/70 cursor-not-allowed"
+                                      : selected
+                                        ? "bg-violet-500/20 text-violet-300 border-violet-500/40"
+                                        : "bg-white/[0.03] text-zinc-500 border-white/10 hover:border-white/20 hover:text-zinc-300"
+                                  }`}
+                                >
+                                  {inherited ? "🔒 " : selected ? "✓ " : ""}{env}
+                                </button>
+                              );
+                            })}
+                        </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Custom Key toggle */}
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => { setUseCustomKey(!useCustomKey); setCustomKey(""); setCustomKeyError(""); }}
+                className="flex items-center gap-3 group"
+              >
+                <div className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${useCustomKey ? "bg-violet-600" : "bg-zinc-700"}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${useCustomKey ? "translate-x-4" : "translate-x-0.5"}`} />
+                </div>
+                <span className="text-sm text-zinc-400 group-hover:text-zinc-200 transition-colors">Provide custom key</span>
+              </button>
               {useCustomKey && (
-                <div className="pl-6 space-y-2">
+                <div className="ml-12 space-y-1.5">
                   <Input
                     value={customKey}
-                    onChange={(e) => {
-                      setCustomKey(e.target.value);
-                      if (e.target.value) validateCustomKey(e.target.value);
-                      else setCustomKeyError("");
-                    }}
-                    placeholder="Enter custom key (16-64 characters)"
-                    className={"w-full px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500" + (customKeyError ? " border-red-500" : "")}
+                    onChange={(e) => { setCustomKey(e.target.value); if (e.target.value) validateCustomKey(e.target.value); else setCustomKeyError(""); }}
+                    placeholder="8–64 characters"
+                    className={`bg-black/40 border-white/10 text-zinc-100 placeholder:text-zinc-600 focus:border-violet-500/60 focus:ring-1 focus:ring-violet-500/20 h-9 font-mono text-sm ${customKeyError ? "border-red-500/60" : ""}`}
                   />
-                  {customKeyError && (
-                    <p className="text-xs text-red-400">{customKeyError}</p>
-                  )}
-                  <p className="text-xs text-zinc-500">
-                    16-64 characters, letters, numbers, underscores, hyphens only.
-                  </p>
+                  {customKeyError && <p className="text-xs text-red-400">{customKeyError}</p>}
+                  <p className="text-xs text-zinc-600">Letters, numbers, underscores, hyphens only</p>
                 </div>
               )}
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="pt-3 border-t border-white/5 gap-2">
+            <div className="flex-1 flex items-center">
+              <span className="text-xs text-zinc-600">
+                {selectedEnvironments.size === 0
+                  ? "Scope: all environments"
+                  : `Scope: ${selectedEnvironments.size} environment${selectedEnvironments.size > 1 ? "s" : ""}`}
+              </span>
+            </div>
             <Button
               variant="ghost"
-              onClick={() => {
-                setShowCreateDialog(false);
-                resetForm();
-              }}
-              className="text-zinc-400"
+              onClick={() => { setShowCreateDialog(false); resetForm(); }}
+              className="text-zinc-400 hover:text-zinc-200 h-9"
             >
               Cancel
             </Button>
             <Button
               onClick={() => void handleCreateKey()}
-              disabled={creating || !selectedNamespace || (useCustomKey && Boolean(customKeyError))}
-              className="bg-violet-600 hover:bg-violet-500 text-white"
+              disabled={creating || (useCustomKey && Boolean(customKeyError))}
+              className="bg-violet-600 hover:bg-violet-500 text-white h-9 px-4"
             >
-              {creating ? "Creating..." : "Create Key"}
+              {creating ? (
+                <><RefreshCw className="w-3.5 h-3.5 mr-2 animate-spin" />Creating…</>
+              ) : (
+                <><Plus className="w-3.5 h-3.5 mr-2" />Create Key</>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

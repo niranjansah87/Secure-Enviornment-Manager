@@ -14,6 +14,17 @@
    DASHBOARD_PASSWORD=your-password-here
    SESSION_COOKIE_SECURE=false
    BEHIND_PROXY=false
+
+   # Optional - Admin Identity
+   ADMIN_USERNAME=admin
+   ADMIN_EMAIL=admin@example.com
+
+   # Optional - Email (SMTP)
+   EMAIL_SMTP_HOST=smtp.example.com
+   EMAIL_SMTP_PORT=587
+   EMAIL_SMTP_USER=your-email@example.com
+   EMAIL_SMTP_PASSWORD=your-smtp-password
+   EMAIL_FROM=noreply@your-domain.com
    ```
 
 3. **Generate encryption key:**
@@ -59,6 +70,7 @@ If login redirects back to login page:
 2. **Check browser console** - Look for cookie errors
 3. **Check server logs** - Look for authentication messages
 4. **Clear browser cookies** - Old session data might interfere
+5. **User login issues**: Verify the user exists in `data/users.json` and status is "active". Check that the username is spelled correctly (case-insensitive match).
 
 ## API Usage
 
@@ -74,5 +86,33 @@ Then use:
 ```bash
 curl -H "Authorization: Bearer your-api-token-here" \
   http://localhost:8070/api/v1/namespace1/environment1
+```
+
+## User Management
+
+Create user accounts for team members:
+
+```bash
+# Login as admin first
+curl -X POST http://localhost:8070/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"password": "your-dashboard-password", "namespace": "global", "environment": "main"}'
+
+# Create a new user (use the JWT from login response)
+curl -X POST http://localhost:8070/api/v1/admin/users \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <admin-jwt>" \
+  -d '{"username": "developer1", "role": "developer", "email": "dev@example.com", "scopes": ["production/main"]}'
+
+# User logs in and sets new password
+curl -X POST http://localhost:8070/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "developer1", "password": "<temp-password>", "namespace": "production", "environment": "main"}'
+
+# Response includes must_change_password: true — user must call:
+curl -X POST http://localhost:8070/api/v1/user/change-password \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <user-jwt>" \
+  -d '{"new_password": "my-secure-password"}'
 ```
 

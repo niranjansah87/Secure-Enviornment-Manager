@@ -127,9 +127,20 @@ class ApiKeyService:
         return base64.b64encode(dk).decode("utf-8")
 
     def _verify_key(self, stored_hash: str, provided_key: str) -> bool:
-        """Timing-safe comparison of stored hash vs provided key."""
-        provided_hash = self._hash_key(provided_key)
-        return hmac.compare_digest(stored_hash, provided_hash)
+        """Timing-safe comparison of stored hash vs provided key.
+
+        Supports two formats:
+        - Legacy: 64-char hex SHA-256 (migrated keys)
+        - Current: base64 PBKDF2-SHA-256
+        """
+        import re
+        if re.match(r'^[0-9a-f]{64}$', stored_hash):
+            # Legacy SHA-256 hex format
+            import hashlib
+            legacy = hashlib.sha256(provided_key.encode("utf-8")).hexdigest()
+            return hmac.compare_digest(stored_hash, legacy)
+        # Current PBKDF2 format
+        return hmac.compare_digest(stored_hash, self._hash_key(provided_key))
 
     def _is_expired(self, expires_at: Optional[str]) -> bool:
         """Check if a key has expired."""
@@ -149,8 +160,8 @@ class ApiKeyService:
         """Validate format of a custom API key."""
         if not key:
             return False, "Key cannot be empty"
-        if len(key) < 16:
-            return False, "Key must be at least 16 characters"
+        if len(key) < 8:
+            return False, "Key must be at least 8 characters"
         if len(key) > 64:
             return False, "Key must be at most 64 characters"
         if not self.KEY_PATTERN.match(key):
@@ -164,7 +175,9 @@ class ApiKeyService:
         description: str = "",
         validity_days: int = 30,
         custom_key: Optional[str] = None,
-        allowed_namespaces: Optional[list[str]] = None
+        allowed_namespaces: Optional[list[str]] = None,
+        allowed_environments: Optional[list[str]] = None,
+        bound_user_id: Optional[str] = None,
     ) -> tuple[str, str]:
         """Create a new API key for a namespace.
 
@@ -205,26 +218,30 @@ class ApiKeyService:
             "created_by": created_by,
             "key_id": key_id,
             "description": description,
-            "namespaces": allowed_namespaces if allowed_namespaces else [],  # empty list = all namespaces
+            "namespaces": allowed_namespaces if allowed_namespaces else [],
+            "environments": allowed_environments if allowed_environments else [],
             "expires_at": expires_at,
             "status": "active",
             "custom_key": bool(custom_key),
+            "bound_user_id": bound_user_id,
         }
 
         self._save_keys(keys)
         return raw_key, key_id
 
     def revoke_key(self, namespace: str, key_id: str) -> bool:
-        """Revoke an API key for a namespace."""
+        """Permanently delete an API key for a namespace."""
         keys = self._load_keys()
         if namespace not in keys or key_id not in keys[namespace]:
             return False
 
-        # Mark as revoked instead of deleting to preserve audit trail
-        keys[namespace][key_id]["status"] = "revoked"
-        keys[namespace][key_id]["revoked_at"] = datetime.now(timezone.utc).isoformat()
+        del keys[namespace][key_id]
+        # Clean up empty namespace
+        if not keys[namespace]:
+            del keys[namespace]
 
         self._save_keys(keys)
+        logger.info("API key %s permanently deleted from namespace %s", key_id, namespace)
         return True
 
     def list_keys(self, namespace: str) -> list[Dict[str, Any]]:
@@ -241,9 +258,11 @@ class ApiKeyService:
                 "created_by": k.get("created_by", "unknown"),
                 "description": k.get("description", ""),
                 "namespaces": k.get("namespaces", []),
+                "environments": k.get("environments", []),
                 "expires_at": k.get("expires_at"),
                 "status": k.get("status", "active"),
                 "custom_key": k.get("custom_key", False),
+                "bound_user_id": k.get("bound_user_id"),
             }
             for k in keys[namespace].values()
         ]
@@ -251,9 +270,10 @@ class ApiKeyService:
     def verify_key(
         self,
         provided_key: str,
-        required_namespace: Optional[str] = None
+        required_namespace: Optional[str] = None,
+        required_environment: Optional[str] = None,
     ) -> tuple[bool, Optional[Dict[str, Any]]]:
-        """Verify an API key and check namespace access.
+        """Verify an API key and check namespace/environment access.
 
         Returns:
             tuple of (is_valid, key_info) where key_info contains metadata if valid
@@ -270,17 +290,30 @@ class ApiKeyService:
 
                     # Check expiry
                     if self._is_expired(key_data.get("expires_at")):
-                        # Auto-mark as expired
                         key_data["status"] = "expired"
                         self._save_keys(keys)
                         return False, None
 
-                    # Check namespace access
+                    allowed_environments = key_data.get("environments", [])
                     allowed_namespaces = key_data.get("namespaces", [])
-                    if allowed_namespaces and required_namespace:
-                        # Key has limited namespace access
+
+                    # Environment-level scopes take priority over namespace-level
+                    if allowed_environments:
+                        if required_namespace and required_environment:
+                            if f"{required_namespace}/{required_environment}" not in allowed_environments:
+                                return False, None
+                        elif required_namespace:
+                            # Namespace-only check: allow if any env in that namespace is scoped
+                            if not any(e.startswith(f"{required_namespace}/") for e in allowed_environments):
+                                return False, None
+                    elif allowed_namespaces and required_namespace:
                         if required_namespace not in allowed_namespaces:
                             return False, None
+
+                    # Upgrade legacy SHA-256 hash to PBKDF2 on first successful use
+                    import re
+                    if re.match(r'^[0-9a-f]{64}$', key_data["key"]):
+                        key_data["key"] = self._hash_key(provided_key)
 
                     # Update last_used
                     key_data["last_used"] = datetime.now(timezone.utc).isoformat()
@@ -290,8 +323,10 @@ class ApiKeyService:
                         "key_id": key_id,
                         "namespace": ns,
                         "namespaces": allowed_namespaces,
+                        "environments": allowed_environments,
                         "expires_at": key_data.get("expires_at"),
                         "description": key_data.get("description", ""),
+                        "bound_user_id": key_data.get("bound_user_id"),
                     }
 
         return False, None
@@ -318,10 +353,12 @@ class ApiKeyService:
             "created_by": k.get("created_by", "unknown"),
             "description": k.get("description", ""),
             "namespaces": k.get("namespaces", []),
+            "environments": k.get("environments", []),
             "expires_at": k.get("expires_at"),
             "status": k.get("status", "active"),
             "custom_key": k.get("custom_key", False),
             "revoked_at": k.get("revoked_at"),
+            "bound_user_id": k.get("bound_user_id"),
         }
 
 

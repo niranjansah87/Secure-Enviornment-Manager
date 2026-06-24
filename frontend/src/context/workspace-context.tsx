@@ -33,10 +33,15 @@ type WorkspaceContextValue = {
   refreshEnvironments: () => Promise<void>;
   envError: string | null;
   loadingEnvs: boolean;
-  // New JWT auth support
   isAuthenticated: boolean;
+  isAdmin: boolean;
+  credentialType: "dashboard_password" | "master_token" | "api_key" | "user_password" | null;
+  allowedNamespaces: string[];
   deviceId: string | null;
-  loginWithPassword: (password: string, namespace?: string, environment?: string) => Promise<void>;
+  username: string | null;
+  email: string | null;
+  mustChangePassword: boolean;
+  loginWithPassword: (password: string, namespace?: string, environment?: string, username?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshAccessToken: () => Promise<boolean>;
 };
@@ -50,6 +55,12 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [envError, setEnvError] = useState<string | null>(null);
   const [loadingEnvs, setLoadingEnvs] = useState(false);
   const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [credentialType, setCredentialType] = useState<"dashboard_password" | "master_token" | "api_key" | "user_password" | null>(null);
+  const [allowedNamespaces, setAllowedNamespaces] = useState<string[]>([]);
+  const [username, setUsername] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
 
   // Initialize from storage
   useEffect(() => {
@@ -59,6 +70,19 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
     if (accessToken) {
       setTokenState(accessToken);
+      // Restore is_admin from saved JWT payload without a round-trip
+      try {
+        const parts = accessToken.split(".");
+        if (parts.length === 3) {
+          const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+          if (typeof payload.is_admin === "boolean") setIsAdmin(payload.is_admin);
+          if (payload.username) setUsername(payload.username as string);
+          if (payload.email) setEmail(payload.email as string);
+          if (typeof payload.must_change_password === "boolean") setMustChangePassword(payload.must_change_password);
+        }
+      } catch {
+        // ignore malformed token
+      }
     }
     if (storedDeviceId) {
       setDeviceId(storedDeviceId);
@@ -89,19 +113,20 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const loginWithPassword = useCallback(async (
     password: string,
     namespace: string = "global",
-    environment: string = "main"
+    environment: string = "main",
+    usernameArg: string = "",
   ): Promise<void> => {
     try {
       const response = await login({
         namespace,
         environment,
         password,
+        username: usernameArg || undefined,
         device_name: "Web Browser",
         device_type: "web",
         platform: typeof navigator !== "undefined" ? navigator.platform : "unknown",
       });
 
-      // Save JWT tokens
       saveAuthTokens({
         accessToken: response.access_token,
         refreshToken: response.refresh_token,
@@ -109,6 +134,12 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       });
 
       setTokenState(response.access_token);
+      setIsAdmin(response.is_admin ?? false);
+      setCredentialType(response.credential_type ?? null);
+      setAllowedNamespaces(response.allowed_namespaces ?? []);
+      setUsername(response.username ?? null);
+      setEmail(response.email ?? null);
+      setMustChangePassword(response.must_change_password ?? false);
       if (response.device_id) {
         setDeviceId(response.device_id);
       }
@@ -136,6 +167,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     setDeviceId(null);
     setEnvironments({});
     setWorkspaceState(null);
+    setUsername(null);
+    setEmail(null);
+    setMustChangePassword(false);
   }, []);
 
   const refreshAccessToken = useCallback(async (): Promise<boolean> => {
@@ -210,7 +244,13 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       envError,
       loadingEnvs,
       isAuthenticated,
+      isAdmin,
+      credentialType,
+      allowedNamespaces,
       deviceId,
+      username,
+      email,
+      mustChangePassword,
       loginWithPassword,
       logout,
       refreshAccessToken,
@@ -225,7 +265,13 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       envError,
       loadingEnvs,
       isAuthenticated,
+      isAdmin,
+      credentialType,
+      allowedNamespaces,
       deviceId,
+      username,
+      email,
+      mustChangePassword,
       loginWithPassword,
       logout,
       refreshAccessToken,

@@ -39,6 +39,7 @@ from routes.secret_routes import secret_bp
 from routes.export_routes import export_bp
 from routes.redirect_routes import redirect_bp
 from routes.jwt_auth_routes import jwt_auth_bp
+from routes.user_routes import user_bp
 
 # Services
 from audit_logger import audit_logger
@@ -93,6 +94,7 @@ app.register_blueprint(export_bp)
 app.register_blueprint(redirect_bp)
 # JWT auth must be registered before generic auth so its routes take precedence
 app.register_blueprint(jwt_auth_bp)
+app.register_blueprint(user_bp)
 app.register_blueprint(auth_bp)
 
 # --- Helper Functions (delegated to modules) ---

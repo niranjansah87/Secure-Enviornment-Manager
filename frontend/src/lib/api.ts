@@ -88,6 +88,35 @@ export type HealthResponse = {
   };
 };
 
+export type ApiKey = {
+  key_id: string;
+  created_at: string;
+  last_used: string | null;
+  created_by: string;
+  description: string;
+  namespaces: string[];
+  environments: string[];
+  expires_at: string | null;
+  status: string;
+  custom_key: boolean;
+  revoked_at?: string | null;
+  bound_user_id?: string | null;
+};
+
+export type User = {
+  user_id: string;
+  username: string;
+  email: string;
+  role: "admin" | "developer";
+  scopes: string[];
+  must_change_password: boolean;
+  status: "active" | "disabled";
+  created_by: string;
+  created_at: string;
+  last_login: string | null;
+  password_changed_at: string | null;
+};
+
 // Re-export ApiError and apiBase for convenience
 export { ApiError, apiBase };
 
@@ -316,6 +345,7 @@ export const api = {
         created_by: string;
         description: string;
         namespaces: string[];
+        environments: string[];
         expires_at: string | null;
         status: string;
         custom_key: boolean;
@@ -333,6 +363,8 @@ export const api = {
       validity_days?: number;
       custom_key?: string;
       namespaces?: string[];
+      environments?: string[];
+      bound_user_id?: string;
     }
   ) {
     return request<{
@@ -343,6 +375,8 @@ export const api = {
       validity_days: number;
       expires_at: string | null;
       namespaces: string[];
+      environments: string[];
+      bound_user_id: string | null;
       message: string;
     }>(
       `/api/v1/keys/${encodeURIComponent(namespace)}`,
@@ -361,20 +395,65 @@ export const api = {
     );
   },
   getKey(token: string, namespace: string, keyId: string) {
-    return request<{
-      key_id: string;
-      created_at: string;
-      last_used: string | null;
-      created_by: string;
-      description: string;
-      namespaces: string[];
-      expires_at: string | null;
-      status: string;
-      custom_key: boolean;
-      revoked_at: string | null;
-    }>(
+    return request<ApiKey>(
       `/api/v1/keys/${encodeURIComponent(namespace)}/${encodeURIComponent(keyId)}`,
       token
+    );
+  },
+  // User Management (admin only)
+  listUsers(token: string) {
+    return request<{ users: User[] }>("/api/v1/admin/users", token);
+  },
+  getUser(token: string, userId: string) {
+    return request<{ user: User }>(`/api/v1/admin/users/${encodeURIComponent(userId)}`, token);
+  },
+  createUser(
+    token: string,
+    data: {
+      username: string;
+      role?: string;
+      email?: string;
+      scopes?: string[];
+    }
+  ) {
+    return request<{
+      user_id: string;
+      username: string;
+      email: string;
+      role: string;
+      scopes: string[];
+      temp_password: string;
+      must_change_password: boolean;
+      email_sent: boolean;
+      message: string;
+    }>("/api/v1/admin/users", token, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+  updateUser(token: string, userId: string, updates: Partial<Pick<User, "email" | "role" | "scopes" | "status">> & Record<string, unknown>) {
+    return request<{ user: User }>(
+      `/api/v1/admin/users/${encodeURIComponent(userId)}`,
+      token,
+      { method: "PATCH", body: JSON.stringify(updates) }
+    );
+  },
+  resetPassword(token: string, userId: string) {
+    return request<{
+      user_id: string;
+      temp_password: string;
+      must_change_password: boolean;
+      email_sent: boolean;
+      message: string;
+    }>(`/api/v1/admin/users/${encodeURIComponent(userId)}/reset-password`, token, {
+      method: "POST",
+    });
+  },
+  deleteUser(token: string, userId: string) {
+    return request<{ message: string; user_id: string }>(
+      `/api/v1/admin/users/${encodeURIComponent(userId)}`,
+      token,
+      { method: "DELETE" }
     );
   },
 };
