@@ -31,7 +31,7 @@ from core.sessions import (
     _tz_now,
 )
 from core.step_up_auth import require_step_up_auth
-from middleware.rate_limiter import check_step_up_rate_limit, is_ip_locked, track_failed_login
+from middleware.rate_limiter import is_ip_locked, track_failed_login
 from audit_logger import audit_logger
 
 
@@ -303,15 +303,6 @@ def step_up_auth(namespace: str, environment: str):
 
     if not session_id:
         return jsonify({"error": "No active session"}), 401
-
-    # Check step-up rate limit before validating password
-    allowed, rate_info = check_step_up_rate_limit()
-    if not allowed:
-        return jsonify({
-            "error": "Too many step-up attempts. Try again later.",
-            "code": "STEP_UP_RATE_LIMITED",
-            "retry_after": rate_info.get("retry_after", 300)
-        }), 429
 
     password = request.form.get("password", "")
     if not password:

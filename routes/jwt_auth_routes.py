@@ -30,7 +30,7 @@ from core.sessions import (
     _tz_now,
 )
 from audit_logger import audit_logger
-from middleware.rate_limiter import check_login_rate_limit, is_ip_locked, track_failed_login, reset_login_failures
+from middleware.rate_limiter import is_ip_locked, track_failed_login, reset_login_failures
 
 
 jwt_auth_bp = Blueprint("jwt_auth", __name__, url_prefix="/api/v1/auth")
