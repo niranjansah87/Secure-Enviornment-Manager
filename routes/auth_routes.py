@@ -22,7 +22,7 @@ from core.auth import (
 )
 from core.config import settings, spa_url
 from core.constants_patch import get_dashboard_password_hash
-from metrics import LOGIN_SUCCESS_COUNTER, LOGIN_FAILURE_COUNTER
+
 from core.sessions import (
     current_identity,
     mark_authenticated,
@@ -247,7 +247,6 @@ def dashboard(namespace: str, environment: str):
 
         password = request.form.get("password", "")
         if password and check_password_hash(get_dashboard_password_hash(), password):
-            LOGIN_SUCCESS_COUNTER.inc()
             mark_authenticated(namespace, environment)
             reset_attempts(identifier)
             try:
@@ -256,8 +255,6 @@ def dashboard(namespace: str, environment: str):
                 pass
             return redirect(spa_url(namespace, environment))
 
-        reason = "invalid_password" if password else "missing_password"
-        LOGIN_FAILURE_COUNTER.labels(reason=reason).inc()
         record_failed_attempt(identifier)
         remaining = max(0, MAX_LOGIN_ATTEMPTS - LOGIN_ATTEMPTS[identifier]["fails"])
         return Response(

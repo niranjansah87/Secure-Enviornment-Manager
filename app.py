@@ -33,12 +33,6 @@ from core.sessions import (
 )
 from core.constants import SESSION_MAX_LIFETIME, STEP_UP_AUTH_WINDOW
 from core.constants_patch import get_dashboard_password_hash
-from metrics import (
-    LOGIN_SUCCESS_COUNTER,
-    LOGIN_FAILURE_COUNTER,
-    SECRET_UPDATE_COUNTER,
-    SECRET_ACCESS_COUNTER,
-)
 from routes.api_routes import api_bp
 from routes.auth_routes import auth_bp
 from routes.secret_routes import secret_bp
@@ -49,13 +43,6 @@ from routes.jwt_auth_routes import jwt_auth_bp
 # Services
 from audit_logger import audit_logger
 
-# Prometheus
-from prometheus_flask_exporter import PrometheusMetrics
-from prometheus_client import CollectorRegistry
-try:
-    from prometheus_client import multiproc  # type: ignore
-except ImportError:
-    multiproc = None
 
 # --- Logging Setup ---
 logging.basicConfig(
@@ -91,15 +78,6 @@ app.config.update(
 if settings.behind_proxy:
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)  # type: ignore[attr-defined]
 
-# --- Prometheus Monitoring Setup ---
-def _get_metrics_registry():
-    registry = CollectorRegistry()
-    if os.getenv("PROMETHEUS_MULTIPROC_DIR") and multiproc:
-        multiproc.MultiProcessCollector(registry)
-    return registry
-
-metrics = PrometheusMetrics(app, registry=_get_metrics_registry())
-metrics.info("sem_app_info", "Secure Environment Manager Info", version="1.0.0")
 
 # --- Centralized Error Handling ---
 try:

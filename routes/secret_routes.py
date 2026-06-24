@@ -7,7 +7,7 @@ from flask import Blueprint, redirect, request
 from core.auth import ensure_authenticated
 from core.step_up_auth import require_step_up_auth
 from core.sessions import current_identity
-from metrics import SECRET_UPDATE_COUNTER
+
 from utils.helpers import read_vars, write_vars
 from audit_logger import audit_logger
 from history_manager import HistoryManager
@@ -35,8 +35,6 @@ def add_variable(namespace: str, environment: str):
     variables = read_vars(namespace, environment)
     variables[key] = value
     write_vars(namespace, environment, variables)
-
-    SECRET_UPDATE_COUNTER.labels(namespace, environment).inc()
 
     # Save History Snapshot
     _get_history_manager().save_snapshot(

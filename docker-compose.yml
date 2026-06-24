@@ -33,7 +33,6 @@ services:
     env_file:
       - .env
     environment:
-      - PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
       - FLASK_ENV=production
       - SESSION_COOKIE_SECURE=true
       - BEHIND_PROXY=true
@@ -41,7 +40,6 @@ services:
       - sem-data:/app/data
       - sem-audit-logs:/app/audit_logs
       - sem-logs:/app/logs
-      - prometheus_multiproc:/tmp/prometheus_multiproc
     # Expose to host for Nginx proxy (localhost only for security)
     ports:
       - "127.0.0.1:8070:8070"
@@ -58,8 +56,6 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    tmpfs:
-      - /tmp:size=50m,noexec,nosuid
     user: "1000:1000"
 
   # ===========================================================================
@@ -118,4 +114,3 @@ volumes:
   sem-audit-logs:
   sem-logs:
   prometheus-data:
-  prometheus_multiproc:
