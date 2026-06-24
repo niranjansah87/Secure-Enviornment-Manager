@@ -9,7 +9,7 @@ import yaml
 from core.auth import ensure_authenticated
 from core.step_up_auth import require_step_up_auth
 from core.config import settings
-from metrics import SECRET_ACCESS_COUNTER
+
 from utils.helpers import read_vars, to_env_lines
 from audit_logger import audit_logger
 
@@ -26,8 +26,6 @@ def download_env(namespace: str, environment: str):
     audit_logger.log_export(
         namespace, environment, "env", "session", request.remote_addr or "unknown"
     )
-
-    SECRET_ACCESS_COUNTER.labels(namespace, environment).inc()
 
     variables = read_vars(namespace, environment)
     content = to_env_lines(variables)
