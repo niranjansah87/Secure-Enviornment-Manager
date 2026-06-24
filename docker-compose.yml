@@ -86,22 +86,22 @@ services:
   # ===========================================================================
   # Prometheus - Metrics and Monitoring (Optional)
   # ===========================================================================
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: sem-prometheus
-    restart: unless-stopped
-    volumes:
-      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus-data:/prometheus
-    # Expose to host for monitoring (localhost only)
-    ports:
-      - "127.0.0.1:9090:9090"
-    networks:
-      - sem-network
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.enable-lifecycle'
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   container_name: sem-prometheus
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+  #     - prometheus-data:/prometheus
+  #   # Expose to host for monitoring (localhost only)
+  #   ports:
+  #     - "127.0.0.1:9090:9090"
+  #   networks:
+  #     - sem-network
+  #   command:
+  #     - '--config.file=/etc/prometheus/prometheus.yml'
+  #     - '--storage.tsdb.path=/prometheus'
+  #     - '--web.enable-lifecycle'
 
 # =============================================================================
 # Networks - Isolated internal Docker network
