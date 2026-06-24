@@ -558,5 +558,19 @@
     "platform": "Win32",
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
     "ip_address": "127.0.0.1"
+  },
+  "dev_51f8f6751790989e407fbb9f1c0c68e7": {
+    "device_id": "dev_51f8f6751790989e407fbb9f1c0c68e7",
+    "session_id": "7JTs483xOGNF3rEFQhKcfUMReSZBfRXhRn1X_1L7CYU",
+    "created_at": "2026-06-24T08:47:25.948009+00:00",
+    "last_active": "2026-06-24T08:47:25.948009+00:00",
+    "last_used_token": null,
+    "is_revoked": false,
+    "revoked_at": null,
+    "device_name": "Web Browser",
+    "device_type": "web",
+    "platform": "Win32",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "ip_address": "127.0.0.1"
   }
 }
