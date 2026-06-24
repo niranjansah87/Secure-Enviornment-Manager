@@ -31,7 +31,7 @@ from core.sessions import (
     _tz_now,
 )
 from core.step_up_auth import require_step_up_auth
-from middleware.rate_limiter import check_step_up_rate_limit, is_ip_locked, track_failed_login
+from middleware.rate_limiter import is_ip_locked, track_failed_login
 from audit_logger import audit_logger
 
 
@@ -61,7 +61,7 @@ def api_login():
             "data": {
                 "access_token": "jwt_access_token",
                 "refresh_token": "semr_...",
-                "expires_in": 900,
+                "expires_in": 3600,
                 "token_type": "Bearer",
                 "device_id": "..." (optional)
             }
@@ -124,6 +124,10 @@ def api_login():
         session_id=session_id,
         user_agent=request.headers.get("User-Agent", "unknown"),
         ip_address=request.remote_addr or "unknown",
+        namespace=namespace,
+        environment=environment,
+        is_admin=is_admin,
+        scopes=[],
     )
 
     audit_logger.log_login_success(
@@ -133,7 +137,7 @@ def api_login():
     return api_response(data={
         "access_token": access_token,
         "refresh_token": refresh_token,
-        "expires_in": 900,
+        "expires_in": 3600,
         "token_type": "Bearer",
     })
 
@@ -155,7 +159,7 @@ def api_refresh():
             "data": {
                 "access_token": "new_jwt_access_token",
                 "refresh_token": "new_semr_...",
-                "expires_in": 900
+                "expires_in": 3600
             }
         }
     """
@@ -185,7 +189,7 @@ def api_refresh():
     return api_response(data={
         "access_token": new_access,
         "refresh_token": new_refresh,
-        "expires_in": 900,
+        "expires_in": 3600,
         "token_type": "Bearer",
     })
 
@@ -303,15 +307,6 @@ def step_up_auth(namespace: str, environment: str):
 
     if not session_id:
         return jsonify({"error": "No active session"}), 401
-
-    # Check step-up rate limit before validating password
-    allowed, rate_info = check_step_up_rate_limit()
-    if not allowed:
-        return jsonify({
-            "error": "Too many step-up attempts. Try again later.",
-            "code": "STEP_UP_RATE_LIMITED",
-            "retry_after": rate_info.get("retry_after", 300)
-        }), 429
 
     password = request.form.get("password", "")
     if not password:

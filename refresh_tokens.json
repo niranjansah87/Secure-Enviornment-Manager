@@ -9,7 +9,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "ab5e31124fbcef54378367dd74f7ea673371c386861b3aaa3b4420e24c639ae5": {
     "token_hash": "ab5e31124fbcef54378367dd74f7ea673371c386861b3aaa3b4420e24c639ae5",
@@ -21,7 +30,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "86f10273bbdc8f2c330d4e4d1876416bfe457de1f11795dca71e16c6ef16afbe": {
     "token_hash": "86f10273bbdc8f2c330d4e4d1876416bfe457de1f11795dca71e16c6ef16afbe",
@@ -33,7 +51,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "2233e166dfe8dacf6987561569566468c11a706de4fffefdd884ab0c81705880": {
     "token_hash": "2233e166dfe8dacf6987561569566468c11a706de4fffefdd884ab0c81705880",
@@ -45,7 +72,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "4ca440e9e1e8f4b28d2b8761b897d7b6ad5e8d6f894bcae0a521619adee27001": {
     "token_hash": "4ca440e9e1e8f4b28d2b8761b897d7b6ad5e8d6f894bcae0a521619adee27001",
@@ -57,7 +93,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "bb244305e1103fd767d4cdbdee5443d101ec72a69c5ca724a12955ebce026d96": {
     "token_hash": "bb244305e1103fd767d4cdbdee5443d101ec72a69c5ca724a12955ebce026d96",
@@ -69,7 +114,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "ebac80435394a30cf32601209bdfcebbe2b496fdb2950da02ee7a722eda5eca5": {
     "token_hash": "ebac80435394a30cf32601209bdfcebbe2b496fdb2950da02ee7a722eda5eca5",
@@ -81,7 +135,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "3f6d31892cbde6f9b9db60c0b679f3a648a7b9ec64e12a16e4469153bc1975d4": {
     "token_hash": "3f6d31892cbde6f9b9db60c0b679f3a648a7b9ec64e12a16e4469153bc1975d4",
@@ -93,7 +156,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "333e79e3a755d18a6044b0261d434b55ecad903d4555c8804b858d188f0a280c": {
     "token_hash": "333e79e3a755d18a6044b0261d434b55ecad903d4555c8804b858d188f0a280c",
@@ -105,7 +177,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "2bc317d6be1a5b5db4fa833b4721af443cb0327d92bf7c4d95facd240241475e": {
     "token_hash": "2bc317d6be1a5b5db4fa833b4721af443cb0327d92bf7c4d95facd240241475e",
@@ -117,7 +198,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "f03ce63c98b5b1395dbd05a9032d29c897b7215900c758800665cc983445f01c": {
     "token_hash": "f03ce63c98b5b1395dbd05a9032d29c897b7215900c758800665cc983445f01c",
@@ -129,7 +219,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "288bd7b91fc2e33408112e37c0fe20832144a09d1e73efd00d65ed9dd1eb433b": {
     "token_hash": "288bd7b91fc2e33408112e37c0fe20832144a09d1e73efd00d65ed9dd1eb433b",
@@ -141,7 +240,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "4bc3a20d474445c1b343620ffc792be8f4985e4c8169594e4b54c5dd037fa5ff": {
     "token_hash": "4bc3a20d474445c1b343620ffc792be8f4985e4c8169594e4b54c5dd037fa5ff",
@@ -153,7 +261,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "004c348709ec36480cff98d3dbcaed7c008441e340c54d237b4669a9efb06c4d": {
     "token_hash": "004c348709ec36480cff98d3dbcaed7c008441e340c54d237b4669a9efb06c4d",
@@ -165,7 +282,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "6523a7e0a42690d96326b37e06114d343c815f1f2e3eb65fc7e1ccf5bea4fb93": {
     "token_hash": "6523a7e0a42690d96326b37e06114d343c815f1f2e3eb65fc7e1ccf5bea4fb93",
@@ -177,7 +303,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "eae9181f7c3681300bb2bf5bb184259142ec2f9e941e1873c3a51f9865cd1d57": {
     "token_hash": "eae9181f7c3681300bb2bf5bb184259142ec2f9e941e1873c3a51f9865cd1d57",
@@ -189,7 +324,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "1977538f714f672d657ebc00998ad89d7211fdc7faf5be3a39728f0925fd5cd3": {
     "token_hash": "1977538f714f672d657ebc00998ad89d7211fdc7faf5be3a39728f0925fd5cd3",
@@ -201,7 +345,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "73f579775bef3e6b11a48d652ef092c3e3fa3c32ff380f89b645d76c233ef95f": {
     "token_hash": "73f579775bef3e6b11a48d652ef092c3e3fa3c32ff380f89b645d76c233ef95f",
@@ -213,7 +366,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "f95500274ce378a55e76d545a8ce41f009fedf4dff9870eee9a6dacce09df30e": {
     "token_hash": "f95500274ce378a55e76d545a8ce41f009fedf4dff9870eee9a6dacce09df30e",
@@ -225,7 +387,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "5a96973b800b5fda3c0730917273134081136fffe4b8a30ea5eb5762c67808f8": {
     "token_hash": "5a96973b800b5fda3c0730917273134081136fffe4b8a30ea5eb5762c67808f8",
@@ -237,7 +408,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "0545e54304d85348dadeb26998c87161e473065d8e90ec88187ecbb73a62270b": {
     "token_hash": "0545e54304d85348dadeb26998c87161e473065d8e90ec88187ecbb73a62270b",
@@ -249,7 +429,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "34ce847813fa25a64d3bacb940b0bd9040ea77051fa7ab3b0baa6e006dd1333e": {
     "token_hash": "34ce847813fa25a64d3bacb940b0bd9040ea77051fa7ab3b0baa6e006dd1333e",
@@ -261,7 +450,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "e71cddd1d3589631bca5d2d5d86216d97a695f4de596253aa91bec6b745235cc": {
     "token_hash": "e71cddd1d3589631bca5d2d5d86216d97a695f4de596253aa91bec6b745235cc",
@@ -273,7 +471,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "c356d1f2ee8cfc869c7be8f483efe219c6a9477b56cb6242c59b7121568280d3": {
     "token_hash": "c356d1f2ee8cfc869c7be8f483efe219c6a9477b56cb6242c59b7121568280d3",
@@ -285,7 +492,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "b2ba2ac57afd73db88c1159ba6121a72c142c4d9cd26b6fc0010f021ac6db475": {
     "token_hash": "b2ba2ac57afd73db88c1159ba6121a72c142c4d9cd26b6fc0010f021ac6db475",
@@ -297,7 +513,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "dd0d77122578330f415a6d09fd9386ba09347adb0633974e137c70853c746ba9": {
     "token_hash": "dd0d77122578330f415a6d09fd9386ba09347adb0633974e137c70853c746ba9",
@@ -309,7 +534,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "365029cfcf5da6a673d57c6b18d4f12ef394ca45c182a82e84209be0d5ab8faf": {
     "token_hash": "365029cfcf5da6a673d57c6b18d4f12ef394ca45c182a82e84209be0d5ab8faf",
@@ -321,7 +555,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "adaa0d763acf1f81c5d71d65354b4f3ffe64c1d689e76599f405bde4063ff816": {
     "token_hash": "adaa0d763acf1f81c5d71d65354b4f3ffe64c1d689e76599f405bde4063ff816",
@@ -333,7 +576,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "b39f3962b161d9e55864caaab3e221e3c9b4118c75fc0ff1662a98abae42fa3d": {
     "token_hash": "b39f3962b161d9e55864caaab3e221e3c9b4118c75fc0ff1662a98abae42fa3d",
@@ -345,7 +597,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "a9b30e4f693def5a62ce7fccfb08a2ea12b2b1d509c70b801bd130500a1397e3": {
     "token_hash": "a9b30e4f693def5a62ce7fccfb08a2ea12b2b1d509c70b801bd130500a1397e3",
@@ -357,7 +618,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "bd2b3d1a96d298b31727d2b03a6e972522fb486543890cda91b879b82ecc3544": {
     "token_hash": "bd2b3d1a96d298b31727d2b03a6e972522fb486543890cda91b879b82ecc3544",
@@ -369,7 +639,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "test",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "1a3d39d6a1a132c02802a6870da3e87fafb32c55d72189549bba7779eb6a1b8d": {
     "token_hash": "1a3d39d6a1a132c02802a6870da3e87fafb32c55d72189549bba7779eb6a1b8d",
@@ -381,7 +660,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "test",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "2fa798e39ef1cdc08830f39d27a7fe187f005fed97ce710d414a3d9eb4ee43e9": {
     "token_hash": "2fa798e39ef1cdc08830f39d27a7fe187f005fed97ce710d414a3d9eb4ee43e9",
@@ -393,7 +681,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "test",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "66239a831273e135f05250d436c222972e92fe6cd0ca15ac55cffe3455a7d37f": {
     "token_hash": "66239a831273e135f05250d436c222972e92fe6cd0ca15ac55cffe3455a7d37f",
@@ -405,7 +702,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "f13106e046b7f7f1d0814e801dd87ab5166e5eae9544de3995ddac2979d081c5": {
     "token_hash": "f13106e046b7f7f1d0814e801dd87ab5166e5eae9544de3995ddac2979d081c5",
@@ -417,7 +723,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "e1674edc546a9eb0d5b26568eb2fcfbe219ce1ff3d2127fd44200c2893d98d66": {
     "token_hash": "e1674edc546a9eb0d5b26568eb2fcfbe219ce1ff3d2127fd44200c2893d98d66",
@@ -429,7 +744,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "78833246fa762b96de2c611103e5d24ef299d97a35bd6ee747f765713ad7189a": {
     "token_hash": "78833246fa762b96de2c611103e5d24ef299d97a35bd6ee747f765713ad7189a",
@@ -441,7 +765,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "05579b0d7a1f0cd0ed8ca089a5770dc91c90a2f3318d0f87c756806fa590bc2c": {
     "token_hash": "05579b0d7a1f0cd0ed8ca089a5770dc91c90a2f3318d0f87c756806fa590bc2c",
@@ -453,7 +786,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "8c1871e40941aeedad22e5972f4e8f26ef7913fe99ee8ac1c53d262391df42dc": {
     "token_hash": "8c1871e40941aeedad22e5972f4e8f26ef7913fe99ee8ac1c53d262391df42dc",
@@ -465,7 +807,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "fcbe96bd5bc99cf2cbb328b881e430355e5caa96dcd39718c324e96b5cd371cf": {
     "token_hash": "fcbe96bd5bc99cf2cbb328b881e430355e5caa96dcd39718c324e96b5cd371cf",
@@ -477,7 +828,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "37270d6d2d353d54c8294f18240c5c1cb4aeb216f8f52819fabec4e133ca8221": {
     "token_hash": "37270d6d2d353d54c8294f18240c5c1cb4aeb216f8f52819fabec4e133ca8221",
@@ -489,7 +849,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "274e2c9118695d81a7e1f697401f2697126a3940fc69cb6f21e2e4cffbdba4f0": {
     "token_hash": "274e2c9118695d81a7e1f697401f2697126a3940fc69cb6f21e2e4cffbdba4f0",
@@ -501,7 +870,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "8e70054aadbbfd8de14ed6273cfe00695ee6c0e603e07c6219051e91c20e201c": {
     "token_hash": "8e70054aadbbfd8de14ed6273cfe00695ee6c0e603e07c6219051e91c20e201c",
@@ -513,7 +891,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "2d3e88e9e4fbb497dc4b61c2d88ed9fed6ec0f7463f84186f1177f1444597a23": {
     "token_hash": "2d3e88e9e4fbb497dc4b61c2d88ed9fed6ec0f7463f84186f1177f1444597a23",
@@ -525,7 +912,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "8feb80a73783f4a73316676ce6b14f169b214d288c50881146b1d55cc69a2e15": {
     "token_hash": "8feb80a73783f4a73316676ce6b14f169b214d288c50881146b1d55cc69a2e15",
@@ -537,7 +933,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "b878f2a1cbcb9594809e976c5b4b7daa6c71f124e5486f14156531952c638e12": {
     "token_hash": "b878f2a1cbcb9594809e976c5b4b7daa6c71f124e5486f14156531952c638e12",
@@ -549,7 +954,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "e192367cc9617b885ddeffc982418ce577cecd54ea7fbb6ff0ba7c0b983557c8": {
     "token_hash": "e192367cc9617b885ddeffc982418ce577cecd54ea7fbb6ff0ba7c0b983557c8",
@@ -561,7 +975,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "569f13f97b34a2717e9016545f57ee580f861bc9f513766e5fd7a7a7c4c67e13": {
     "token_hash": "569f13f97b34a2717e9016545f57ee580f861bc9f513766e5fd7a7a7c4c67e13",
@@ -573,7 +996,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "0c6e1bcfb45257c47eb66c61da509d62a9c78f5d4be28d32840247b045441eed": {
     "token_hash": "0c6e1bcfb45257c47eb66c61da509d62a9c78f5d4be28d32840247b045441eed",
@@ -585,7 +1017,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "e7771c1a8a09a3d73eb745ef81616061edce0c416bb2d02976fb6264b128b5ff": {
     "token_hash": "e7771c1a8a09a3d73eb745ef81616061edce0c416bb2d02976fb6264b128b5ff",
@@ -597,7 +1038,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "3ccc831a27473147215a607e47f239c73a4c1eb095cc31ac31b720f49af2170a": {
     "token_hash": "3ccc831a27473147215a607e47f239c73a4c1eb095cc31ac31b720f49af2170a",
@@ -609,7 +1059,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "b0ab1f63e3e85d0f3b86e74122c54d9719ee57eefd0697105d4943261e021e78": {
     "token_hash": "b0ab1f63e3e85d0f3b86e74122c54d9719ee57eefd0697105d4943261e021e78",
@@ -621,7 +1080,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "cb683a84da32001ced183ba2a2f97a1abc43aed62b5ede3cf933fb667f1b7063": {
     "token_hash": "cb683a84da32001ced183ba2a2f97a1abc43aed62b5ede3cf933fb667f1b7063",
@@ -633,7 +1101,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "8540fe7847c8508d5efa2b5ea9bc1320c4e442fceb566658627c0000075e23e6": {
     "token_hash": "8540fe7847c8508d5efa2b5ea9bc1320c4e442fceb566658627c0000075e23e6",
@@ -645,7 +1122,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "bbeee76c7deaa12ae0c5eb85c3315a3b624b0dd8ce5ea241ff735c9759e982ea": {
     "token_hash": "bbeee76c7deaa12ae0c5eb85c3315a3b624b0dd8ce5ea241ff735c9759e982ea",
@@ -657,7 +1143,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "30e4ad404eb829b36579389cfff660d33248499dee0ee01a5b64f60f744894ff": {
     "token_hash": "30e4ad404eb829b36579389cfff660d33248499dee0ee01a5b64f60f744894ff",
@@ -669,7 +1164,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "88b0f51cb9dd8fc3089767be1b0956bb764a5f78f90133ba12bda3e934e4a230": {
     "token_hash": "88b0f51cb9dd8fc3089767be1b0956bb764a5f78f90133ba12bda3e934e4a230",
@@ -681,7 +1185,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "60bd9b99c208109d40523007f8bef1e5239d018262ab50f6b4c5c53d9913afb3": {
     "token_hash": "60bd9b99c208109d40523007f8bef1e5239d018262ab50f6b4c5c53d9913afb3",
@@ -693,7 +1206,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "849825058988554540d5089f68a25ab0adca8612f77943d9277e4745f8f6a1a4": {
     "token_hash": "849825058988554540d5089f68a25ab0adca8612f77943d9277e4745f8f6a1a4",
@@ -705,7 +1227,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "836c8992f2440e93c36fccb048d8ab9e6f91f7ebf28c20f717aecf732f93fb89": {
     "token_hash": "836c8992f2440e93c36fccb048d8ab9e6f91f7ebf28c20f717aecf732f93fb89",
@@ -717,7 +1248,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "c31d4daf7ef68ee471c35e320de1ad5a869c708ee96da1ffe5b9de043107f0ba": {
     "token_hash": "c31d4daf7ef68ee471c35e320de1ad5a869c708ee96da1ffe5b9de043107f0ba",
@@ -729,7 +1269,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "b5a88768620f843afb6dee28c704f18f33007a3181959b500774a464f5acf389": {
     "token_hash": "b5a88768620f843afb6dee28c704f18f33007a3181959b500774a464f5acf389",
@@ -741,7 +1290,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "9f2d9eb4aee97f479695a8d8499d47369a45cf8fab3888c4102ca7fc7948bb2c": {
     "token_hash": "9f2d9eb4aee97f479695a8d8499d47369a45cf8fab3888c4102ca7fc7948bb2c",
@@ -753,7 +1311,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "caa0c9186f02bb2f12c259e64799db70fe45a84d63ead0c8a30918847609667b": {
     "token_hash": "caa0c9186f02bb2f12c259e64799db70fe45a84d63ead0c8a30918847609667b",
@@ -765,7 +1332,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "2e3b948889b3ea8e82676baedca162ee1030aea3a0fd1c7f8ec1f55f1864e6a7": {
     "token_hash": "2e3b948889b3ea8e82676baedca162ee1030aea3a0fd1c7f8ec1f55f1864e6a7",
@@ -777,7 +1353,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "f81d7cb809d409e07cb142cbb640db6e094cfe08b1fc190a38c9b35ad6116472": {
     "token_hash": "f81d7cb809d409e07cb142cbb640db6e094cfe08b1fc190a38c9b35ad6116472",
@@ -789,7 +1374,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "19abbdda489b890fa53e5eac49a83ac3724a215d86660ac5d4cc2f957d837643": {
     "token_hash": "19abbdda489b890fa53e5eac49a83ac3724a215d86660ac5d4cc2f957d837643",
@@ -801,7 +1395,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Werkzeug/3.1.8",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "f17f317703292384e00fe110f44de92966d32b9ea07e13398916e22e6b63b4d9": {
     "token_hash": "f17f317703292384e00fe110f44de92966d32b9ea07e13398916e22e6b63b4d9",
@@ -813,7 +1416,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "d7758b0d2474fa2999698a20bcd833e4a83d36d78a1a9c488404a29baecd04b5": {
     "token_hash": "d7758b0d2474fa2999698a20bcd833e4a83d36d78a1a9c488404a29baecd04b5",
@@ -825,7 +1437,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "165f2a4eadade2656cbb4f8d7b235f565cf9082e2a77e4d3e9693b5a7f13d66e": {
     "token_hash": "165f2a4eadade2656cbb4f8d7b235f565cf9082e2a77e4d3e9693b5a7f13d66e",
@@ -837,7 +1458,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "2bcdf11c3821ba54139cd08f1a866274b87c7f8d82caa8d0714cecc9addee1e9": {
     "token_hash": "2bcdf11c3821ba54139cd08f1a866274b87c7f8d82caa8d0714cecc9addee1e9",
@@ -849,7 +1479,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "14cfa859ee20aa4cbd865e41da91e4f46e98ab1355d930f904e4fb9e844b291c": {
     "token_hash": "14cfa859ee20aa4cbd865e41da91e4f46e98ab1355d930f904e4fb9e844b291c",
@@ -861,7 +1500,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "a445ba1bd437853b05bc9dfd675cf5f8dab7d15888105089fee52c78b31fb63f": {
     "token_hash": "a445ba1bd437853b05bc9dfd675cf5f8dab7d15888105089fee52c78b31fb63f",
@@ -873,7 +1521,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "86a696480b57721ee1d7621996b94987e8c5722a184e2bc38dda5b0acec2fe69": {
     "token_hash": "86a696480b57721ee1d7621996b94987e8c5722a184e2bc38dda5b0acec2fe69",
@@ -885,7 +1542,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "29a3575b09c3c37ebc4e897166ccd14499e31a5714e9cc8f97efe6a9118cb50a": {
     "token_hash": "29a3575b09c3c37ebc4e897166ccd14499e31a5714e9cc8f97efe6a9118cb50a",
@@ -897,7 +1563,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "f4b2d0275bddd18d805149c944640dec9e0e0f334b8978a88c83880a11553d0c": {
     "token_hash": "f4b2d0275bddd18d805149c944640dec9e0e0f334b8978a88c83880a11553d0c",
@@ -909,7 +1584,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "507c51f438624bff2879ed263808a34ef4ad9e9ff64b586130d1c11869e47c42": {
     "token_hash": "507c51f438624bff2879ed263808a34ef4ad9e9ff64b586130d1c11869e47c42",
@@ -921,7 +1605,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "c7a3f2916ab3a8baa98f3824a7c043bad82ad567c84684f58e91ec85c7b5106a": {
     "token_hash": "c7a3f2916ab3a8baa98f3824a7c043bad82ad567c84684f58e91ec85c7b5106a",
@@ -933,7 +1626,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "3c0782ed3b4dde078bd6d6f8e24d86aae8d3d1b3dfc863cb3167ac108c0a9fc4": {
     "token_hash": "3c0782ed3b4dde078bd6d6f8e24d86aae8d3d1b3dfc863cb3167ac108c0a9fc4",
@@ -945,7 +1647,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "815ddda6c53be99a3fceb2d61cea99814dc70e842a1c3a5c772ddbcc741121b0": {
     "token_hash": "815ddda6c53be99a3fceb2d61cea99814dc70e842a1c3a5c772ddbcc741121b0",
@@ -957,7 +1668,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "0061161380c9a3751af6da4e7f26c2252cbdab64f3a15b909f57bde7586510f6": {
     "token_hash": "0061161380c9a3751af6da4e7f26c2252cbdab64f3a15b909f57bde7586510f6",
@@ -969,7 +1689,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "1ea81f2e9c7e230f5345093320ae57c6c6b6f5f796a910e819b8c07d5663f5c5": {
     "token_hash": "1ea81f2e9c7e230f5345093320ae57c6c6b6f5f796a910e819b8c07d5663f5c5",
@@ -981,7 +1710,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "d91a70ace4e5a654b37fd5b8911c116e543d94db68156590aeee31a3aaad0ef7": {
     "token_hash": "d91a70ace4e5a654b37fd5b8911c116e543d94db68156590aeee31a3aaad0ef7",
@@ -993,7 +1731,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "284bd5ef32abc9108fc62ed09c63ecc5b383d06091e731041ba60a6d5367519a": {
     "token_hash": "284bd5ef32abc9108fc62ed09c63ecc5b383d06091e731041ba60a6d5367519a",
@@ -1005,7 +1752,16 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   },
   "b9409894ee102cda192d20ad4134ec970b3a8c702b51f00e8e881b5025a2185e": {
     "token_hash": "b9409894ee102cda192d20ad4134ec970b3a8c702b51f00e8e881b5025a2185e",
@@ -1017,6 +1773,61 @@
     "is_revoked": false,
     "revoked_at": null,
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
-    "ip_address": "127.0.0.1"
+    "ip_address": "127.0.0.1",
+    "namespace": null,
+    "environment": null,
+    "is_admin": false,
+    "scopes": [],
+    "user_id": null,
+    "username": null,
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
+  },
+  "43f9cd1bd620ce92d1178e743387b181bfcf79b4094149a605a7386e8e76657a": {
+    "token_hash": "43f9cd1bd620ce92d1178e743387b181bfcf79b4094149a605a7386e8e76657a",
+    "session_id": "test",
+    "device_id": null,
+    "created_at": "2026-06-24T11:43:35.930011+00:00",
+    "expires_at": "2026-07-01T11:43:35.930023+00:00",
+    "last_used": "2026-06-24T11:43:35.936419+00:00",
+    "is_revoked": false,
+    "revoked_at": null,
+    "user_agent": "unknown",
+    "ip_address": "unknown",
+    "namespace": null,
+    "environment": null,
+    "is_admin": true,
+    "scopes": [
+      "*"
+    ],
+    "user_id": null,
+    "username": "admin",
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
+  },
+  "c1993176607440ab341e8b8f0b680df3bee5f84245506506a2e0d81c6d8976ad": {
+    "token_hash": "c1993176607440ab341e8b8f0b680df3bee5f84245506506a2e0d81c6d8976ad",
+    "session_id": "test",
+    "device_id": null,
+    "created_at": "2026-06-24T11:43:35.942464+00:00",
+    "expires_at": "2026-07-01T11:43:35.942480+00:00",
+    "last_used": null,
+    "is_revoked": false,
+    "revoked_at": null,
+    "user_agent": "unknown",
+    "ip_address": "unknown",
+    "namespace": null,
+    "environment": null,
+    "is_admin": true,
+    "scopes": [
+      "*"
+    ],
+    "user_id": null,
+    "username": "admin",
+    "email": null,
+    "must_change_password": false,
+    "credential_type": "unknown"
   }
 }

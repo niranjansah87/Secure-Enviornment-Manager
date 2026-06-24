@@ -260,6 +260,15 @@ def user_change_password():
         session_id=session_id,
         user_agent=request.headers.get("User-Agent", "unknown"),
         ip_address=request.remote_addr or "unknown",
+        namespace=payload.namespace or "global",
+        environment=payload.environment or "main",
+        is_admin=payload.is_admin,
+        scopes=payload.scopes,
+        user_id=user_id,
+        username=getattr(payload, "username", None),
+        email=getattr(payload, "email", None),
+        must_change_password=False,
+        credential_type="user_password",
     )
 
     return api_response(
@@ -267,7 +276,7 @@ def user_change_password():
             "message": "Password changed successfully.",
             "access_token": access_token,
             "refresh_token": refresh_token,
-            "expires_in": 900,
+            "expires_in": 3600,  # matches ACCESS_TOKEN_EXPIRE_MINUTES
             "token_type": "Bearer",
         }
     )
