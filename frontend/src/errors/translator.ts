@@ -2,8 +2,6 @@
  * Centralized error translation for Secure Environment Manager.
  * Maps backend/system errors to user-friendly messages with recovery actions.
  */
-import type { ApiError } from "@/lib/api-base";
-
 export type Severity = "info" | "warning" | "error" | "critical";
 
 export interface UserError {

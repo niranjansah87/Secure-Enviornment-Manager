@@ -39,8 +39,6 @@ export default function AuditPage({
 
   // Filter state
   const [actionFilter, setActionFilter] = useState<string>("");
-  const [searchQuery, setSearchQuery] = useState("");
-
   // Pagination state
   const [pagination, setPagination] = useState({ offset: 0, limit: 50, total: 0, has_more: false });
   const [pageSize, setPageSize] = useState(50);

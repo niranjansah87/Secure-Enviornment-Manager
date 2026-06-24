@@ -18,7 +18,6 @@ import {
   saveAuthTokens,
   clearAuthTokens,
   loadRefreshToken,
-  hasRefreshToken,
   loadAccessToken,
   loadDeviceId,
   type Workspace,

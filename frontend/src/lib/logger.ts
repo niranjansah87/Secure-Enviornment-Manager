@@ -237,15 +237,17 @@ export const log = {
   critical: (msg: string, err?: Error) => logger().critical(msg, err),
   forComponent: (component: string) => new Logger({ component }),
   api: (label: string, meta: { method: string; path: string; status?: number; duration?: number; error?: Error }) => {
-    const level = meta.error ? LogLevel.ERROR : meta.status && meta.status >= 400 ? LogLevel.WARN : LogLevel.INFO;
     const msg = meta.error ? `API error: ${meta.error.message}` : `API: ${label}`;
-    logger().withContext({
+    const ctx = logger().withContext({
       api_label: label,
       api_method: meta.method,
       api_path: meta.path,
-      api_status: meta.status ?? 0,
-      api_duration_ms: meta.duration ?? 0,
-    }).info(msg);
+      api_status: String(meta.status ?? 0),
+      api_duration_ms: String(meta.duration ?? 0),
+    });
+    if (meta.error) ctx.error(msg, meta.error);
+    else if (meta.status && meta.status >= 400) ctx.warn(msg);
+    else ctx.info(msg);
   },
 };
 
@@ -253,9 +255,9 @@ export const log = {
 export function logApiRequest(
   method: string,
   path: string,
-  options?: { namespace?: string; environment?: string }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _options?: { namespace?: string; environment?: string }
 ): { onResponse: (status: number, duration: number, error?: Error) => void; abort: () => void } {
-  const start = performance.now();
   let aborted = false;
   return {
     onResponse(status: number, duration: number, error?: Error) {

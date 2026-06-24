@@ -2,7 +2,7 @@
  * Centralized logging for Secure Environment Manager frontend.
  * Structured logging with context, levels, transports, and subscriber pattern.
  */
-import type { LogEntry, SerializedError, LogContext } from "./context";
+import type { LogEntry, LogContext } from "./context";
 
 export { type LogEntry, type SerializedError, type LogContext } from "./context";
 

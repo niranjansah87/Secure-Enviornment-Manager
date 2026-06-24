@@ -12,16 +12,7 @@ export type UserFriendlyError = {
   code?: string;
 };
 
-// Error code prefixes for categorization
-type ErrorCategory =
-  | "auth"
-  | "validation"
-  | "storage"
-  | "rate_limit"
-  | "network"
-  | "internal"
-  | "session"
-  | "step_up";
+
 
 const ERROR_MESSAGES: Record<string, UserFriendlyError> = {
   // Auth errors (401, 403)
@@ -166,18 +157,6 @@ const ERROR_MESSAGES: Record<string, UserFriendlyError> = {
     code: "AUTH_LOCKED_OUT",
   },
 };
-
-/**
- * Maps HTTP status codes to error categories.
- */
-function statusToCategory(status: number): ErrorCategory {
-  if (status === 401) return "auth";
-  if (status === 403) return "auth";
-  if (status === 404) return "storage";
-  if (status === 429) return "rate_limit";
-  if (status >= 500) return "internal";
-  return "validation";
-}
 
 /**
  * Detect error code from response body or status.

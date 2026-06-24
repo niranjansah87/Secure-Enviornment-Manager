@@ -113,7 +113,7 @@ export function AppSidebar() {
   const { workspace, token, setToken } = useWorkspace();
   const [collapsed, setCollapsed] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [loadingAdmin, setLoadingAdmin] = useState(true);
+  const [, setLoadingAdmin] = useState(true);
 
   useEffect(() => {
     try {
