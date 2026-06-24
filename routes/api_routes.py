@@ -39,6 +39,17 @@ from health_service import health_service
 api_bp = Blueprint("api", __name__, url_prefix="/api/v1")
 
 
+def _token_is_admin(token: str) -> bool:
+    """Return True if the token carries admin privileges (raw credential or JWT)."""
+    if settings.master_api_token and hmac.compare_digest(settings.master_api_token, token):
+        return True
+    if check_password_hash(get_dashboard_password_hash(), token):
+        return True
+    from core.jwt_auth import token_manager
+    payload = token_manager.validate_access_token(token)
+    return payload is not None and payload.is_admin
+
+
 def _log_api_auth_failure(
     namespace: str,
     environment: str,
@@ -110,10 +121,10 @@ def _recent_audit_entries(visible_namespaces: set, limit: int = 15) -> list[Dict
 
 @api_bp.route("/auth/validate-password", methods=["POST"])
 def api_validate_password():
-    """Validate dashboard password and return token scope info.
+    """Validate any credential (dashboard password, master token, or API key).
 
     Accepts namespace/environment/password in JSON body.
-    Returns token info if password is valid.
+    Returns token scope info if credential is valid.
     """
     locked, _ = _check_api_lockout()
     if locked:
@@ -127,21 +138,32 @@ def api_validate_password():
     if not password:
         return jsonify({"error": "Password required", "code": "VALIDATION_PASSWORD_REQUIRED"}), 400
 
-    # Validate password
-    if not check_password_hash(get_dashboard_password_hash(), password):
-        _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "invalid_password", "auth/validate")
-        return jsonify({"error": "Invalid password", "code": "AUTH_INVALID_PASSWORD"}), 401
+    # Master API token
+    master = settings.master_api_token
+    if master and hmac.compare_digest(master, password):
+        audit_logger.log_login_success(namespace, environment, "master_token", request.remote_addr or "unknown")
+        return jsonify({"valid": True, "token_type": "master_token", "is_admin": True,
+                        "namespace": namespace, "environment": environment})
 
-    # Password is valid - return success with token type info
-    # The actual token is the password itself for API access
-    audit_logger.log_login_success(namespace, environment, "dashboard_password", request.remote_addr or "unknown")
+    # Dashboard password
+    if check_password_hash(get_dashboard_password_hash(), password):
+        audit_logger.log_login_success(namespace, environment, "dashboard_password", request.remote_addr or "unknown")
+        return jsonify({"valid": True, "token_type": "dashboard_password", "is_admin": True,
+                        "namespace": namespace, "environment": environment})
 
-    return jsonify({
-        "valid": True,
-        "token_type": "password",
-        "namespace": namespace,
-        "environment": environment,
-    })
+    # API key
+    from services.api_key_service import api_key_service
+    is_valid, key_info = api_key_service.verify_key(password)
+    if is_valid and key_info:
+        allowed_namespaces = key_info.get("namespaces", [])
+        audit_logger.log_login_success(namespace, environment, "api_key", request.remote_addr or "unknown")
+        return jsonify({"valid": True, "token_type": "api_key", "is_admin": False,
+                        "namespace": key_info.get("namespace", namespace),
+                        "environment": environment,
+                        "allowed_namespaces": allowed_namespaces})
+
+    _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "invalid_credential", "auth/validate")
+    return jsonify({"error": "Invalid credential", "code": "AUTH_INVALID_CREDENTIAL"}), 401
 
 
 @api_bp.route("/meta/environments", methods=["GET"])
@@ -177,13 +199,19 @@ def api_meta_is_admin():
     if not token:
         return jsonify({"is_admin": False}), 200
 
-    # Master token or dashboard password = admin
+    # Raw credential check (master token or dashboard password)
     from core.constants_patch import get_dashboard_password_hash
-    is_admin = (
-        (settings.master_api_token and hmac.compare_digest(settings.master_api_token, token)) or
-        check_password_hash(get_dashboard_password_hash(), token)
-    )
-    return jsonify({"is_admin": is_admin})
+    if (settings.master_api_token and hmac.compare_digest(settings.master_api_token, token)) or \
+            check_password_hash(get_dashboard_password_hash(), token):
+        return jsonify({"is_admin": True})
+
+    # JWT check — read is_admin from the token payload
+    from core.jwt_auth import token_manager
+    payload = token_manager.validate_access_token(token)
+    if payload:
+        return jsonify({"is_admin": payload.is_admin})
+
+    return jsonify({"is_admin": False})
 
 
 @api_bp.route("/meta/stats", methods=["GET"])
@@ -267,15 +295,7 @@ def api_meta_health():
     if not token:
         _log_api_auth_failure("system", "global", request.remote_addr or "unknown", "missing_token", "meta/health")
         return jsonify({"error": "Authorization header missing"}), 401
-    # Master token or dashboard password grants admin access
-    master = settings.master_api_token
-    is_master = master and hmac.compare_digest(master, token)
-    # Check if it's the dashboard password
-    from core.constants_patch import get_dashboard_password_hash
-    from werkzeug.security import check_password_hash
-    is_dashboard = check_password_hash(get_dashboard_password_hash(), token)
-
-    if not is_master and not is_dashboard:
+    if not _token_is_admin(token):
         _log_api_auth_failure("system", "global", request.remote_addr or "unknown", "master_required", "meta/health")
         return jsonify({"error": "Forbidden: Requires administrative privileges"}), 403
 
@@ -316,13 +336,7 @@ def api_keys_list(namespace: str):
         _log_api_auth_failure(namespace, "global", request.remote_addr or "unknown", "missing_token", "keys/list")
         return jsonify({"error": "Authorization header missing or invalid"}), 401
 
-    # Master token OR dashboard password can manage keys
-    from core.constants_patch import get_dashboard_password_hash
-    is_admin = (
-        (settings.master_api_token and hmac.compare_digest(settings.master_api_token, token)) or
-        check_password_hash(get_dashboard_password_hash(), token)
-    )
-    if not is_admin:
+    if not _token_is_admin(token):
         _log_api_auth_failure(namespace, "global", request.remote_addr or "unknown", "master_required", "keys/list")
         return jsonify({"error": "Administrator access required", "code": "AUTH_MASTER_REQUIRED"}), 403
 
@@ -339,22 +353,17 @@ def api_keys_create(namespace: str):
         _log_api_auth_failure(namespace, "global", request.remote_addr or "unknown", "missing_token", "keys/create")
         return jsonify({"error": "Authorization header missing or invalid"}), 401
 
-    # Master token OR dashboard password can manage keys
-    from core.constants_patch import get_dashboard_password_hash
-    is_admin = (
-        (settings.master_api_token and hmac.compare_digest(settings.master_api_token, token)) or
-        check_password_hash(get_dashboard_password_hash(), token)
-    )
-    if not is_admin:
+    if not _token_is_admin(token):
         _log_api_auth_failure(namespace, "global", request.remote_addr or "unknown", "master_required", "keys/create")
         return jsonify({"error": "Administrator access required", "code": "AUTH_MASTER_REQUIRED"}), 403
 
     # Parse request body for options
     body = request.get_json(silent=True) or {}
     description = body.get("description", "")
-    validity_days = max(0, min(int(body.get("validity_days", 30)), 365))  # 0 = no expiry, max 1 year
+    validity_days = max(0, min(int(body.get("validity_days", 30)), 365))
     custom_key = body.get("custom_key") or None
-    allowed_namespaces = body.get("namespaces") or None  # None = all namespaces
+    allowed_namespaces = body.get("namespaces") or None
+    allowed_environments = body.get("environments") or None  # ["ns/env", ...], None = all
 
     # Validate custom key if provided
     from services.api_key_service import api_key_service
@@ -370,17 +379,11 @@ def api_keys_create(namespace: str):
             description=description,
             validity_days=validity_days,
             custom_key=custom_key,
-            allowed_namespaces=allowed_namespaces
+            allowed_namespaces=allowed_namespaces,
+            allowed_environments=allowed_environments,
         )
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
-
-    # Determine creator identity
-    creator = "master_token"
-    if settings.master_api_token and hmac.compare_digest(settings.master_api_token, token):
-        creator = "master_token"
-    elif check_password_hash(get_dashboard_password_hash(), token):
-        creator = "dashboard_password"
 
     audit_logger.log_event(
         "API_KEY_CREATED", "api_key", key_id,
@@ -388,13 +391,14 @@ def api_keys_create(namespace: str):
         {"namespace": namespace, "key_id": key_id, "validity_days": validity_days, "custom_key": bool(custom_key)}
     )
     return jsonify({
-        "key": raw_key,  # Only returned once at creation
+        "key": raw_key,
         "key_id": key_id,
         "namespace": namespace,
         "description": description,
         "validity_days": validity_days,
         "expires_at": (datetime.now(timezone.utc) + timedelta(days=validity_days)).isoformat() if validity_days > 0 else None,
         "namespaces": allowed_namespaces if allowed_namespaces else [],
+        "environments": allowed_environments if allowed_environments else [],
         "message": "Store this key securely. It will not be shown again."
     }), 201
 
@@ -407,13 +411,7 @@ def api_keys_revoke(namespace: str, key_id: str):
         _log_api_auth_failure(namespace, "global", request.remote_addr or "unknown", "missing_token", "keys/revoke")
         return jsonify({"error": "Authorization header missing or invalid"}), 401
 
-    # Master token OR dashboard password can manage keys
-    from core.constants_patch import get_dashboard_password_hash
-    is_admin = (
-        (settings.master_api_token and hmac.compare_digest(settings.master_api_token, token)) or
-        check_password_hash(get_dashboard_password_hash(), token)
-    )
-    if not is_admin:
+    if not _token_is_admin(token):
         _log_api_auth_failure(namespace, "global", request.remote_addr or "unknown", "master_required", "keys/revoke")
         return jsonify({"error": "Administrator access required", "code": "AUTH_MASTER_REQUIRED"}), 403
 
@@ -438,13 +436,7 @@ def api_keys_get(namespace: str, key_id: str):
         _log_api_auth_failure(namespace, "global", request.remote_addr or "unknown", "missing_token", "keys/get")
         return jsonify({"error": "Authorization header missing or invalid"}), 401
 
-    # Master token OR dashboard password can view key details
-    from core.constants_patch import get_dashboard_password_hash
-    is_admin = (
-        (settings.master_api_token and hmac.compare_digest(settings.master_api_token, token)) or
-        check_password_hash(get_dashboard_password_hash(), token)
-    )
-    if not is_admin:
+    if not _token_is_admin(token):
         _log_api_auth_failure(namespace, "global", request.remote_addr or "unknown", "master_required", "keys/get")
         return jsonify({"error": "Administrator access required", "code": "AUTH_MASTER_REQUIRED"}), 403
 
@@ -469,7 +461,7 @@ def api_environment(namespace: str, environment: str):
     if not token:
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "missing_token", "environment")
         return jsonify({"error": "Authorization header missing or invalid"}), 401
-    if not api_auth_ok(namespace, token):
+    if not api_auth_ok(namespace, token, environment):
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "invalid_api_key", "environment")
         return jsonify({"error": "Invalid API Key for this namespace"}), 403
 
@@ -550,7 +542,7 @@ def api_environment_meta(namespace: str, environment: str):
     if not token:
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "missing_token", "environment/meta")
         return jsonify({"error": "Authorization header missing or invalid"}), 401
-    if not api_auth_ok(namespace, token):
+    if not api_auth_ok(namespace, token, environment):
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "invalid_api_key", "environment/meta")
         return jsonify({"error": "Invalid API Key for this namespace"}), 403
     meta = get_metadata(namespace, environment)
@@ -574,7 +566,7 @@ def api_delete_key(namespace: str, environment: str, key: str):
     if not token:
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "missing_token", "environment/keys")
         return jsonify({"error": "Authorization header missing or invalid"}), 401
-    if not api_auth_ok(namespace, token):
+    if not api_auth_ok(namespace, token, environment):
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "invalid_api_key", "environment/keys")
         return jsonify({"error": "Invalid API Key for this namespace"}), 403
     if not KEY_PATTERN.match(key):
@@ -613,7 +605,7 @@ def api_bulk_replace(namespace: str, environment: str):
     if not token:
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "missing_token", "environment/bulk")
         return jsonify({"error": "Authorization header missing or invalid"}), 401
-    if not api_auth_ok(namespace, token):
+    if not api_auth_ok(namespace, token, environment):
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "invalid_api_key", "environment/bulk")
         return jsonify({"error": "Invalid API Key for this namespace"}), 403
     body = request.get_json(silent=True)
@@ -664,7 +656,7 @@ def api_history(namespace: str, environment: str):
     if not token:
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "missing_token", "environment/history")
         return jsonify({"error": "Authorization header missing or invalid"}), 401
-    if not api_auth_ok(namespace, token):
+    if not api_auth_ok(namespace, token, environment):
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "invalid_api_key", "environment/history")
         return jsonify({"error": "Invalid API Key for this namespace"}), 403
     history = _get_history_manager().get_history(namespace, environment, limit=80)
@@ -679,7 +671,7 @@ def api_audit(namespace: str, environment: str):
     if not token:
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "missing_token", "environment/audit")
         return jsonify({"error": "Authorization header missing or invalid"}), 401
-    if not api_auth_ok(namespace, token):
+    if not api_auth_ok(namespace, token, environment):
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "invalid_api_key", "environment/audit")
         return jsonify({"error": "Invalid API Key for this namespace"}), 403
     limit = min(int(request.args.get("limit", "50")), 500)
@@ -746,7 +738,7 @@ def api_templates_apply(namespace: str, environment: str):
     if not token:
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "missing_token", "environment/templates/apply")
         return jsonify({"error": "Authorization header missing or invalid"}), 401
-    if not api_auth_ok(namespace, token):
+    if not api_auth_ok(namespace, token, environment):
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "invalid_api_key", "environment/templates/apply")
         return jsonify({"error": "Invalid API Key for this namespace"}), 403
     body = request.get_json(silent=True)
@@ -800,7 +792,7 @@ def api_rollback(namespace: str, environment: str):
     if not token:
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "missing_token", "environment/rollback")
         return jsonify({"error": "Authorization header missing or invalid"}), 401
-    if not api_auth_ok(namespace, token):
+    if not api_auth_ok(namespace, token, environment):
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "invalid_api_key", "environment/rollback")
         return jsonify({"error": "Invalid API Key for this namespace"}), 403
     body = request.get_json(silent=True)
@@ -846,7 +838,7 @@ def api_step_up(namespace: str, environment: str):
     if not token:
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "missing_token", "environment/step-up")
         return jsonify({"error": "Authorization header missing or invalid"}), 401
-    if not api_auth_ok(namespace, token):
+    if not api_auth_ok(namespace, token, environment):
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "invalid_api_key", "environment/step-up")
         return jsonify({"error": "Invalid API Key for this namespace"}), 403
 

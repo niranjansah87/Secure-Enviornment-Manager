@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { KeyRound, Plus, Trash2, Copy, CheckCircle2, AlertCircle, RefreshCw, Clock, Eye, EyeOff } from "lucide-react";
+import { KeyRound, Plus, Trash2, Copy, CheckCircle2, AlertCircle, RefreshCw, Clock, Eye, EyeOff, Globe } from "lucide-react";
 import { api } from "@/lib/api";
 import { useWorkspace } from "@/context/workspace-context";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ type ApiKeyInfo = {
   created_by: string;
   description: string;
   namespaces: string[];
+  environments: string[];
   expires_at: string | null;
   status: string;
   custom_key: boolean;
@@ -65,8 +66,9 @@ export default function ApiKeysPage() {
   const [validityDays, setValidityDays] = useState(30);
   const [useCustomKey, setUseCustomKey] = useState(false);
   const [customKey, setCustomKey] = useState("");
-  const [selectedNamespaces, setSelectedNamespaces] = useState<Set<string>>(new Set());
-  const [availableNamespaces, setAvailableNamespaces] = useState<string[]>([]);
+  // selectedEnvironments stores "namespace/environment" strings
+  const [selectedEnvironments, setSelectedEnvironments] = useState<Set<string>>(new Set());
+  const [availableEnvPairs, setAvailableEnvPairs] = useState<{ns: string; env: string}[]>([]);
   const [loadingNamespaces, setLoadingNamespaces] = useState(false);
   const [customKeyError, setCustomKeyError] = useState("");
 
@@ -101,8 +103,8 @@ export default function ApiKeysPage() {
 
   const validateCustomKey = (key: string): boolean => {
     if (!key) return false;
-    if (key.length < 16) {
-      setCustomKeyError("Key must be at least 16 characters");
+    if (key.length < 8) {
+      setCustomKeyError("Key must be at least 8 characters");
       return false;
     }
     if (key.length > 64) {
@@ -118,7 +120,7 @@ export default function ApiKeysPage() {
   };
 
   const handleCreateKey = async () => {
-    if (!token || !selectedNamespace) return;
+    if (!token) return;
 
     // Validate custom key if provided
     if (useCustomKey && customKey) {
@@ -127,6 +129,12 @@ export default function ApiKeysPage() {
       }
     }
 
+    // Derive storage namespace: first selected env's ns, first available, or fallback
+    const storageNs =
+      selectedEnvironments.size > 0
+        ? Array.from(selectedEnvironments)[0].split("/")[0]
+        : (availableEnvPairs[0]?.ns ?? "global");
+
     setCreating(true);
     setNewKey(null);
     try {
@@ -134,7 +142,7 @@ export default function ApiKeysPage() {
         description: string;
         validity_days: number;
         custom_key?: string;
-        namespaces?: string[];
+        environments?: string[];
       } = {
         description,
         validity_days: validityDays,
@@ -144,12 +152,12 @@ export default function ApiKeysPage() {
         options.custom_key = customKey;
       }
 
-      // If specific namespaces selected, use them; otherwise empty = all namespaces
-      if (selectedNamespaces.size > 0) {
-        options.namespaces = Array.from(selectedNamespaces);
+      // If specific environments selected, send them; empty = all access
+      if (selectedEnvironments.size > 0) {
+        options.environments = Array.from(selectedEnvironments);
       }
 
-      const res = await api.createKey(token, selectedNamespace, options);
+      const res = await api.createKey(token, storageNs, options);
       setNewKey(res);
       toast.success("API key created", {
         description: "Copy and store this key securely. It will not be shown again.",
@@ -174,7 +182,7 @@ export default function ApiKeysPage() {
     setValidityDays(30);
     setUseCustomKey(false);
     setCustomKey("");
-    setSelectedNamespaces(new Set());
+    setSelectedEnvironments(new Set());
     setCustomKeyError("");
   };
 
@@ -185,13 +193,19 @@ export default function ApiKeysPage() {
     setLoadingNamespaces(true);
     try {
       const envs = await api.metaEnvironments(token);
+      const pairs: {ns: string; env: string}[] = [];
+      for (const [ns, envList] of Object.entries(envs.environments || {})) {
+        for (const env of (envList as string[])) {
+          pairs.push({ ns, env });
+        }
+      }
+      setAvailableEnvPairs(pairs);
       const allNamespaces = Object.keys(envs.environments || {});
-      setAvailableNamespaces(allNamespaces);
       if (allNamespaces.length > 0) {
         setSelectedNamespace(allNamespaces[0]);
       }
     } catch {
-      setAvailableNamespaces([]);
+      setAvailableEnvPairs([]);
     } finally {
       setLoadingNamespaces(false);
     }
@@ -424,7 +438,18 @@ export default function ApiKeysPage() {
                               {key.description && (
                                 <div className="text-zinc-400 mt-1">Description: {key.description}</div>
                               )}
-                              {key.namespaces && key.namespaces.length > 0 ? (
+                              {key.environments && key.environments.length > 0 ? (
+                                <div className="mt-1">
+                                  <span className="text-zinc-500">Allowed environments: </span>
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {key.environments.map(e => (
+                                      <Badge key={e} variant="secondary" className="text-[10px] bg-amber-500/20 text-amber-400 border-amber-500/30 font-mono">
+                                        {e}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : key.namespaces && key.namespaces.length > 0 ? (
                                 <div className="mt-1">
                                   <span className="text-zinc-500">Allowed namespaces: </span>
                                   <div className="flex flex-wrap gap-1 mt-1">
@@ -438,7 +463,7 @@ export default function ApiKeysPage() {
                               ) : (
                                 <div className="mt-1">
                                   <Badge variant="secondary" className="text-[10px] bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
-                                    All Namespaces
+                                    All Access
                                   </Badge>
                                 </div>
                               )}
@@ -492,7 +517,7 @@ export default function ApiKeysPage() {
             </li>
             <li className="flex items-start gap-2">
               <span className="text-blue-400 mt-0.5">•</span>
-              Custom keys can be provided (16-64 chars, alphanumeric + underscore/hyphen).
+              Custom keys can be provided (8-64 chars, alphanumeric + underscore/hyphen).
             </li>
             <li className="flex items-start gap-2">
               <span className="text-zinc-400 mt-0.5">•</span>
@@ -526,7 +551,7 @@ export default function ApiKeysPage() {
                 className="w-full px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-zinc-100 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 cursor-pointer"
               >
                 <option value="">Select a namespace...</option>
-                {availableNamespaces.map((ns) => (
+                {[...new Set(availableEnvPairs.map(p => p.ns))].map((ns) => (
                   <option key={ns} value={ns}>
                     {ns}
                   </option>
@@ -563,61 +588,63 @@ export default function ApiKeysPage() {
               </select>
             </div>
 
-            {/* Allowed Namespaces */}
+            {/* Allowed Environments */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-zinc-300">Allowed Namespaces (for this key)</Label>
+              <Label className="text-sm font-medium text-zinc-300">Allowed Environments</Label>
               {loadingNamespaces ? (
-                <div className="text-sm text-zinc-500">Loading namespaces...</div>
-              ) : availableNamespaces.length === 0 ? (
-                <div className="text-sm text-zinc-500">No namespaces available</div>
+                <div className="text-sm text-zinc-500">Loading environments...</div>
+              ) : availableEnvPairs.length === 0 ? (
+                <div className="text-sm text-zinc-500">No environments available</div>
               ) : (
-                <div className="space-y-2 max-h-48 overflow-y-auto border border-white/10 rounded-lg p-3 bg-black/20">
-                  <div className="flex items-center gap-2 pb-2 border-b border-white/10">
+                <div className="space-y-1 max-h-52 overflow-y-auto border border-white/10 rounded-lg p-3 bg-black/20">
+                  <div className="flex items-center gap-2 pb-2 border-b border-white/10 mb-1">
                     <input
                       type="checkbox"
-                      id="selectAllNamespaces"
-                      checked={selectedNamespaces.size === availableNamespaces.length}
+                      id="selectAllEnvs"
+                      checked={selectedEnvironments.size === availableEnvPairs.length}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          setSelectedNamespaces(new Set(availableNamespaces));
+                          setSelectedEnvironments(new Set(availableEnvPairs.map(p => `${p.ns}/${p.env}`)));
                         } else {
-                          setSelectedNamespaces(new Set());
+                          setSelectedEnvironments(new Set());
                         }
                       }}
                       className="rounded border-zinc-600 bg-zinc-800 text-violet-500 focus:ring-violet-500"
                     />
-                    <Label htmlFor="selectAllNamespaces" className="text-zinc-300 font-medium cursor-pointer">
+                    <Label htmlFor="selectAllEnvs" className="text-zinc-300 font-medium cursor-pointer text-xs">
                       Select All
                     </Label>
                   </div>
-                  {availableNamespaces.map((ns) => (
-                    <div key={ns} className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id={`ns-${ns}`}
-                        checked={selectedNamespaces.has(ns)}
-                        onChange={(e) => {
-                          const newSet = new Set(selectedNamespaces);
-                          if (e.target.checked) {
-                            newSet.add(ns);
-                          } else {
-                            newSet.delete(ns);
-                          }
-                          setSelectedNamespaces(newSet);
-                        }}
-                        className="rounded border-zinc-600 bg-zinc-800 text-violet-500 focus:ring-violet-500"
-                      />
-                      <Label htmlFor={`ns-${ns}`} className="text-zinc-300 cursor-pointer">
-                        <span className="font-mono text-violet-400">{ns}</span>
-                      </Label>
-                    </div>
-                  ))}
+                  {availableEnvPairs.map(({ ns, env }) => {
+                    const key = `${ns}/${env}`;
+                    return (
+                      <div key={key} className="flex items-center gap-2 py-0.5">
+                        <input
+                          type="checkbox"
+                          id={`env-${key}`}
+                          checked={selectedEnvironments.has(key)}
+                          onChange={(e) => {
+                            const newSet = new Set(selectedEnvironments);
+                            if (e.target.checked) newSet.add(key);
+                            else newSet.delete(key);
+                            setSelectedEnvironments(newSet);
+                          }}
+                          className="rounded border-zinc-600 bg-zinc-800 text-violet-500 focus:ring-violet-500"
+                        />
+                        <Label htmlFor={`env-${key}`} className="cursor-pointer text-xs">
+                          <span className="font-mono text-violet-400">{ns}</span>
+                          <span className="text-zinc-500">/</span>
+                          <span className="font-mono text-zinc-300">{env}</span>
+                        </Label>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
               <p className="text-xs text-zinc-500">
-                {selectedNamespaces.size === 0
-                  ? "No selection = access to all namespaces"
-                  : `${selectedNamespaces.size} namespace(s) selected`}
+                {selectedEnvironments.size === 0
+                  ? "No selection = access to all environments"
+                  : `${selectedEnvironments.size} environment(s) selected`}
               </p>
             </div>
 
@@ -645,14 +672,14 @@ export default function ApiKeysPage() {
                       if (e.target.value) validateCustomKey(e.target.value);
                       else setCustomKeyError("");
                     }}
-                    placeholder="Enter custom key (16-64 characters)"
+                    placeholder="Enter custom key (8-64 characters)"
                     className={"w-full px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500" + (customKeyError ? " border-red-500" : "")}
                   />
                   {customKeyError && (
                     <p className="text-xs text-red-400">{customKeyError}</p>
                   )}
                   <p className="text-xs text-zinc-500">
-                    16-64 characters, letters, numbers, underscores, hyphens only.
+                    8-64 characters, letters, numbers, underscores, hyphens only.
                   </p>
                 </div>
               )}

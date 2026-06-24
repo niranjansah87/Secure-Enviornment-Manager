@@ -12,7 +12,7 @@
 [![Issues](https://img.shields.io/github/issues/niranjansah87/Secure-Environment-Manager?style=flat-square)](https://github.com/niranjansah87/Secure-Environment-Manager/issues)
 [![Last Commit](https://img.shields.io/github/last-commit/niranjansah87/Secure-Environment-Manager?style=flat-square)](https://github.com/niranjansah87/Secure-Environment-Manager/commits/main)
 
-[Features](#-features) • [Quick Start](#-quick-start) • [Architecture](#-architecture) • [SDK & CLI](#-sdk--cli) • [Deployment](#-deployment)
+[Features](#-features) • [Quick Start](#-quick-start) • [Architecture](#-architecture) • [SDK &amp; CLI](#-sdk--cli) • [Deployment](#-deployment)
 
 </div>
 
@@ -32,6 +32,7 @@ Secure Environment Manager (SEM) is a **self-hosted secrets management platform*
 ## ✨ Features
 
 ### 🔒 Security & Protection
+
 - **AES-256 Encryption**: All secrets encrypted at rest using Fernet
 - **JWT Authentication**: Bearer token auth with device tracking
 - **API Key Management**: Admin-controlled keys with expiry
@@ -39,6 +40,7 @@ Secure Environment Manager (SEM) is a **self-hosted secrets management platform*
 - **Secret Versioning**: Automatic snapshots and rollback
 
 ### 🌐 Multi-Platform
+
 - **Web UI**: Next.js 14 with modern React
 - **Mobile App**: Flutter (iOS/Android)
 - **JavaScript SDK**: TypeScript SDK for Node.js and Browser
@@ -46,6 +48,7 @@ Secure Environment Manager (SEM) is a **self-hosted secrets management platform*
 - **REST API**: Full programmatic access
 
 ### 📊 Advanced Management
+
 - **Namespaces & Environments**: Organize secrets logically
 - **Bulk Operations**: Import/export .env, JSON, YAML
 - **Templates**: Quick-start for Django, React, Express, Flask
@@ -233,15 +236,15 @@ flutter build ios --release
 
 ## 🛠️ Tech Stack
 
-| Component | Technology |
-|-----------|------------|
-| Backend | Flask + Gunicorn (Python 3.11) |
-| Frontend | Next.js 14 + TypeScript + Tailwind |
-| Mobile | Flutter (iOS/Android) |
-| Database | Encrypted JSON files |
-| Proxy | Nginx (host-installed) |
-| Monitoring | Prometheus + Grafana |
-| Containers | Docker Compose |
+| Component  | Technology                         |
+| ---------- | ---------------------------------- |
+| Backend    | Flask + Gunicorn (Python 3.11)     |
+| Frontend   | Next.js 14 + TypeScript + Tailwind |
+| Mobile     | Flutter (iOS/Android)              |
+| Database   | Encrypted JSON files               |
+| Proxy      | Nginx (host-installed)             |
+| Monitoring | Prometheus + Grafana               |
+| Containers | Docker Compose                     |
 
 ---
 

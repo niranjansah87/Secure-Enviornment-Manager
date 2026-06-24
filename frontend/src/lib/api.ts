@@ -316,6 +316,7 @@ export const api = {
         created_by: string;
         description: string;
         namespaces: string[];
+        environments: string[];
         expires_at: string | null;
         status: string;
         custom_key: boolean;
@@ -333,6 +334,7 @@ export const api = {
       validity_days?: number;
       custom_key?: string;
       namespaces?: string[];
+      environments?: string[];
     }
   ) {
     return request<{
@@ -343,6 +345,7 @@ export const api = {
       validity_days: number;
       expires_at: string | null;
       namespaces: string[];
+      environments: string[];
       message: string;
     }>(
       `/api/v1/keys/${encodeURIComponent(namespace)}`,
@@ -368,6 +371,7 @@ export const api = {
       created_by: string;
       description: string;
       namespaces: string[];
+      environments: string[];
       expires_at: string | null;
       status: string;
       custom_key: boolean;

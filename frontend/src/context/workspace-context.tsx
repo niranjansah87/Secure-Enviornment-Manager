@@ -33,8 +33,10 @@ type WorkspaceContextValue = {
   refreshEnvironments: () => Promise<void>;
   envError: string | null;
   loadingEnvs: boolean;
-  // New JWT auth support
   isAuthenticated: boolean;
+  isAdmin: boolean;
+  credentialType: "dashboard_password" | "master_token" | "api_key" | null;
+  allowedNamespaces: string[];
   deviceId: string | null;
   loginWithPassword: (password: string, namespace?: string, environment?: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -50,6 +52,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [envError, setEnvError] = useState<string | null>(null);
   const [loadingEnvs, setLoadingEnvs] = useState(false);
   const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [credentialType, setCredentialType] = useState<"dashboard_password" | "master_token" | "api_key" | null>(null);
+  const [allowedNamespaces, setAllowedNamespaces] = useState<string[]>([]);
 
   // Initialize from storage
   useEffect(() => {
@@ -59,6 +64,18 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
     if (accessToken) {
       setTokenState(accessToken);
+      // Restore is_admin from saved JWT payload without a round-trip
+      try {
+        const parts = accessToken.split(".");
+        if (parts.length === 3) {
+          const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+          if (typeof payload.is_admin === "boolean") {
+            setIsAdmin(payload.is_admin);
+          }
+        }
+      } catch {
+        // ignore malformed token
+      }
     }
     if (storedDeviceId) {
       setDeviceId(storedDeviceId);
@@ -109,6 +126,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       });
 
       setTokenState(response.access_token);
+      setIsAdmin(response.is_admin ?? false);
+      setCredentialType(response.credential_type ?? null);
+      setAllowedNamespaces(response.allowed_namespaces ?? []);
       if (response.device_id) {
         setDeviceId(response.device_id);
       }
@@ -210,6 +230,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       envError,
       loadingEnvs,
       isAuthenticated,
+      isAdmin,
+      credentialType,
+      allowedNamespaces,
       deviceId,
       loginWithPassword,
       logout,
@@ -225,6 +248,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       envError,
       loadingEnvs,
       isAuthenticated,
+      isAdmin,
+      credentialType,
+      allowedNamespaces,
       deviceId,
       loginWithPassword,
       logout,

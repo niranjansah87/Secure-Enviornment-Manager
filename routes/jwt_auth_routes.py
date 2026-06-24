@@ -9,6 +9,8 @@ Supports:
 - Session management
 - Multi-device support
 """
+import hmac as _hmac
+
 from flask import Blueprint, request, g
 from werkzeug.security import check_password_hash
 
@@ -28,7 +30,7 @@ from core.sessions import (
     _tz_now,
 )
 from audit_logger import audit_logger
-from middleware.rate_limiter import check_login_rate_limit, is_ip_locked, track_failed_login
+from middleware.rate_limiter import check_login_rate_limit, is_ip_locked, track_failed_login, reset_login_failures
 
 
 jwt_auth_bp = Blueprint("jwt_auth", __name__, url_prefix="/api/v1/auth")
@@ -81,18 +83,51 @@ def jwt_login():
             status_code=400
         )
 
-    # Validate password
-    if not check_password_hash(get_dashboard_password_hash(), password):
-        track_failed_login()
-        audit_logger.log_login_failure(
-            namespace, environment, request.remote_addr or "unknown",
-            reason="jwt_invalid_password"
-        )
-        return api_error(
-            ErrorCode.AUTH_INVALID_CREDENTIALS[0],
-            message="Invalid credentials",
-            status_code=401
-        )
+    # Identify credential type and resolve permissions
+    is_admin = False
+    scopes: list[str] = []
+    credential_type = "unknown"
+    allowed_namespaces: list[str] = []
+
+    master = settings.master_api_token
+    if master and _hmac.compare_digest(master, password):
+        is_admin = True
+        credential_type = "master_token"
+
+    elif check_password_hash(get_dashboard_password_hash(), password):
+        is_admin = True
+        credential_type = "dashboard_password"
+
+    else:
+        from services.api_key_service import api_key_service
+        is_valid, key_info = api_key_service.verify_key(password)
+        if is_valid and key_info:
+            credential_type = "api_key"
+            allowed_environments = key_info.get("environments", [])
+            allowed_namespaces = key_info.get("namespaces", [])
+            # Environment-level scopes take priority over namespace-level
+            if allowed_environments:
+                scopes = allowed_environments
+            elif allowed_namespaces:
+                scopes = allowed_namespaces
+            else:
+                scopes = ["*"]
+            if namespace == "global" and key_info.get("namespace"):
+                namespace = key_info["namespace"]
+        else:
+            track_failed_login()
+            audit_logger.log_login_failure(
+                namespace, environment, request.remote_addr or "unknown",
+                reason="invalid_credential"
+            )
+            return api_error(
+                ErrorCode.AUTH_INVALID_CREDENTIALS[0],
+                message="Invalid credentials",
+                status_code=401
+            )
+
+    # Clear failed-login counter so a successful auth lifts any lockout
+    reset_login_failures()
 
     # Create server-side session
     session_id = _register_session(
@@ -100,15 +135,13 @@ def jwt_login():
         environment=environment,
     )
 
-    # Determine if admin (master token or dashboard password)
-    is_admin = True  # Dashboard password = admin for now
-
     # Create JWT tokens
     access_token = token_manager.create_access_token(
         session_id=session_id,
         namespace=namespace,
         environment=environment,
         is_admin=is_admin,
+        scopes=scopes,
     )
     refresh_token, _ = token_manager.create_refresh_token(
         session_id=session_id,
@@ -129,15 +162,17 @@ def jwt_login():
         )
 
     audit_logger.log_login_success(
-        namespace, environment, "jwt_login", request.remote_addr or "unknown"
+        namespace, environment, credential_type, request.remote_addr or "unknown"
     )
     audit_logger.log_event(
         "JWT_TOKEN_ISSUED", "session", session_id[:16],
         namespace, environment, request.remote_addr or "unknown",
         {
+            "credential_type": credential_type,
             "device_id": device_id,
             "device_type": device_type,
             "platform": platform,
+            "is_admin": is_admin,
         }
     )
 
@@ -145,9 +180,12 @@ def jwt_login():
         data={
             "access_token": access_token,
             "refresh_token": refresh_token,
-            "expires_in": 900,  # 15 minutes
+            "expires_in": 900,
             "token_type": "Bearer",
             "device_id": device_id,
+            "is_admin": is_admin,
+            "credential_type": credential_type,
+            "allowed_namespaces": allowed_namespaces,
         },
         status_code=200
     )

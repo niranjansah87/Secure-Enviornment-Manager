@@ -19,6 +19,9 @@ export type LoginResponse = {
   expires_in: number;
   token_type: string;
   device_id: string | null;
+  is_admin: boolean;
+  credential_type: "dashboard_password" | "master_token" | "api_key";
+  allowed_namespaces: string[];
 };
 
 export type RefreshRequest = {
