@@ -22,7 +22,7 @@ from core.auth import (
 from core.config import settings
 from core.constants import KEY_PATTERN
 from core.constants_patch import get_dashboard_password_hash
-from middleware.rate_limiter import is_ip_locked, get_login_failure_count, track_failed_login
+from middleware.rate_limiter import is_ip_locked, get_login_failure_count
 from utils.helpers import (
     read_vars,
     write_vars,
@@ -60,10 +60,10 @@ def _log_api_auth_failure(
     """Log failed API authentication attempt.
 
     Security hygiene: never log the full token, only a fingerprint.
-    Also tracks the failure for IP-based lockout.
+    Does NOT track login failures — expired/invalid tokens on API routes
+    should never count toward IP lockout.  Only the login endpoint itself
+    calls track_failed_login() for actual brute-force protection.
     """
-    # Track failed attempt for IP lockout
-    track_failed_login()
     audit_logger.log_login_failure(
         namespace,
         environment,
@@ -76,6 +76,33 @@ def _check_api_lockout() -> tuple[bool, dict]:
     """Check if the client IP is locked out. Returns (is_locked, info)."""
     locked = is_ip_locked()
     return locked, {"locked": locked, "failure_count": get_login_failure_count()}
+
+
+def _is_expired_or_invalid_jwt(token: str) -> bool:
+    """Return True if the token looks like a JWT but fails validation (expired/invalid).
+
+    Used to decide between 401 (expired JWT → re-authenticate) and
+    403 (valid token but insufficient permissions → forbidden).
+    """
+    # Quick check: JWTs have 3 dot-separated base64 segments
+    if token.count(".") != 2:
+        return False
+    from core.jwt_auth import token_manager
+    return token_manager.validate_access_token(token) is None
+
+
+def _token_forbidden_response(token: str, default_message: str = "Invalid API token"):
+    """Return the appropriate error response for an invalid/forbidden token.
+
+    - Expired/invalid JWT → 401 (signal client to re-authenticate/refresh)
+    - Unknown/no token      → 401
+    - Valid token, no perms → 403
+    """
+    if not token:
+        return jsonify({"error": "Authorization header missing or invalid"}), 401
+    if _is_expired_or_invalid_jwt(token):
+        return jsonify({"error": "Token expired or invalid", "code": "AUTH_TOKEN_EXPIRED"}), 401
+    return jsonify({"error": default_message}), 403
 
 
 # Lazy singleton for history manager
@@ -182,7 +209,7 @@ def api_meta_environments():
     if not visible:
         token_name = identify_token(token)
         _log_api_auth_failure("system", "global", request.remote_addr or "unknown", f"forbidden_token:{token_name}", "meta/environments")
-        return jsonify({"error": "Invalid API token"}), 403
+        return _token_forbidden_response(token)
 
     token_name = identify_token(token)
     audit_logger.log_login_success("system", "global", token_name, request.remote_addr or "unknown")
@@ -229,7 +256,7 @@ def api_meta_stats():
     visible = set(namespaces_visible_to_token(token))
     if not visible:
         _log_api_auth_failure("system", "global", request.remote_addr or "unknown", "forbidden_token", "meta/stats")
-        return jsonify({"error": "Invalid API token"}), 403
+        return _token_forbidden_response(token)
     all_envs = list_all_environments()
     total_envs = 0
     total_secrets = 0
@@ -267,7 +294,7 @@ def api_meta_analytics():
     visible = set(namespaces_visible_to_token(token))
     if not visible:
         _log_api_auth_failure("system", "global", request.remote_addr or "unknown", "forbidden_token", "meta/analytics")
-        return jsonify({"error": "Invalid API token"}), 403
+        return _token_forbidden_response(token)
 
     try:
         days = min(int(request.args.get("days", 7)), 30)
@@ -312,7 +339,7 @@ def api_meta_logins():
     visible = set(namespaces_visible_to_token(token))
     if not visible:
         _log_api_auth_failure("system", "global", request.remote_addr or "unknown", "forbidden_token", "meta/logins")
-        return jsonify({"error": "Invalid API token"}), 403
+        return _token_forbidden_response(token)
 
     limit = min(int(request.args.get("limit", 50)), 500)
 
@@ -472,7 +499,7 @@ def api_environment(namespace: str, environment: str):
         return jsonify({"error": "Authorization header missing or invalid"}), 401
     if not api_auth_ok(namespace, token, environment):
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "invalid_api_key", "environment")
-        return jsonify({"error": "Invalid API Key for this namespace"}), 403
+        return _token_forbidden_response(token, "Invalid API Key for this namespace")
 
     if request.method == "GET":
         variables = read_vars(namespace, environment)
@@ -553,7 +580,7 @@ def api_environment_meta(namespace: str, environment: str):
         return jsonify({"error": "Authorization header missing or invalid"}), 401
     if not api_auth_ok(namespace, token, environment):
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "invalid_api_key", "environment/meta")
-        return jsonify({"error": "Invalid API Key for this namespace"}), 403
+        return _token_forbidden_response(token, "Invalid API Key for this namespace")
     meta = get_metadata(namespace, environment)
     lm = meta.get("last_modified")
     variables = read_vars(namespace, environment)
@@ -577,7 +604,7 @@ def api_delete_key(namespace: str, environment: str, key: str):
         return jsonify({"error": "Authorization header missing or invalid"}), 401
     if not api_auth_ok(namespace, token, environment):
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "invalid_api_key", "environment/keys")
-        return jsonify({"error": "Invalid API Key for this namespace"}), 403
+        return _token_forbidden_response(token, "Invalid API Key for this namespace")
     if not KEY_PATTERN.match(key):
         return jsonify({"error": "Invalid key name"}), 400
     variables = read_vars(namespace, environment)
@@ -616,7 +643,7 @@ def api_bulk_replace(namespace: str, environment: str):
         return jsonify({"error": "Authorization header missing or invalid"}), 401
     if not api_auth_ok(namespace, token, environment):
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "invalid_api_key", "environment/bulk")
-        return jsonify({"error": "Invalid API Key for this namespace"}), 403
+        return _token_forbidden_response(token, "Invalid API Key for this namespace")
     body = request.get_json(silent=True)
     if not isinstance(body, dict):
         return jsonify({"error": "JSON object required"}), 400
@@ -667,7 +694,7 @@ def api_history(namespace: str, environment: str):
         return jsonify({"error": "Authorization header missing or invalid"}), 401
     if not api_auth_ok(namespace, token, environment):
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "invalid_api_key", "environment/history")
-        return jsonify({"error": "Invalid API Key for this namespace"}), 403
+        return _token_forbidden_response(token, "Invalid API Key for this namespace")
     history = _get_history_manager().get_history(namespace, environment, limit=80)
     return jsonify({"history": history})
 
@@ -682,7 +709,7 @@ def api_audit(namespace: str, environment: str):
         return jsonify({"error": "Authorization header missing or invalid"}), 401
     if not api_auth_ok(namespace, token, environment):
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "invalid_api_key", "environment/audit")
-        return jsonify({"error": "Invalid API Key for this namespace"}), 403
+        return _token_forbidden_response(token, "Invalid API Key for this namespace")
     limit = min(int(request.args.get("limit", "50")), 500)
     offset = max(0, int(request.args.get("offset", "0")))
     action_filter = request.args.get("action")
@@ -730,7 +757,7 @@ def api_templates_list():
         return jsonify({"error": "Authorization header missing or invalid"}), 401
     if not namespaces_visible_to_token(token):
         _log_api_auth_failure("system", "global", request.remote_addr or "unknown", "forbidden_token", "templates")
-        return jsonify({"error": "Invalid API token"}), 403
+        return _token_forbidden_response(token)
     templates_path = Path(__file__).resolve().parent.parent / "templates_config.json"
     if not os.path.exists(templates_path):
         return jsonify({"templates": {}})
@@ -749,7 +776,7 @@ def api_templates_apply(namespace: str, environment: str):
         return jsonify({"error": "Authorization header missing or invalid"}), 401
     if not api_auth_ok(namespace, token, environment):
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "invalid_api_key", "environment/templates/apply")
-        return jsonify({"error": "Invalid API Key for this namespace"}), 403
+        return _token_forbidden_response(token, "Invalid API Key for this namespace")
     body = request.get_json(silent=True)
     if not isinstance(body, dict):
         return jsonify({"error": "JSON object required"}), 400
@@ -803,7 +830,7 @@ def api_rollback(namespace: str, environment: str):
         return jsonify({"error": "Authorization header missing or invalid"}), 401
     if not api_auth_ok(namespace, token, environment):
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "invalid_api_key", "environment/rollback")
-        return jsonify({"error": "Invalid API Key for this namespace"}), 403
+        return _token_forbidden_response(token, "Invalid API Key for this namespace")
     body = request.get_json(silent=True)
     if not isinstance(body, dict):
         return jsonify({"error": "JSON object required"}), 400
@@ -849,7 +876,7 @@ def api_step_up(namespace: str, environment: str):
         return jsonify({"error": "Authorization header missing or invalid"}), 401
     if not api_auth_ok(namespace, token, environment):
         _log_api_auth_failure(namespace, environment, request.remote_addr or "unknown", "invalid_api_key", "environment/step-up")
-        return jsonify({"error": "Invalid API Key for this namespace"}), 403
+        return _token_forbidden_response(token, "Invalid API Key for this namespace")
 
     body = request.get_json(silent=True)
     if not isinstance(body, dict):

@@ -208,8 +208,8 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       const res = await api.metaEnvironments(t);
       setEnvironments(res.environments ?? {});
     } catch (e) {
-      // If token expired, try to refresh
-      if (e instanceof ApiError && e.status === 401) {
+      // If token expired/invalid, try to refresh (handles both 401 and 403)
+      if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
         const refreshed = await refreshAccessToken();
         if (refreshed) {
           // Retry with new token
@@ -232,6 +232,35 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       void refreshEnvironments();
     }
   }, [token, refreshEnvironments]);
+
+  // Proactive token refresh: refresh 3 minutes before expiry (JWT TTL is 15 min)
+  useEffect(() => {
+    if (!token) return;
+
+    let expiryTimestamp: number | null = null;
+    try {
+      const parts = token.split(".");
+      if (parts.length === 3) {
+        const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+        if (payload.exp) {
+          expiryTimestamp = payload.exp * 1000; // JWT exp is in seconds
+        }
+      }
+    } catch {
+      // Can't decode token — skip proactive refresh
+    }
+
+    if (!expiryTimestamp) return;
+
+    const refreshBufferMs = 3 * 60 * 1000; // 3 minutes before expiry
+    const delayMs = Math.max(0, expiryTimestamp - Date.now() - refreshBufferMs);
+
+    const timer = setTimeout(() => {
+      void refreshAccessToken();
+    }, delayMs);
+
+    return () => clearTimeout(timer);
+  }, [token, refreshAccessToken]);
 
   const value = useMemo(
     () => ({
