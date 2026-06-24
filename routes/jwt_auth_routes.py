@@ -55,7 +55,7 @@ def jwt_login():
             "data": {
                 "access_token": "jwt_access_token",
                 "refresh_token": "semr_...",
-                "expires_in": 900,
+                "expires_in": 3600,
                 "token_type": "Bearer"
             }
         }
@@ -197,6 +197,15 @@ def jwt_login():
         session_id=session_id,
         user_agent=request.headers.get("User-Agent", "unknown"),
         ip_address=request.remote_addr or "unknown",
+        namespace=namespace,
+        environment=environment,
+        is_admin=is_admin,
+        scopes=scopes,
+        user_id=user_id,
+        username=jwt_username,
+        email=jwt_email,
+        must_change_password=must_change_password,
+        credential_type=credential_type,
     )
 
     # Register device if device info provided
@@ -230,7 +239,7 @@ def jwt_login():
         data={
             "access_token": access_token,
             "refresh_token": refresh_token,
-            "expires_in": 900,
+            "expires_in": 3600,
             "token_type": "Bearer",
             "device_id": device_id,
             "is_admin": is_admin,
@@ -260,7 +269,7 @@ def jwt_refresh():
             "data": {
                 "access_token": "new_jwt_access_token",
                 "refresh_token": "new_semr_...",  # Token rotation
-                "expires_in": 900
+                "expires_in": 3600
             }
         }
     """
@@ -288,7 +297,7 @@ def jwt_refresh():
         data={
             "access_token": new_access,
             "refresh_token": new_refresh,
-            "expires_in": 900,
+            "expires_in": 3600,
             "token_type": "Bearer",
         },
         status_code=200

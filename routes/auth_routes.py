@@ -61,7 +61,7 @@ def api_login():
             "data": {
                 "access_token": "jwt_access_token",
                 "refresh_token": "semr_...",
-                "expires_in": 900,
+                "expires_in": 3600,
                 "token_type": "Bearer",
                 "device_id": "..." (optional)
             }
@@ -124,6 +124,10 @@ def api_login():
         session_id=session_id,
         user_agent=request.headers.get("User-Agent", "unknown"),
         ip_address=request.remote_addr or "unknown",
+        namespace=namespace,
+        environment=environment,
+        is_admin=is_admin,
+        scopes=[],
     )
 
     audit_logger.log_login_success(
@@ -133,7 +137,7 @@ def api_login():
     return api_response(data={
         "access_token": access_token,
         "refresh_token": refresh_token,
-        "expires_in": 900,
+        "expires_in": 3600,
         "token_type": "Bearer",
     })
 
@@ -155,7 +159,7 @@ def api_refresh():
             "data": {
                 "access_token": "new_jwt_access_token",
                 "refresh_token": "new_semr_...",
-                "expires_in": 900
+                "expires_in": 3600
             }
         }
     """
@@ -185,7 +189,7 @@ def api_refresh():
     return api_response(data={
         "access_token": new_access,
         "refresh_token": new_refresh,
-        "expires_in": 900,
+        "expires_in": 3600,
         "token_type": "Bearer",
     })
 

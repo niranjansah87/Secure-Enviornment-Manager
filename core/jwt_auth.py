@@ -25,7 +25,7 @@ from core.config import settings, logger
 
 # JWT Configuration
 JWT_ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 15
+ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 1 hour for internal-server deployments
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 DEVICE_SESSION_EXPIRE_DAYS = 30
 
@@ -62,6 +62,17 @@ class RefreshToken:
     revoked_at: Optional[str] = None
     user_agent: str = "unknown"
     ip_address: str = "unknown"
+    # Preserved claims from the original access token — used during refresh
+    # so the new access token carries the same identity and permissions.
+    namespace: Optional[str] = None
+    environment: Optional[str] = None
+    is_admin: bool = False
+    scopes: list = field(default_factory=list)
+    user_id: Optional[str] = None
+    username: Optional[str] = None
+    email: Optional[str] = None
+    must_change_password: bool = False
+    credential_type: str = "unknown"
 
 
 @dataclass
@@ -199,7 +210,16 @@ class TokenManager:
         session_id: str,
         device_id: Optional[str] = None,
         user_agent: str = "unknown",
-        ip_address: str = "unknown"
+        ip_address: str = "unknown",
+        namespace: Optional[str] = None,
+        environment: Optional[str] = None,
+        is_admin: bool = False,
+        scopes: Optional[list[str]] = None,
+        user_id: Optional[str] = None,
+        username: Optional[str] = None,
+        email: Optional[str] = None,
+        must_change_password: bool = False,
+        credential_type: str = "unknown",
     ) -> tuple[str, str]:
         """Create a new refresh token and store it.
 
@@ -208,6 +228,10 @@ class TokenManager:
             device_id: Optional device identifier
             user_agent: Client user agent
             ip_address: Client IP address
+            namespace, environment, is_admin, scopes, user_id, username,
+            email, must_change_password, credential_type:
+                Preserved from the original access token so refresh can
+                re-issue a token with identical claims.
 
         Returns:
             Tuple of (refresh_token, token_hash)
@@ -226,6 +250,15 @@ class TokenManager:
             expires_at=expires,
             user_agent=user_agent[:200] if user_agent else "unknown",
             ip_address=ip_address,
+            namespace=namespace,
+            environment=environment,
+            is_admin=is_admin,
+            scopes=scopes or [],
+            user_id=user_id,
+            username=username,
+            email=email,
+            must_change_password=must_change_password,
+            credential_type=credential_type,
         )
 
         with self._lock:
@@ -324,16 +357,34 @@ class TokenManager:
 
         self._save_tokens()
 
-        # Create new tokens
+        # Create new tokens — preserve all claims from the original
         new_access = self.create_access_token(
             session_id=record.session_id,
+            namespace=record.namespace,
+            environment=record.environment,
+            is_admin=record.is_admin,
             device_id=record.device_id,
+            scopes=record.scopes,
+            user_id=record.user_id,
+            username=record.username,
+            email=record.email,
+            must_change_password=record.must_change_password,
+            credential_type=record.credential_type,
         )
         new_refresh, _ = self.create_refresh_token(
             session_id=record.session_id,
             device_id=record.device_id,
             user_agent=record.user_agent,
             ip_address=record.ip_address,
+            namespace=record.namespace,
+            environment=record.environment,
+            is_admin=record.is_admin,
+            scopes=record.scopes,
+            user_id=record.user_id,
+            username=record.username,
+            email=record.email,
+            must_change_password=record.must_change_password,
+            credential_type=record.credential_type,
         )
 
         # Revoke old refresh token (rotation)
