@@ -25,9 +25,13 @@ RUN mkdir -p /app/data /app/audit_logs /app/logs && \
 # Ensure tmp directory exists for Prometheus
 RUN mkdir -p /tmp/prometheus_multiproc && chown sem:sem /tmp/prometheus_multiproc
 
+# Copy and set up entrypoint
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 EXPOSE 8070
 
 # Switch to non-root user
 USER sem
 
-CMD ["python", "-c", "import os; os.makedirs('/app/data', exist_ok=True); os.makedirs('/app/audit_logs', exist_ok=True); os.makedirs('/app/logs', exist_ok=True); import subprocess; subprocess.run(['chmod', '-R', '755', '/app/data', '/app/audit_logs', '/app/logs'], stderr=subprocess.DEVNULL); exec 'gunicorn -w 2 -b 0.0.0.0:8070 app:app'.split()"]
+ENTRYPOINT ["/app/entrypoint.sh"]
