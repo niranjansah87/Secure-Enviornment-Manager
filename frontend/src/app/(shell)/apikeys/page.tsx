@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { KeyRound, Plus, Trash2, Copy, CheckCircle2, AlertCircle, RefreshCw, Clock, Shield, Eye, EyeOff } from "lucide-react";
+import { KeyRound, Plus, Trash2, Copy, CheckCircle2, AlertCircle, RefreshCw, Clock, Eye, EyeOff } from "lucide-react";
 import { api } from "@/lib/api";
 import { useWorkspace } from "@/context/workspace-context";
 import { Button } from "@/components/ui/button";

@@ -22,7 +22,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import { toast } from "sonner";
-import { api, ApiError } from "@/lib/api";
+import { api } from "@/lib/api";
 import { maskValue, formatIso, cn } from "@/lib/utils";
 import { formatUserError } from "@/lib/error-translation";
 import { Button } from "@/components/ui/button";
@@ -89,6 +89,7 @@ export function SecretsTable({
     setSecretTimers((prev) => {
       if (prev[key]) {
         clearTimeout(prev[key]);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { [key]: _, ...rest } = prev;
         return rest;
       }
@@ -102,16 +103,19 @@ export function SecretsTable({
       if (isCurrentlyRevealed) {
         // Hiding: clear timer if exists
         clearSecretTimer(key);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { [key]: _, ...rest } = prev;
         return rest;
       } else {
         // Revealing: set auto-hide timer
         const timer = setTimeout(() => {
           setRevealedSecrets((current) => {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { [key]: __, ...remaining } = current;
             return remaining;
           });
           setSecretTimers((currentTimers) => {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { [key]: ___, ...remainingTimers } = currentTimers;
             return remainingTimers;
           });

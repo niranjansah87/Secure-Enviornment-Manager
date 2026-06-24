@@ -31,7 +31,7 @@ export default function LoginPage() {
       // Try JWT-based login first (new method)
       await loginWithPassword(password.trim());
       router.push("/dashboard");
-    } catch (err) {
+    } catch {
       // If JWT login fails, fall back to legacy API key auth
       try {
         const response = await fetch(
@@ -50,7 +50,7 @@ export default function LoginPage() {
         } else {
           setError("Invalid password or token.");
         }
-      } catch (fetchErr) {
+      } catch {
         setError("Failed to connect to the server.");
       }
     } finally {
