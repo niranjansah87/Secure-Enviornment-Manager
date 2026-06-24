@@ -212,8 +212,8 @@ export class Logger {
       api_label: label,
       api_method: meta.method,
       api_path: meta.path,
-      api_status: meta.status ?? 0,
-      api_duration_ms: meta.duration ?? 0,
+      api_status: String(meta.status ?? 0),
+      api_duration_ms: String(meta.duration ?? 0),
     })._log(level, meta.error ? `API error: ${meta.error.message}` : `API: ${label}`, meta.error);
   }
 }
