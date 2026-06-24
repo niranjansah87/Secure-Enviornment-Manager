@@ -15,6 +15,7 @@ import {
   LogOut,
   History,
   BarChart3,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/context/workspace-context";
@@ -75,12 +76,18 @@ const buildNav = (
     },
   ];
 
-  // Only add API Keys for admin users
+  // Only add admin-only items for admin users
   if (isAdmin) {
     items.push({
       href: "/apikeys",
       label: "API Keys",
       icon: KeyRound,
+      adminOnly: true,
+    });
+    items.push({
+      href: "/admin/users",
+      label: "Users",
+      icon: Users,
       adminOnly: true,
     });
   }
@@ -103,6 +110,7 @@ function navActive(
   if (label === "Audit Logs") return pathname === `${p}/audit`;
   if (label === "Templates") return pathname === `${p}/templates`;
   if (label === "API Keys") return pathname === "/apikeys";
+  if (label === "Users") return pathname.startsWith("/admin/users");
   if (label === "Analytics") return pathname === "/analytics";
   return false;
 }

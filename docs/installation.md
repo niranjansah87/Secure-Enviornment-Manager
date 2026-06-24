@@ -48,6 +48,13 @@ cd Secure-Enviornment-Manager
     *   `ENCRYPTION_KEY`: A Fernet-compatible key (base64-encoded).
     *   `DASHBOARD_PASSWORD`: The password for web access.
     *   `MASTER_API_TOKEN`: A master token for full system API access.
+    *   `ADMIN_USERNAME`: Username displayed for admin in the dashboard (default: `admin`).
+    *   `ADMIN_EMAIL`: Admin email shown in dashboard header and used for system notifications.
+    *   `EMAIL_SMTP_HOST`: SMTP server hostname (optional — if not set, email is skipped).
+    *   `EMAIL_SMTP_PORT`: SMTP port (default: `587`).
+    *   `EMAIL_SMTP_USER`: SMTP authentication username.
+    *   `EMAIL_SMTP_PASSWORD`: SMTP authentication password.
+    *   `EMAIL_FROM`: From address for system emails.
 
 5.  **Run the Backend**:
     ```bash

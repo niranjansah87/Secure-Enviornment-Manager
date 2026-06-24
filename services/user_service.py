@@ -8,6 +8,7 @@ import base64
 import hashlib
 import hmac
 import json
+import os
 import secrets
 from datetime import datetime, timezone
 from pathlib import Path
@@ -80,9 +81,16 @@ class UserService:
             return {}
 
     def _save(self, users: Dict[str, Dict[str, Any]]) -> None:
-        self._file.parent.mkdir(parents=True, exist_ok=True)
-        with open(self._file, "w", encoding="utf-8") as f:
+        self._file.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        try:
+            os.chmod(self._file.parent, 0o700)
+        except OSError:
+            pass
+        tmp = self._file.with_suffix(".tmp")
+        fd = os.open(str(tmp), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(users, f, indent=2)
+        os.replace(tmp, self._file)
 
     # ------------------------------------------------------------------ #
     #  Write operations                                                    #

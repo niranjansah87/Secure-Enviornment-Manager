@@ -5,8 +5,12 @@ The Secure Environment Manager (SEM) dashboard is the primary interface for mana
 ## Accessing the Dashboard
 
 1.  Open your browser and navigate to `http://localhost:3000`.
-2.  Login with the password configured in your `.env` as `DASHBOARD_PASSWORD`.
-3.  Choose a **Namespace** (e.g., `project-alpha`) and an **Environment** (e.g., `production`).
+2.  On the login page, choose one of three credential modes:
+    *   **Dashboard Password**: Enter the admin dashboard password from your `.env` file.
+    *   **Master API Token**: Use the master API token for full admin API access.
+    *   **User Login**: Enter your assigned username and password (for developer accounts).
+3.  If this is your first login with a user account, you will be prompted to set a new password.
+4.  Choose a **Namespace** (e.g., `project-alpha`) and an **Environment** (e.g., `production`).
 
 ## Managing Secrets
 
@@ -56,6 +60,17 @@ SEM keeps a complete record of every version of your environment.
 
 > [!TIP]
 > **API Keys**: You can generate API keys for specific namespaces to grant programmatic access to your CI/CD pipelines. This ensures that a build job for `project-alpha` cannot access secrets for `project-beta`.
+
+### 👥 User Management (Admin Only)
+
+Admins can manage developer accounts from the **Users** page in the sidebar:
+*   **Create User**: Assign username, email, role (admin/developer), and namespace scopes. A temporary password is generated and shown once.
+*   **Edit User**: Update email, role, scopes, or disable an account.
+*   **Reset Password**: Generate a new temporary password for a user (they must change it on next login).
+*   **Delete User**: Remove a user account permanently.
+
+> [!NOTE]
+> Users with the `developer` role can only see namespaces and environments granted by their assigned scopes.
 
 ---
 

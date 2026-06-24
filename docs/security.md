@@ -24,16 +24,33 @@ SEM uses the **Fernet** symmetric encryption standard, which is part of the Pyth
 
 SEM uses a multi-layered authentication system to control access to secrets.
 
+### Supported Credential Types
+SEM supports three coexisting authentication modes, selectable from the login page:
+
+1.  **Dashboard Password**: Admin dashboard password from `.env` — full system access.
+2.  **Master API Token**: Full-access master token from `.env` — for admin API operations.
+3.  **Username + Password (JWT)**: Developer accounts with PBKDF2-hashed passwords — scoped access.
+
 ### Programmatic Access (Bearer Tokens)
 All API requests must include a `Bearer <TOKEN>` in the `Authorization` header.
 - **Master API Token**: Grants full access to all namespaces.
-- **Namespace API Keys**: Grants access *only* to a single namespace. 
-- **Dashboard Password Hash**: Next.js frontend uses the dashboard password hash for session-based authentication.
+- **Namespace API Keys**: Grants access scoped to specific namespaces/environments.
+- **JWT Access Tokens**: Issued via login with username+password, carries user identity, role, and scopes.
+- **Dashboard Password Hash**: Used for web dashboard session authentication.
 
 ### Session Security
 - **Secure Cookies**: Cookies are set with `HttpOnly`, `Secure`, and `SameSite=Lax` flags.
 - **Automatic Timeout**: Sessions expire after 60 minutes (configurable via `SESSION_TIMEOUT_MINUTES`).
 - **Brute-Force Protection**: After 5 failed login attempts, the IP address is locked out for 15 minutes.
+
+### Password Hashing
+User account passwords use industry-standard password hashing:
+- **Algorithm**: PBKDF2-SHA256 with 480,000 iterations.
+- **Per-User Salt**: Each password is salted with 16 cryptographically random bytes (generated via `secrets.token_bytes`).
+- **Self-Describing Format**: `pbkdf2_sha256$480000$<base64_salt>$<base64_hash>` — allows algorithm upgrades.
+- **Constant-Time Comparison**: `hmac.compare_digest` prevents timing attacks.
+- **File Permissions**: Password files stored with mode `0o600` (owner read/write only).
+- **Atomic Writes**: `os.open` + `os.replace` prevents partial writes.
 
 ## 3. Audit Logging & Traceability
 
@@ -61,6 +78,8 @@ Each log entry includes:
 | **API Interception** | SEM requires HTTPS (via Nginx/Caddy) for all communications. |
 | **Credential Stuffing** | Built-in IP-based rate limiting and lockout mechanisms. |
 | **Insider Threat** | Full audit logs and per-namespace API keys minimize blast radius. |
+| **Credential Theft** | Passwords hashed with PBKDF2-SHA256 (480k iterations), per-user 16-byte random salt. |
+| **File Tampering** | Atomic file writes (`os.replace`), append-only audit logs, tamper-evident structure. |
 
 ## Best Practices
 

@@ -10,6 +10,8 @@ The SEM ecosystem consists of four main layers:
 2.  **Backend (Flask)**: A Python-powered API server that handles business logic, authentication, and communication with the storage layer.
 3.  **Security Layer (Fernet)**: A middleware that encrypts data before it reaches the disk and decrypts it only when requested by an authorized user.
 4.  **Storage Layer (File-based)**: Encrypted `.enc` files stored in the filesystem, organized by namespace and environment.
+5.  **User Service (Python)**: Handles developer account CRUD, PBKDF2 password hashing with per-user salt, and role-based access control.
+6.  **Email Service (Python)**: Optional SMTP integration for welcome emails and password resets — fire-and-forget, never blocks the API.
 
 ## Design Diagram
 
@@ -21,6 +23,8 @@ graph TD
     Auth -- Success --> Logic[Business Logic]
     Auth -- Failure --> Error[401/403 Error]
     
+    Logic --> UserSvc[User Service]
+    Logic --> EmailSvc[Email Service - Optional SMTP]
     Logic --> History[History Manager]
     Logic --> Audit[Audit Logger]
     Logic --> Encryption[Encryption Layer - AES-256]
@@ -56,6 +60,20 @@ SEM uses a hierarchical file structure to manage secrets.
 *   **Namespace**: A logical grouping of related environments (e.g., `project-alpha`).
 *   **Environment**: A specific instance within a namespace (e.g., `production`, `staging`).
 *   **Paths**: `data/{namespace}/{environment}.enc`
+
+### 5. User Service
+Manages developer accounts with secure password storage.
+*   **Hashing**: PBKDF2-SHA256 with 480,000 iterations and per-user random 16-byte salt.
+*   **Format**: Self-describing hash strings: `pbkdf2_sha256$480000$<base64_salt>$<base64_hash>`.
+*   **Storage**: File-based in `data/users.json` with atomic writes (mode 0o600).
+*   **Roles**: `admin` (full access) and `developer` (scoped access).
+*   **Password Flow**: Temp password → forced change on first login → fresh JWT issued.
+
+### 6. Email Service
+Optional SMTP integration for user notifications.
+*   **Non-blocking**: All emails sent via daemon threads — SMTP failures never block API responses.
+*   **Configuration**: Set `EMAIL_SMTP_HOST` to enable; if absent, operations continue normally.
+*   **Templates**: Welcome email (with temp password), password reset notifications.
 
 ## Data Flow: Reading a Secret
 

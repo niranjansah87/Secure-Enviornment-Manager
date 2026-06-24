@@ -23,6 +23,9 @@ This document describes the backend architecture improvements made to support mo
 | Error Handling | `core/exceptions.py` | Centralized error handling |
 | JWT Auth Routes | `routes/jwt_auth_routes.py` | Mobile/SDK authentication endpoints |
 | WebSocket Service | `ws_service.py` | Real-time event scaffolding |
+| User Service | `services/user_service.py` | Developer account management, PBKDF2 hashing |
+| Email Service | `services/email_service.py` | Optional SMTP, fire-and-forget emails |
+| User Routes | `routes/user_routes.py` | Admin user CRUD + user self-service |
 
 ### 2. Files Modified
 
@@ -30,6 +33,9 @@ This document describes the backend architecture improvements made to support mo
 |------|---------|
 | `app.py` | Registered new blueprint, added error handlers |
 | `requirements.txt` | Added PyJWT dependency |
+| `core/config.py` | Added `admin_email`, `admin_username` settings |
+| `core/jwt_auth.py` | Extended TokenPayload with `user_id`, `username`, `email`, `must_change_password`, `credential_type` |
+| `routes/jwt_auth_routes.py` | Added username+password login branch, returns user identity in JWT |
 
 ---
 
@@ -78,6 +84,7 @@ This document describes the backend architecture improvements made to support mo
 | Access Token | 15 min | Client (memory) | API authentication |
 | Refresh Token | 7 days | Server (file) + Client | Token renewal |
 | API Key | Configurable | Server (PBKDF2 hashed) | Programmatic access |
+| User JWT | 15 min | Client (memory) | User-specific access |
 
 ### Authentication Flows
 
@@ -135,6 +142,41 @@ Authorization: Bearer <api_key>
 Response: Standard JSON secrets object
 ```
 
+#### 4. Username + Password Login (Multi-Developer)
+
+```
+POST /api/v1/auth/login
+{
+  "username": "johndoe",
+  "password": "user_password",
+  "namespace": "production",
+  "environment": "main",
+  "device_name": "Chrome on Windows",
+  "device_type": "desktop",
+  "platform": "web"
+}
+
+Response (first login — temp password):
+{
+  "success": true,
+  "data": {
+    "access_token": "eyJ...",
+    "refresh_token": "semr_...",
+    "expires_in": 900,
+    "token_type": "Bearer",
+    "credential_type": "user_password",
+    "user_id": "usr_a1b2...",
+    "username": "johndoe",
+    "email": "john@example.com",
+    "must_change_password": true
+  }
+}
+
+After password change:
+POST /api/v1/user/change-password
+→ Returns fresh JWT with must_change_password: false
+```
+
 ### Backend Compatibility
 
 | Client Type | Auth Method | Endpoint |
@@ -145,6 +187,7 @@ Response: Standard JSON secrets object
 | CLI | JWT Bearer | `/api/v1/auth/login` |
 | SDK | JWT Bearer | `/api/v1/auth/login` |
 | API Key | Bearer Token | `/api/v1/*` (existing) |
+| User Login | Username+Password → JWT | `/api/v1/auth/login` + `/api/v1/user/change-password` |
 
 ---
 
@@ -272,6 +315,14 @@ Users can:
 | Refresh Token | Secure Storage | File (hash) |
 | API Key | User's choice | PBKDF2 hashed |
 
+### Password Storage
+
+| Field | Storage | Format |
+|-------|---------|--------|
+| Password Hash | `data/users.json` | `pbkdf2_sha256$480000$<salt>$<hash>` |
+| Per-User Salt | Embedded in hash | 16 random bytes, base64 encoded |
+| Temp Password | Never stored plain | `secrets.token_urlsafe(12)` (~96 bits entropy) |
+
 ### File-Based Persistence
 
 The following files are created for token management:
@@ -292,6 +343,7 @@ These files are stored alongside encrypted secrets, maintaining the self-hosted 
 3. **Push Notifications** - FCM/APNs integration
 4. **OAuth2/OIDC** - SSO integration
 5. **LDAP/Active Directory** - Enterprise auth
+6. **Multi-Factor Authentication** - TOTP/WebAuthn for developer accounts
 
 ### Production Checklist
 
