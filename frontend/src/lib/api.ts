@@ -141,33 +141,39 @@ async function request<T>(
     throw new ApiError(userErr.description, 0, { code: userErr.code });
   }
 
-  const data = await parseJson<T & { error?: string; code?: string }>(res);
+  // Parse response - handle both old format (direct data) and new format (success/data envelope)
+  const rawData = await parseJson<{
+    success?: boolean;
+    data?: T;
+    error?: { code?: string; message?: string; details?: Record<string, unknown> } | string;
+    code?: string;
+    error_string?: string;
+  }>(res);
 
-  // Check for API error in response body even when status is 200
-  if ((data as { error?: string }).error) {
+  // Check for new standardized API response format
+  const errorObj = typeof rawData.error === 'object' ? rawData.error : null;
+  if (rawData.success === false || errorObj) {
+    const errorMsg = errorObj?.message ?? (typeof rawData.error === 'string' ? rawData.error : "Request failed");
+    const errorCode = errorObj?.code ?? rawData.code ?? "UNKNOWN_ERROR";
     const userErr = translateApiError({
-      message: (data as { error?: string }).error ?? "Request failed",
+      message: errorMsg,
       status: res.status,
-      body: data as Record<string, unknown>,
+      body: rawData as Record<string, unknown>,
     });
     tracker.onResponse(res.status, duration, new Error(userErr.description));
     log.warn(`API error ${res.status} on ${path}: ${userErr.title}`);
-    throw new ApiError(userErr.description, res.status, { code: userErr.code });
+    throw new ApiError(userErr.description, res.status, { code: errorCode });
   }
 
-  if (!res.ok) {
-    const userErr = translateApiError({
-      message: (data as { error?: string }).error ?? res.statusText ?? "Request failed",
-      status: res.status,
-      body: data as Record<string, unknown>,
-    });
-    tracker.onResponse(res.status, duration, new Error(userErr.description));
-    log.warn(`API error ${res.status} on ${path}: ${userErr.title}`);
-    throw new ApiError(userErr.description, res.status, { code: userErr.code });
+  // If new format with success:true, extract data
+  if (rawData.success === true && rawData.data !== undefined) {
+    tracker.onResponse(res.status, duration);
+    return rawData.data;
   }
 
+  // Legacy format - data is directly in the response body (including legacy error format)
   tracker.onResponse(res.status, duration);
-  return data as T;
+  return rawData as T;
 }
 
 export const api = {

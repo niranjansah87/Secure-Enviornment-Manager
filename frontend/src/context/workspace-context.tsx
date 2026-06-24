@@ -15,8 +15,15 @@ import {
   loadWorkspace,
   saveToken,
   saveWorkspace,
+  saveAuthTokens,
+  clearAuthTokens,
+  loadRefreshToken,
+  hasRefreshToken,
+  loadAccessToken,
+  loadDeviceId,
   type Workspace,
 } from "@/lib/utils";
+import { login, refresh, logout as apiLogout, AuthError } from "@/lib/auth-api";
 
 type WorkspaceContextValue = {
   token: string;
@@ -27,6 +34,12 @@ type WorkspaceContextValue = {
   refreshEnvironments: () => Promise<void>;
   envError: string | null;
   loadingEnvs: boolean;
+  // New JWT auth support
+  isAuthenticated: boolean;
+  deviceId: string | null;
+  loginWithPassword: (password: string, namespace?: string, environment?: string) => Promise<void>;
+  logout: () => Promise<void>;
+  refreshAccessToken: () => Promise<boolean>;
 };
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -34,16 +47,35 @@ const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [token, setTokenState] = useState("");
   const [workspace, setWorkspaceState] = useState<Workspace | null>(null);
-  const [environments, setEnvironments] = useState<Record<string, string[]>>(
-    {}
-  );
+  const [environments, setEnvironments] = useState<Record<string, string[]>>({});
   const [envError, setEnvError] = useState<string | null>(null);
   const [loadingEnvs, setLoadingEnvs] = useState(false);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
 
+  // Initialize from storage
   useEffect(() => {
-    setTokenState(loadToken());
+    const accessToken = loadAccessToken();
+    const refreshToken = loadRefreshToken();
+    const storedDeviceId = loadDeviceId();
+
+    if (accessToken) {
+      setTokenState(accessToken);
+    }
+    if (storedDeviceId) {
+      setDeviceId(storedDeviceId);
+    }
+
+    // Try to restore session from refresh token if no access token
+    if (!accessToken && refreshToken) {
+      // Will trigger refresh in the auth flow
+    }
+
     setWorkspaceState(loadWorkspace());
   }, []);
+
+  const isAuthenticated = useMemo(() => {
+    return !!token && token.length > 0;
+  }, [token]);
 
   const setToken = useCallback((t: string) => {
     saveToken(t);
@@ -53,6 +85,81 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
   const setWorkspace = useCallback((w: Workspace) => {
     saveWorkspace(w);
     setWorkspaceState(w);
+  }, []);
+
+  const loginWithPassword = useCallback(async (
+    password: string,
+    namespace: string = "global",
+    environment: string = "main"
+  ): Promise<void> => {
+    try {
+      const response = await login({
+        namespace,
+        environment,
+        password,
+        device_name: "Web Browser",
+        device_type: "web",
+        platform: typeof navigator !== "undefined" ? navigator.platform : "unknown",
+      });
+
+      // Save JWT tokens
+      saveAuthTokens({
+        accessToken: response.access_token,
+        refreshToken: response.refresh_token,
+        deviceId: response.device_id ?? undefined,
+      });
+
+      setTokenState(response.access_token);
+      if (response.device_id) {
+        setDeviceId(response.device_id);
+      }
+    } catch (error) {
+      if (error instanceof AuthError) {
+        throw new Error(error.message);
+      }
+      throw error;
+    }
+  }, []);
+
+  const logout = useCallback(async () => {
+    const accessToken = loadAccessToken();
+    if (accessToken) {
+      try {
+        await apiLogout(accessToken);
+      } catch {
+        // Continue with local cleanup even if API call fails
+      }
+    }
+
+    // Clear all tokens
+    clearAuthTokens();
+    setTokenState("");
+    setDeviceId(null);
+    setEnvironments({});
+    setWorkspaceState(null);
+  }, []);
+
+  const refreshAccessToken = useCallback(async (): Promise<boolean> => {
+    const refreshToken = loadRefreshToken();
+    if (!refreshToken) {
+      return false;
+    }
+
+    try {
+      const response = await refresh({ refresh_token: refreshToken });
+      saveAuthTokens({
+        accessToken: response.access_token,
+        refreshToken: response.refresh_token,
+        deviceId: loadDeviceId() || undefined,
+      });
+      setTokenState(response.access_token);
+      return true;
+    } catch {
+      // Refresh failed - clear tokens
+      clearAuthTokens();
+      setTokenState("");
+      return false;
+    }
   }, []);
 
   const refreshEnvironments = useCallback(async () => {
@@ -68,13 +175,24 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       const res = await api.metaEnvironments(t);
       setEnvironments(res.environments ?? {});
     } catch (e) {
+      // If token expired, try to refresh
+      if (e instanceof ApiError && e.status === 401) {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) {
+          // Retry with new token
+          const newToken = loadToken();
+          const res = await api.metaEnvironments(newToken);
+          setEnvironments(res.environments ?? {});
+          return;
+        }
+      }
       const err = formatUserError(e);
       setEnvError(err.description);
       setEnvironments({});
     } finally {
       setLoadingEnvs(false);
     }
-  }, []);
+  }, [refreshAccessToken]);
 
   useEffect(() => {
     if (token) {
@@ -92,6 +210,11 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       refreshEnvironments,
       envError,
       loadingEnvs,
+      isAuthenticated,
+      deviceId,
+      loginWithPassword,
+      logout,
+      refreshAccessToken,
     }),
     [
       token,
@@ -102,6 +225,11 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       refreshEnvironments,
       envError,
       loadingEnvs,
+      isAuthenticated,
+      deviceId,
+      loginWithPassword,
+      logout,
+      refreshAccessToken,
     ]
   );
 

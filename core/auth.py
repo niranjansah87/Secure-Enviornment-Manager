@@ -105,14 +105,26 @@ def api_auth_ok(namespace: str, token: str | None) -> bool:
     """Verify API authentication is valid."""
     if not token:
         return False
+
     # Master API token has full access (only if explicitly configured)
     master = settings.master_api_token
     if master and hmac.compare_digest(master, token):
         return True
+
     # Dashboard password grants access to all namespaces (same as meta/environments)
     from core.constants_patch import get_dashboard_password_hash
     if check_password_hash(get_dashboard_password_hash(), token):
         return True
+
+    # JWT access token - check if valid for this namespace
+    from core.jwt_auth import token_manager
+    payload = token_manager.validate_access_token(token)
+    if payload:
+        # JWT is valid - check namespace/environment access
+        if payload.namespace and payload.namespace != namespace:
+            return False
+        return True
+
     # API keys with RBAC - check via ApiKeyService
     return require_api_auth(namespace, token)
 
@@ -128,6 +140,13 @@ def namespaces_visible_to_token(token: str | None) -> list[str]:
     from core.constants_patch import get_dashboard_password_hash
     if check_password_hash(get_dashboard_password_hash(), token):
         # Dashboard password grants access to all namespaces
+        return list(_list_all_environments().keys())
+    # JWT access token - return the token's namespace if set
+    from core.jwt_auth import token_manager
+    payload = token_manager.validate_access_token(token)
+    if payload:
+        if payload.namespace:
+            return [payload.namespace]
         return list(_list_all_environments().keys())
     # API keys with RBAC - determine visible namespaces
     from services.api_key_service import api_key_service

@@ -5,71 +5,81 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Lock, ArrowRight, ShieldCheck, Zap, Server, Eye, EyeOff } from "lucide-react";
+import { Lock, ArrowRight, ShieldCheck, Zap, Server, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { useWorkspace } from "@/context/workspace-context";
-import { api, ApiError, apiBase } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Login3DAnimation } from "@/components/animations/login-3d";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setToken } = useWorkspace();
-  const [tokenInput, setTokenInput] = useState("");
+  const { loginWithPassword, setToken, refreshAccessToken, token } = useWorkspace();
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!tokenInput.trim()) return;
+    if (!password.trim()) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      // First try API token auth
-      const result = await api.metaEnvironments(tokenInput.trim());
-      // If it doesn't throw, token is valid API key
-      setToken(tokenInput.trim());
+      // Try JWT-based login first (new method)
+      await loginWithPassword(password.trim());
       router.push("/dashboard");
     } catch (err) {
-      if (err instanceof ApiError) {
-        // If API token rejected (401/403), try password-based auth
-        if (err.status === 401 || err.status === 403) {
-          try {
-            // Try password validation via API
-            const res = await fetch(
-              `${apiBase()}/api/v1/auth/validate-password`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ password: tokenInput.trim() }),
-              }
-            );
-
-            if (res.ok) {
-              // Password is valid - use it as the API token
-              setToken(tokenInput.trim());
-              router.push("/dashboard");
-            } else {
-              setError("Invalid password or token.");
-            }
-          } catch (fetchErr) {
-            setError("Invalid password or token.");
+      // If JWT login fails, fall back to legacy API key auth
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8070"}/api/v1/auth/validate-password`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password: password.trim() }),
           }
-        } else if (err.status === 0) {
-          setError("Failed to connect to the server.");
+        );
+
+        if (response.ok) {
+          // Legacy password is valid - use it as API token
+          setToken(password.trim());
+          router.push("/dashboard");
         } else {
-          setError(err.message || "Authentication failed.");
+          setError("Invalid password or token.");
         }
-      } else {
+      } catch (fetchErr) {
         setError("Failed to connect to the server.");
       }
     } finally {
       setLoading(false);
     }
   };
+
+  const handleRefreshToken = async () => {
+    setIsRefreshing(true);
+    setError(null);
+    try {
+      const success = await refreshAccessToken();
+      if (success) {
+        router.push("/dashboard");
+      } else {
+        setError("Session expired. Please login again.");
+      }
+    } catch {
+      setError("Failed to restore session.");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Show refresh token UI if we have a stored session
+  const hasExistingSession = typeof window !== "undefined" && (
+    localStorage.getItem("sem_refresh_token") ||
+    localStorage.getItem("sem_access_token")
+  );
 
   const containerVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -99,8 +109,8 @@ export default function LoginPage() {
       <div className="pointer-events-auto absolute inset-0 z-0">
         <Login3DAnimation />
       </div>
-      
-      <motion.div 
+
+      <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="visible"
@@ -118,56 +128,106 @@ export default function LoginPage() {
                 unoptimized
               />
             </Link>
-            <h1 className="text-2xl font-bold tracking-tight text-white drop-shadow-md">Secure Login</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-white drop-shadow-md">
+              {hasExistingSession && !token ? "Session Expired" : "Secure Login"}
+            </h1>
             <p className="mt-2 text-sm text-zinc-300">
-              Enter your dashboard password or API token to continue.
+              {hasExistingSession && !token
+                ? "Your session has expired. Restore it or login again."
+                : "Enter your dashboard password to continue."}
             </p>
           </motion.div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <motion.div variants={itemVariants} className="space-y-2">
-              <div className="relative group">
-                <Lock className="absolute left-3 top-3.5 h-5 w-5 text-zinc-400 group-focus-within:text-violet-400 transition-colors" />
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  value={tokenInput}
-                  onChange={(e) => setTokenInput(e.target.value)}
-                  placeholder="Enter credential..."
-                  className="h-12 border-white/10 bg-black/40 pl-11 pr-11 text-zinc-100 placeholder:text-zinc-500 hover:bg-black/60 focus:border-violet-500 focus:bg-black/60 focus:ring-violet-500/20 transition-all rounded-xl"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((s) => !s)}
-                  className="absolute right-3 top-3.5 text-zinc-400 hover:text-zinc-200 transition-colors focus:outline-none"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
+          {hasExistingSession && !token ? (
+            // Refresh token flow
+            <motion.div variants={itemVariants} className="space-y-6">
+              <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-4 text-center">
+                <RefreshCw className="h-8 w-8 mx-auto mb-2 text-violet-400" />
+                <p className="text-sm text-zinc-300">
+                  We found a previous session. Would you like to restore it?
+                </p>
+              </div>
+
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400"
                 >
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
+                  {error}
+                </motion.div>
+              )}
+
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleRefreshToken}
+                  disabled={isRefreshing}
+                  className="flex-1 h-12 rounded-xl bg-violet-600 shadow-[0_0_20px_rgba(139,92,246,0.3)] font-medium text-white hover:bg-violet-500 hover:shadow-[0_0_30px_rgba(139,92,246,0.5)] transition-all"
+                >
+                  {isRefreshing ? "Restoring..." : "Restore Session"}
+                </Button>
+                <Button
+                  onClick={() => {
+                    localStorage.removeItem("sem_access_token");
+                    localStorage.removeItem("sem_refresh_token");
+                    localStorage.removeItem("sem_device_id");
+                    localStorage.removeItem("sem_api_token");
+                    window.location.reload();
+                  }}
+                  className="h-12 px-4 rounded-xl border border-white/10 bg-white/5 font-medium text-zinc-300 hover:bg-white/10 transition-all"
+                >
+                  Login Again
+                </Button>
               </div>
             </motion.div>
-
-            {error && (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400"
-              >
-                {error}
+          ) : (
+            // Login form
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <motion.div variants={itemVariants} className="space-y-2">
+                <div className="relative group">
+                  <Lock className="absolute left-3 top-3.5 h-5 w-5 text-zinc-400 group-focus-within:text-violet-400 transition-colors" />
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter password..."
+                    className="h-12 border-white/10 bg-black/40 pl-11 pr-11 text-zinc-100 placeholder:text-zinc-500 hover:bg-black/60 focus:border-violet-500 focus:bg-black/60 focus:ring-violet-500/20 transition-all rounded-xl"
+                    required
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((s) => !s)}
+                    className="absolute right-3 top-3.5 text-zinc-400 hover:text-zinc-200 transition-colors focus:outline-none"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
               </motion.div>
-            )}
 
-            <motion.div variants={itemVariants}>
-              <Button
-                type="submit"
-                disabled={loading}
-                className="h-12 w-full rounded-xl bg-violet-600 shadow-[0_0_20px_rgba(139,92,246,0.3)] font-medium text-white hover:bg-violet-500 hover:shadow-[0_0_30px_rgba(139,92,246,0.5)] transition-all"
-              >
-                {loading ? "Authenticating..." : "Unlock Dashboard"}
-                {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
-              </Button>
-            </motion.div>
-          </form>
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400"
+                >
+                  {error}
+                </motion.div>
+              )}
+
+              <motion.div variants={itemVariants}>
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="h-12 w-full rounded-xl bg-violet-600 shadow-[0_0_20px_rgba(139,92,246,0.3)] font-medium text-white hover:bg-violet-500 hover:shadow-[0_0_30px_rgba(139,92,246,0.5)] transition-all"
+                >
+                  {loading ? "Authenticating..." : "Unlock Dashboard"}
+                  {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
+                </Button>
+              </motion.div>
+            </form>
+          )}
 
           <motion.div variants={itemVariants} className="mt-8 flex justify-center gap-6 border-t border-white/10 pt-6">
             <div className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors">

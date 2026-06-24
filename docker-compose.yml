@@ -1,4 +1,29 @@
+# Secure Environment Manager - Docker Compose
+# Self-hosted secrets management with encrypted JSON storage
+#
+# Architecture:
+#   Host Nginx (public, :80/:443) -> Docker Services (internal)
+#
+# Services:
+#   - backend: Flask API with JWT auth (:8070)
+#   - frontend: Next.js web app (:3000)
+#   - prometheus: Metrics collection (:9090)
+#
+# Prerequisites:
+#   - Docker Engine
+#   - Docker Compose v2+
+#   - Host-installed Nginx (not running as container)
+#
+# Usage:
+#   docker-compose up -d          # Start all services
+#   docker-compose logs -f       # View logs
+#   docker-compose down           # Stop services
+#   docker-compose exec backend sh # Shell into backend
+
 services:
+  # ===========================================================================
+  # Backend - Flask API with JWT Authentication
+  # ===========================================================================
   backend:
     build:
       context: .
@@ -9,11 +34,15 @@ services:
       - .env
     environment:
       - PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
+      - FLASK_ENV=production
+      - SESSION_COOKIE_SECURE=true
+      - BEHIND_PROXY=true
     volumes:
-      - ./data:/app/data
-      - ./audit_logs:/app/audit_logs
-      - ./logs:/app/logs
+      - sem-data:/app/data
+      - sem-audit-logs:/app/audit_logs
+      - sem-logs:/app/logs
       - prometheus_multiproc:/tmp/prometheus_multiproc
+    # Expose to host for Nginx proxy (localhost only for security)
     ports:
       - "127.0.0.1:8070:8070"
     healthcheck:
@@ -21,57 +50,72 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 40s
     networks:
       - sem-network
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:size=50m,noexec,nosuid
+    user: "1000:1000"
 
+  # ===========================================================================
+  # Frontend - Next.js Web Application
+  # ===========================================================================
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: sem-frontend
     restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+    # Expose to host for Nginx proxy (localhost only for security)
     ports:
-      - "127.0.0.1:3080:3000"
+      - "127.0.0.1:3000:3000"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - sem-network
 
+  # ===========================================================================
+  # Prometheus - Metrics and Monitoring (Optional)
+  # ===========================================================================
   prometheus:
     image: prom/prometheus:latest
     container_name: sem-prometheus
     restart: unless-stopped
     volumes:
-      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
+    # Expose to host for monitoring (localhost only)
     ports:
-      - "127.0.0.1:9095:9090"
+      - "127.0.0.1:9090:9090"
     networks:
       - sem-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
 
-#  grafana:
-#    image: grafana/grafana:latest
-#    container_name: sem-grafana
-#    restart: unless-stopped
-#    environment:
-#      - GF_SECURITY_ADMIN_PASSWORD=admin
-#      - GF_USERS_ALLOW_SIGN_UP=false
-#    volumes:
-#      - grafana-data:/var/lib/grafana
-#      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
-#      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
-#    ports:
-#      - "3002:3000"
-#    depends_on:
-#      - prometheus
-#    networks:
-#      - sem-network
-
+# =============================================================================
+# Networks - Isolated internal Docker network
+# =============================================================================
 networks:
   sem-network:
     driver: bridge
 
+# =============================================================================
+# Volumes - Named persistent volumes for data
+# =============================================================================
 volumes:
+  sem-data:
+  sem-audit-logs:
+  sem-logs:
   prometheus-data:
-#  grafana-data:
   prometheus_multiproc:

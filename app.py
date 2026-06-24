@@ -44,6 +44,7 @@ from routes.auth_routes import auth_bp
 from routes.secret_routes import secret_bp
 from routes.export_routes import export_bp
 from routes.redirect_routes import redirect_bp
+from routes.jwt_auth_routes import jwt_auth_bp
 
 # Services
 from audit_logger import audit_logger
@@ -72,6 +73,13 @@ except Exception as e:
 
 # --- Flask App Setup ---
 app = Flask(__name__)
+
+# --- Request ID Middleware ---
+@app.before_request
+def add_request_id():
+    """Add unique request ID for tracing."""
+    import uuid
+    g.request_id = request.headers.get('X-Request-ID', str(uuid.uuid4())[:16])
 app.config["SECRET_KEY"] = settings.flask_secret_key
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
@@ -93,12 +101,21 @@ def _get_metrics_registry():
 metrics = PrometheusMetrics(app, registry=_get_metrics_registry())
 metrics.info("sem_app_info", "Secure Environment Manager Info", version="1.0.0")
 
+# --- Centralized Error Handling ---
+try:
+    from core.exceptions import setup_error_handlers
+    setup_error_handlers(app)
+except Exception as e:
+    logger.warning(f"Error handler setup failed: {e}")
+
 # --- Register Blueprints ---
 app.register_blueprint(api_bp)
-app.register_blueprint(auth_bp)
 app.register_blueprint(secret_bp)
 app.register_blueprint(export_bp)
 app.register_blueprint(redirect_bp)
+# JWT auth must be registered before generic auth so its routes take precedence
+app.register_blueprint(jwt_auth_bp)
+app.register_blueprint(auth_bp)
 
 # --- Helper Functions (delegated to modules) ---
 def _tz_now() -> datetime:
@@ -254,6 +271,18 @@ def handle_errors(err):
 <p><a href="{html.escape(settings.frontend_url)}" style="color:#a78bfa">Open web app</a></p>
 </body></html>"""
     return body, code
+
+# --- WebSocket Support (Production) ---
+# Skip WebSocket init during testing to avoid eventlet conflicts with test client
+if not settings.debug and os.environ.get("TESTING") != "1":
+    try:
+        from websocket_server import init_websocket
+        init_websocket(app)
+        logger.info("WebSocket support enabled")
+    except ImportError as e:
+        logger.warning(f"WebSocket support not available: {e}")
+    except Exception as e:
+        logger.warning(f"WebSocket initialization failed: {e}")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8070, debug=settings.debug, use_reloader=True)

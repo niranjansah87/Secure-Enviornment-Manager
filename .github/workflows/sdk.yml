@@ -1,0 +1,69 @@
+name: SDK Build
+
+on:
+  push:
+    branches: [main, enhancement]
+    paths:
+      - 'sdk/**'
+      - '.github/workflows/sdk.yml'
+  pull_request:
+    branches: [main]
+  release:
+    types: [published]
+
+jobs:
+  build-sdk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        working-directory: sdk/javascript
+        run: npm ci
+
+      - name: Type check
+        working-directory: sdk/javascript
+        run: npm run typecheck
+
+      - name: Build
+        working-directory: sdk/javascript
+        run: npm run build
+
+      - name: Test
+        working-directory: sdk/javascript
+        run: npm test
+
+  publish-sdk:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    needs: build-sdk
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        working-directory: sdk/javascript
+        run: npm ci
+
+      - name: Build
+        working-directory: sdk/javascript
+        run: npm run build
+
+      - name: Publish to npm
+        working-directory: sdk/javascript
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

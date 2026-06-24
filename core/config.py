@@ -46,6 +46,7 @@ class Settings:
     debug: bool
     master_api_token: Optional[str] = field(default=None, repr=False)
     cors_origins: List[str] = field(default_factory=list)
+    cors_origins_mobile: List[str] = field(default_factory=list)
     frontend_url: str = ""
 
     @classmethod
@@ -68,6 +69,16 @@ class Settings:
             if o.strip()
         ]
 
+        # Mobile CORS origins - for Flutter/Capacitor apps
+        cors_origins_mobile = [
+            o.strip()
+            for o in str(os.getenv("CORS_ORIGINS_MOBILE", "app://flutter.app,capacitor://localhost")).split(",")
+            if o.strip()
+        ]
+
+        # Web CORS origins
+        cors_origins_all = cors_origins + cors_origins_mobile
+
         return cls(
             flask_secret_key=flask_secret_key,
             encryption_key=encryption_key,
@@ -89,7 +100,8 @@ class Settings:
             export_filename=str(os.getenv("EXPORT_FILENAME", "{namespace}-{environment}.env")),
             debug=str(os.getenv("FLASK_DEBUG", "false")).lower() == "true",
             master_api_token=os.getenv("MASTER_API_TOKEN"),
-            cors_origins=cors_origins,
+            cors_origins=cors_origins_all,
+            cors_origins_mobile=cors_origins_mobile,
             frontend_url=str(os.getenv("FRONTEND_URL", "http://localhost:3000")).rstrip("/"),
         )
 

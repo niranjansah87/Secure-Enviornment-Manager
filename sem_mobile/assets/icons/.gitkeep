@@ -1,0 +1,10 @@
+# Secure Environment Manager Mobile Assets
+
+This directory contains all application assets.
+
+## Folders
+
+- `icons/` - App icons and icon assets
+- `illustrations/` - UI illustrations
+- `lottie/` - Lottie animation files
+- `fonts/` - Custom font files
