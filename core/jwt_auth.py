@@ -37,11 +37,16 @@ class TokenPayload:
     typ: str  # Token type: "access" or "refresh"
     iat: int  # Issued at (Unix timestamp)
     exp: int  # Expiration (Unix timestamp)
-    namespace: Optional[str] = None  # Requested namespace (for access tokens)
-    environment: Optional[str] = None  # Requested environment (for access tokens)
-    scopes: list[str] = field(default_factory=list)  # Permission scopes
-    device_id: Optional[str] = None  # Device identifier
-    is_admin: bool = False  # Admin flag
+    namespace: Optional[str] = None
+    environment: Optional[str] = None
+    scopes: list[str] = field(default_factory=list)
+    device_id: Optional[str] = None
+    is_admin: bool = False
+    user_id: Optional[str] = None
+    username: Optional[str] = None
+    email: Optional[str] = None
+    must_change_password: bool = False
+    credential_type: str = "unknown"        # dashboard_password | master_token | api_key | user_password
 
 
 @dataclass
@@ -162,21 +167,14 @@ class TokenManager:
         environment: Optional[str] = None,
         is_admin: bool = False,
         device_id: Optional[str] = None,
-        scopes: Optional[list[str]] = None
+        scopes: Optional[list[str]] = None,
+        user_id: Optional[str] = None,
+        username: Optional[str] = None,
+        email: Optional[str] = None,
+        must_change_password: bool = False,
+        credential_type: str = "unknown",
     ) -> str:
-        """Create a new JWT access token.
-
-        Args:
-            session_id: Server-side session identifier
-            namespace: Default namespace for this token
-            environment: Default environment for this token
-            is_admin: Whether this token has admin privileges
-            device_id: Associated device identifier
-            scopes: List of permission scopes
-
-        Returns:
-            JWT access token string
-        """
+        """Create a new JWT access token."""
         now = self._now_ts()
         payload = {
             "sub": session_id,
@@ -188,6 +186,11 @@ class TokenManager:
             "is_admin": is_admin,
             "device_id": device_id,
             "scopes": scopes or [],
+            "user_id": user_id,
+            "username": username,
+            "email": email,
+            "must_change_password": must_change_password,
+            "credential_type": credential_type,
         }
         return jwt.encode(payload, settings.flask_secret_key, algorithm=JWT_ALGORITHM)
 
@@ -259,6 +262,11 @@ class TokenManager:
                 is_admin=payload.get("is_admin", False),
                 device_id=payload.get("device_id"),
                 scopes=payload.get("scopes", []),
+                user_id=payload.get("user_id"),
+                username=payload.get("username"),
+                email=payload.get("email"),
+                must_change_password=payload.get("must_change_password", False),
+                credential_type=payload.get("credential_type", "unknown"),
             )
         except jwt.ExpiredSignatureError:
             return None

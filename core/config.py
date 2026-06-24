@@ -45,6 +45,8 @@ class Settings:
     export_filename: str
     debug: bool
     master_api_token: Optional[str] = field(default=None, repr=False)
+    admin_email: Optional[str] = field(default=None)
+    admin_username: str = "admin"
     cors_origins: List[str] = field(default_factory=list)
     cors_origins_mobile: List[str] = field(default_factory=list)
     frontend_url: str = ""
@@ -100,6 +102,8 @@ class Settings:
             export_filename=str(os.getenv("EXPORT_FILENAME", "{namespace}-{environment}.env")),
             debug=str(os.getenv("FLASK_DEBUG", "false")).lower() == "true",
             master_api_token=os.getenv("MASTER_API_TOKEN"),
+            admin_email=os.getenv("ADMIN_EMAIL") or None,
+            admin_username=str(os.getenv("ADMIN_USERNAME", "admin")),
             cors_origins=cors_origins_all,
             cors_origins_mobile=cors_origins_mobile,
             frontend_url=str(os.getenv("FRONTEND_URL", "http://localhost:3000")).rstrip("/"),

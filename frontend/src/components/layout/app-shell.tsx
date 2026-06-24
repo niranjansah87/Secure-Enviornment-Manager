@@ -6,10 +6,11 @@ import { useRouter, usePathname } from "next/navigation";
 import { AppSidebar } from "@/components/layout/sidebar";
 import { AppHeader } from "@/components/layout/header";
 import { PageMotion } from "@/components/layout/page-motion";
+import { ForceChangePassword } from "@/components/layout/force-change-password";
 import { useWorkspace } from "@/context/workspace-context";
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { token } = useWorkspace();
+  const { token, mustChangePassword } = useWorkspace();
   const router = useRouter();
   const pathname = usePathname();
   const [isMounted, setIsMounted] = useState(false);
@@ -29,6 +30,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-black selection:bg-violet-500/30">
+      {mustChangePassword && <ForceChangePassword />}
       <AppSidebar />
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#050505]">
         <AppHeader />
