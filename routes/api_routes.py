@@ -364,6 +364,13 @@ def api_keys_create(namespace: str):
     custom_key = body.get("custom_key") or None
     allowed_namespaces = body.get("namespaces") or None
     allowed_environments = body.get("environments") or None  # ["ns/env", ...], None = all
+    bound_user_id = body.get("bound_user_id") or None
+
+    # Validate bound_user_id if provided
+    if bound_user_id:
+        from services.user_service import user_service
+        if not user_service.get_user(bound_user_id):
+            return jsonify({"error": "Bound user not found"}), 404
 
     # Validate custom key if provided
     from services.api_key_service import api_key_service
@@ -381,6 +388,7 @@ def api_keys_create(namespace: str):
             custom_key=custom_key,
             allowed_namespaces=allowed_namespaces,
             allowed_environments=allowed_environments,
+            bound_user_id=bound_user_id,
         )
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -399,6 +407,7 @@ def api_keys_create(namespace: str):
         "expires_at": (datetime.now(timezone.utc) + timedelta(days=validity_days)).isoformat() if validity_days > 0 else None,
         "namespaces": allowed_namespaces if allowed_namespaces else [],
         "environments": allowed_environments if allowed_environments else [],
+        "bound_user_id": bound_user_id,
         "message": "Store this key securely. It will not be shown again."
     }), 201
 

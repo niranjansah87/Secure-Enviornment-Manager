@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { KeyRound, Plus, Trash2, Copy, CheckCircle2, AlertCircle, RefreshCw, Clock, Eye, EyeOff, Globe } from "lucide-react";
+import { KeyRound, Plus, Trash2, Copy, CheckCircle2, AlertCircle, RefreshCw, Clock, Eye, EyeOff, Globe, ChevronDown } from "lucide-react";
 import { api } from "@/lib/api";
 import { useWorkspace } from "@/context/workspace-context";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ type ApiKeyInfo = {
   expires_at: string | null;
   status: string;
   custom_key: boolean;
+  bound_user_id?: string | null;
 };
 
 type NewKeyResult = {
@@ -36,6 +37,8 @@ type NewKeyResult = {
   validity_days: number;
   expires_at: string | null;
   namespaces: string[];
+  environments: string[];
+  bound_user_id: string | null;
   message: string;
 } | null;
 
@@ -57,8 +60,6 @@ export default function ApiKeysPage() {
   const [newKey, setNewKey] = useState<NewKeyResult>(null);
   const [showNewKey, setShowNewKey] = useState(false);
   const [revoking, setRevoking] = useState<string | null>(null);
-  const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
-
   // Create dialog state
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [description, setDescription] = useState("");
@@ -70,6 +71,11 @@ export default function ApiKeysPage() {
   const [availableEnvPairs, setAvailableEnvPairs] = useState<{ns: string; env: string}[]>([]);
   const [loadingNamespaces, setLoadingNamespaces] = useState(false);
   const [customKeyError, setCustomKeyError] = useState("");
+  const [users, setUsers] = useState<{ user_id: string; username: string }[]>([]);
+  const [boundUserId, setBoundUserId] = useState("");
+  // Environments inherited from bound user's scopes (pre-selected, can't be removed)
+  const [inheritedScopes, setInheritedScopes] = useState<Set<string>>(new Set());
+  const [expandedNs, setExpandedNs] = useState<Set<string>>(new Set());
 
   const loadKeys = useCallback(async () => {
     if (!token) return;
@@ -99,6 +105,30 @@ export default function ApiKeysPage() {
   useEffect(() => {
     void loadKeys();
   }, [loadKeys]);
+
+  // Fetch users for bound-user display in key list
+  useEffect(() => {
+    if (!token) return;
+    api.listUsers(token)
+      .then(res => setUsers(res.users.map(u => ({ user_id: u.user_id, username: u.username }))))
+      .catch(() => setUsers([]));
+  }, [token]);
+
+  // When bound user changes, fetch their scopes and pre-select them as inherited
+  useEffect(() => {
+    if (!boundUserId || !token) {
+      setInheritedScopes(new Set());
+      return;
+    }
+    api.getUser(token, boundUserId)
+      .then(res => {
+        const scopes = res.user?.scopes ?? [];
+        setInheritedScopes(new Set(scopes));
+        // Also pre-select these in the visible selector
+        setSelectedEnvironments(new Set(scopes));
+      })
+      .catch(() => setInheritedScopes(new Set()));
+  }, [boundUserId, token]);
 
   const validateCustomKey = (key: string): boolean => {
     if (!key) return false;
@@ -142,18 +172,24 @@ export default function ApiKeysPage() {
         validity_days: number;
         custom_key?: string;
         environments?: string[];
+        bound_user_id?: string;
       } = {
         description,
         validity_days: validityDays,
       };
 
+      if (boundUserId) {
+        options.bound_user_id = boundUserId;
+      }
+
       if (useCustomKey && customKey) {
         options.custom_key = customKey;
       }
 
-      // If specific environments selected, send them; empty = all access
-      if (selectedEnvironments.size > 0) {
-        options.environments = Array.from(selectedEnvironments);
+      // Combine inherited scopes + selected environments (union)
+      const allSelected = new Set([...inheritedScopes, ...selectedEnvironments]);
+      if (allSelected.size > 0) {
+        options.environments = Array.from(allSelected);
       }
 
       const res = await api.createKey(token, storageNs, options);
@@ -182,12 +218,15 @@ export default function ApiKeysPage() {
     setCustomKey("");
     setSelectedEnvironments(new Set());
     setCustomKeyError("");
+    setBoundUserId("");
+    setInheritedScopes(new Set());
+    setExpandedNs(new Set());
   };
 
   const openCreateDialog = async () => {
     setShowCreateDialog(true);
     resetForm();
-    // Load available namespaces
+    // Load available namespaces and users
     setLoadingNamespaces(true);
     try {
       const envs = await api.metaEnvironments(token);
@@ -203,19 +242,26 @@ export default function ApiKeysPage() {
     } finally {
       setLoadingNamespaces(false);
     }
+    // Fetch users for bound user dropdown
+    try {
+      const usersRes = await api.listUsers(token!);
+      setUsers(usersRes.users.map(u => ({ user_id: u.user_id, username: u.username })));
+    } catch {
+      setUsers([]);
+    }
   };
 
-  const handleRevokeKey = async (namespace: string, keyId: string) => {
+  const handleDeleteKey = async (namespace: string, keyId: string) => {
     if (!token) return;
     setRevoking(keyId);
     try {
       await api.revokeKey(token, namespace, keyId);
-      toast.success("API key revoked", {
-        description: `Key ${keyId} has been permanently revoked.`,
+      toast.success("API key deleted", {
+        description: `Key ${keyId} has been permanently deleted.`,
       });
       void loadKeys();
     } catch {
-      toast.error("Failed to revoke API key", {
+      toast.error("Failed to delete API key", {
         description: "You may not have administrator privileges.",
       });
     } finally {
@@ -244,21 +290,9 @@ export default function ApiKeysPage() {
     }
   };
 
-  const toggleKeyVisibility = (keyId: string) => {
-    const newVisible = new Set(visibleKeys);
-    if (newVisible.has(keyId)) {
-      newVisible.delete(keyId);
-    } else {
-      newVisible.add(keyId);
-    }
-    setVisibleKeys(newVisible);
-  };
-
-  const isKeyVisible = (keyId: string) => visibleKeys.has(keyId);
-
   const getStatusBadge = (key: ApiKeyInfo) => {
     if (key.status === "revoked") {
-      return <Badge variant="destructive" className="text-[10px] bg-red-500/20 text-red-400 border-red-500/30">Revoked</Badge>;
+      return null;
     }
     if (key.status === "expired" || (key.expires_at && new Date(key.expires_at) < new Date())) {
       return <Badge variant="secondary" className="text-[10px] bg-amber-500/20 text-amber-400 border-amber-500/30">Expired</Badge>;
@@ -317,15 +351,19 @@ export default function ApiKeysPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2 text-emerald-400">
               <CheckCircle2 className="w-5 h-5" />
-              New API Key Created
+              API Key Created — Copy It Now
             </CardTitle>
             <CardDescription className="text-zinc-400">
-              Copy this key now. It will not be shown again.
+              ⚠️ This is the <strong className="text-emerald-300">only time</strong> the full API key is shown.
+              You will <strong className="text-red-400">not</strong> be able to view it again.
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="mb-2">
+              <span className="text-[11px] text-emerald-500/80 uppercase tracking-wider font-semibold">API Key (secret — use this to authenticate)</span>
+            </div>
             <div className="flex items-center gap-3">
-              <code className="flex-1 font-mono text-sm text-emerald-300 bg-black/30 rounded-lg px-4 py-3 break-all">
+              <code className="flex-1 font-mono text-sm text-emerald-300 bg-black/30 rounded-lg px-4 py-3 break-all select-all">
                 {showNewKey ? newKey.key : "•".repeat(24)}
               </code>
               <Button
@@ -347,6 +385,7 @@ export default function ApiKeysPage() {
             </div>
             <div className="mt-3 flex items-center gap-4 text-xs text-zinc-500">
               <span>Key ID: <code className="text-violet-400">{newKey.key_id}</code></span>
+              <span className="text-zinc-600">(identifier — not the secret)</span>
               <span>Namespace: <code className="text-violet-400">{newKey.namespace}</code></span>
               {newKey.expires_at && (
                 <span>Expires: <code className="text-amber-400">{formatIso(newKey.expires_at)}</code></span>
@@ -358,10 +397,18 @@ export default function ApiKeysPage() {
               onClick={() => setNewKey(null)}
               className="mt-3 text-zinc-400 hover:text-zinc-200"
             >
-              Dismiss
+              I&apos;ve saved the key — Dismiss
             </Button>
           </CardContent>
         </Card>
+      )}
+
+      {/* Notice */}
+      {totalKeys > 0 && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400/90">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>API keys are <strong>only shown once</strong> at creation. The Key ID below is just an identifier — it <strong>cannot</strong> be used to authenticate.</span>
+        </div>
       )}
 
       {/* Keys List */}
@@ -395,28 +442,15 @@ export default function ApiKeysPage() {
                           </div>
                           <div>
                             <div className="flex items-center gap-2 mb-1">
-                              <code className="text-sm font-mono text-zinc-200">
-                                {isKeyVisible(key.key_id) ? key.key_id : "•".repeat(key.key_id.length)}
-                              </code>
-                              <button
-                                type="button"
-                                onClick={() => toggleKeyVisibility(key.key_id)}
-                                className="text-zinc-500 hover:text-zinc-300 transition-colors"
-                                title={isKeyVisible(key.key_id) ? "Hide key ID" : "Show key ID"}
-                              >
-                                {isKeyVisible(key.key_id) ? (
-                                  <EyeOff className="w-3.5 h-3.5" />
-                                ) : (
-                                  <Eye className="w-3.5 h-3.5" />
-                                )}
-                              </button>
+                              <span className="text-[10px] text-zinc-600 uppercase tracking-wider">Key ID</span>
+                              <code className="text-xs font-mono text-zinc-400">{key.key_id}</code>
                               <button
                                 type="button"
                                 onClick={() => copyKey(key.key_id)}
-                                className="text-zinc-500 hover:text-zinc-300 transition-colors"
+                                className="text-zinc-600 hover:text-zinc-400 transition-colors"
                                 title="Copy key ID"
                               >
-                                <Copy className="w-3.5 h-3.5" />
+                                <Copy className="w-3 h-3" />
                               </button>
                               {getStatusBadge(key)}
                               {key.custom_key && (
@@ -431,6 +465,11 @@ export default function ApiKeysPage() {
                               <div>Created by: <span className="text-violet-400">{key.created_by}</span></div>
                               {key.description && (
                                 <div className="text-zinc-400 mt-1">Description: {key.description}</div>
+                              )}
+                              {key.bound_user_id && (
+                                <div className="text-violet-400 mt-1 text-xs">
+                                  Bound to: {users.find(u => u.user_id === key.bound_user_id)?.username ?? key.bound_user_id}
+                                </div>
                               )}
                               {key.environments && key.environments.length > 0 ? (
                                 <div className="mt-1">
@@ -474,12 +513,12 @@ export default function ApiKeysPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => void handleRevokeKey(ns, key.key_id)}
+                            onClick={() => void handleDeleteKey(ns, key.key_id)}
                             disabled={revoking === key.key_id}
                             className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
                           >
                             <Trash2 className="w-4 h-4 mr-2" />
-                            {revoking === key.key_id ? "Revoking..." : "Revoke"}
+                            {revoking === key.key_id ? "Deleting..." : "Delete"}
                           </Button>
                         )}
                       </div>
@@ -523,7 +562,7 @@ export default function ApiKeysPage() {
 
       {/* Create Key Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="bg-zinc-900 border-white/10 text-zinc-100 max-w-lg">
+        <DialogContent className="bg-zinc-900 border-white/10 text-zinc-100 max-w-2xl max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <DialogHeader className="pb-1">
             <DialogTitle className="flex items-center gap-3 text-base">
               <div className="w-8 h-8 rounded-lg bg-violet-500/20 border border-violet-500/30 flex items-center justify-center shrink-0">
@@ -547,6 +586,25 @@ export default function ApiKeysPage() {
                 className="bg-black/40 border-white/10 text-zinc-100 placeholder:text-zinc-600 focus:border-violet-500/60 focus:ring-1 focus:ring-violet-500/20 h-9"
               />
             </div>
+
+            {/* Bound User */}
+            {users.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Bound User</Label>
+                <select
+                  value={boundUserId}
+                  onChange={(e) => setBoundUserId(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 text-zinc-100 rounded-lg px-3 py-2 text-sm focus:border-violet-500/60 focus:ring-1 focus:ring-violet-500/20 h-9 appearance-none"
+                >
+                  <option value="" className="bg-zinc-900">None (unbound key)</option>
+                  {users.map((u) => (
+                    <option key={u.user_id} value={u.user_id} className="bg-zinc-900">
+                      {u.username}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Validity Period - pill buttons */}
             <div className="space-y-2">
@@ -576,18 +634,29 @@ export default function ApiKeysPage() {
                 {selectedEnvironments.size > 0 && (
                   <button
                     type="button"
-                    onClick={() => setSelectedEnvironments(new Set())}
+                    onClick={() => setSelectedEnvironments(new Set(inheritedScopes))}
                     className="text-xs text-zinc-600 hover:text-violet-400 transition-colors"
                   >
-                    Clear → full access
+                    Clear extra → user defaults only
                   </button>
                 )}
               </div>
 
-              {selectedEnvironments.size === 0 && !loadingNamespaces && availableEnvPairs.length > 0 && (
+              {/* Show full-access banner only when no bound user and nothing selected */}
+              {inheritedScopes.size === 0 && selectedEnvironments.size === 0 && !loadingNamespaces && availableEnvPairs.length > 0 && (
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-violet-500/10 border border-violet-500/20">
                   <Globe className="w-3.5 h-3.5 text-violet-400 shrink-0" />
                   <span className="text-xs text-violet-300">Full access — all namespaces and environments</span>
+                </div>
+              )}
+
+              {/* Show inherited scopes hint when bound user has scopes */}
+              {inheritedScopes.size > 0 && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                  <Globe className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="text-xs text-emerald-300">
+                    Inherited {inheritedScopes.size} scope(s) from user. Select additional environments to extend access.
+                  </span>
                 </div>
               )}
 
@@ -605,60 +674,90 @@ export default function ApiKeysPage() {
               ) : availableEnvPairs.length === 0 ? (
                 <p className="text-xs text-zinc-600 italic">No environments found</p>
               ) : (
-                <div className="space-y-3 max-h-44 overflow-y-auto pr-1">
+                <div className="max-h-48 overflow-y-auto rounded-lg border border-white/10 bg-black/30 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                   {Object.entries(
                     availableEnvPairs.reduce<Record<string, string[]>>((acc, { ns, env }) => {
                       (acc[ns] = acc[ns] || []).push(env);
                       return acc;
                     }, {})
                   ).map(([ns, envList]) => {
-                    const allNsSelected = envList.every(env => selectedEnvironments.has(`${ns}/${env}`));
+                    const isOpen = expandedNs.has(ns);
+                    const selectedInNs = envList.filter(env => selectedEnvironments.has(`${ns}/${env}`)).length;
+                    const allNsSelected = selectedInNs === envList.length;
                     return (
-                      <div key={ns}>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-xs font-mono font-semibold text-violet-400">{ns}</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const newSet = new Set(selectedEnvironments);
-                              if (allNsSelected) {
-                                envList.forEach(env => newSet.delete(`${ns}/${env}`));
-                              } else {
-                                envList.forEach(env => newSet.add(`${ns}/${env}`));
-                              }
-                              setSelectedEnvironments(newSet);
-                            }}
-                            className="text-xs text-zinc-600 hover:text-zinc-300 transition-colors"
-                          >
-                            {allNsSelected ? "deselect all" : "select all"}
-                          </button>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {envList.map(env => {
-                            const scopeKey = `${ns}/${env}`;
-                            const selected = selectedEnvironments.has(scopeKey);
-                            return (
-                              <button
-                                key={scopeKey}
-                                type="button"
-                                onClick={() => {
-                                  const newSet = new Set(selectedEnvironments);
-                                  if (selected) newSet.delete(scopeKey);
-                                  else newSet.add(scopeKey);
-                                  setSelectedEnvironments(newSet);
-                                }}
-                                className={`px-2.5 py-1 rounded-md text-xs font-mono transition-all border ${
-                                  selected
-                                    ? "bg-violet-600/25 border-violet-500/50 text-violet-200 shadow-sm shadow-violet-500/10"
-                                    : "bg-white/4 border-white/8 text-zinc-500 hover:border-white/20 hover:text-zinc-300 hover:bg-white/8"
-                                }`}
-                              >
-                                {selected && <span className="mr-1 text-violet-400 text-[10px]">✓</span>}
-                                {env}
-                              </button>
-                            );
+                      <div key={ns} className="border-b border-white/5 last:border-b-0">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedNs(prev => {
+                            const next = new Set(prev);
+                            if (next.has(ns)) next.delete(ns); else next.add(ns);
+                            return next;
                           })}
+                          className="w-full flex items-center justify-between px-3 py-2 hover:bg-white/[0.03] transition-colors text-left"
+                        >
+                          <span className="flex items-center gap-2">
+                            <ChevronDown className={`h-3 w-3 text-zinc-500 transition-transform ${isOpen ? "" : "-rotate-90"}`} />
+                            <span className="text-xs font-medium text-zinc-300">{ns}</span>
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            {selectedInNs > 0 && (
+                              <span className={`text-[10px] font-medium ${allNsSelected ? "text-violet-400" : "text-zinc-500"}`}>
+                                {selectedInNs}/{envList.length}
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const newSet = new Set(selectedEnvironments);
+                                if (allNsSelected) {
+                                  envList.forEach(env => {
+                                    const key = `${ns}/${env}`;
+                                    if (!inheritedScopes.has(key)) newSet.delete(key);
+                                  });
+                                } else {
+                                  envList.forEach(env => newSet.add(`${ns}/${env}`));
+                                }
+                                setSelectedEnvironments(newSet);
+                              }}
+                              className="text-[10px] text-zinc-600 hover:text-violet-400 transition-colors"
+                            >
+                              {allNsSelected ? "clear" : "all"}
+                            </button>
+                          </span>
+                        </button>
+                        {isOpen && (
+                          <div className="flex flex-wrap gap-1 px-3 pb-2">
+                            {envList.map(env => {
+                              const scopeKey = `${ns}/${env}`;
+                              const selected = selectedEnvironments.has(scopeKey);
+                              const inherited = inheritedScopes.has(scopeKey);
+                              return (
+                                <button
+                                  key={scopeKey}
+                                  type="button"
+                                  disabled={inherited}
+                                  onClick={() => {
+                                    if (inherited) return;
+                                    const newSet = new Set(selectedEnvironments);
+                                    if (selected) newSet.delete(scopeKey);
+                                    else newSet.add(scopeKey);
+                                    setSelectedEnvironments(newSet);
+                                  }}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-mono transition-all border ${
+                                    inherited
+                                      ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300/70 cursor-not-allowed"
+                                      : selected
+                                        ? "bg-violet-500/20 text-violet-300 border-violet-500/40"
+                                        : "bg-white/[0.03] text-zinc-500 border-white/10 hover:border-white/20 hover:text-zinc-300"
+                                  }`}
+                                >
+                                  {inherited ? "🔒 " : selected ? "✓ " : ""}{env}
+                                </button>
+                              );
+                            })}
                         </div>
+                        )}
                       </div>
                     );
                   })}

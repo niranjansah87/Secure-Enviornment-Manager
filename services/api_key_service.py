@@ -177,6 +177,7 @@ class ApiKeyService:
         custom_key: Optional[str] = None,
         allowed_namespaces: Optional[list[str]] = None,
         allowed_environments: Optional[list[str]] = None,
+        bound_user_id: Optional[str] = None,
     ) -> tuple[str, str]:
         """Create a new API key for a namespace.
 
@@ -222,22 +223,25 @@ class ApiKeyService:
             "expires_at": expires_at,
             "status": "active",
             "custom_key": bool(custom_key),
+            "bound_user_id": bound_user_id,
         }
 
         self._save_keys(keys)
         return raw_key, key_id
 
     def revoke_key(self, namespace: str, key_id: str) -> bool:
-        """Revoke an API key for a namespace."""
+        """Permanently delete an API key for a namespace."""
         keys = self._load_keys()
         if namespace not in keys or key_id not in keys[namespace]:
             return False
 
-        # Mark as revoked instead of deleting to preserve audit trail
-        keys[namespace][key_id]["status"] = "revoked"
-        keys[namespace][key_id]["revoked_at"] = datetime.now(timezone.utc).isoformat()
+        del keys[namespace][key_id]
+        # Clean up empty namespace
+        if not keys[namespace]:
+            del keys[namespace]
 
         self._save_keys(keys)
+        logger.info("API key %s permanently deleted from namespace %s", key_id, namespace)
         return True
 
     def list_keys(self, namespace: str) -> list[Dict[str, Any]]:
@@ -258,6 +262,7 @@ class ApiKeyService:
                 "expires_at": k.get("expires_at"),
                 "status": k.get("status", "active"),
                 "custom_key": k.get("custom_key", False),
+                "bound_user_id": k.get("bound_user_id"),
             }
             for k in keys[namespace].values()
         ]
@@ -321,6 +326,7 @@ class ApiKeyService:
                         "environments": allowed_environments,
                         "expires_at": key_data.get("expires_at"),
                         "description": key_data.get("description", ""),
+                        "bound_user_id": key_data.get("bound_user_id"),
                     }
 
         return False, None
@@ -347,10 +353,12 @@ class ApiKeyService:
             "created_by": k.get("created_by", "unknown"),
             "description": k.get("description", ""),
             "namespaces": k.get("namespaces", []),
+            "environments": k.get("environments", []),
             "expires_at": k.get("expires_at"),
             "status": k.get("status", "active"),
             "custom_key": k.get("custom_key", False),
             "revoked_at": k.get("revoked_at"),
+            "bound_user_id": k.get("bound_user_id"),
         }
 
 

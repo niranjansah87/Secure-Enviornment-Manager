@@ -36,9 +36,6 @@ export function AppHeader() {
     loadingEnvs,
     envError,
     token,
-    username,
-    email,
-    isAdmin,
   } = useWorkspace();
 
   const pairs: { namespace: string; environment: string }[] = [];
@@ -161,30 +158,6 @@ export function AppHeader() {
           </Link>
         </Button>
 
-        {/* Logged-in user pill */}
-        {token && (
-          <>
-            <div className="h-4 w-[1px] bg-white/10 hidden sm:block" />
-            <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/8 hover:bg-white/[0.06] transition-colors cursor-default">
-              <div className="w-7 h-7 rounded-full bg-violet-600/30 border border-violet-500/40 flex items-center justify-center text-[11px] font-bold text-violet-300 shrink-0 select-none">
-                {username
-                  ? username.slice(0, 2).toUpperCase()
-                  : isAdmin ? "AD" : "?"}
-              </div>
-              <div className="hidden sm:block leading-none">
-                <p className="text-xs font-medium text-zinc-200">
-                  {username ?? (isAdmin ? "Admin" : "User")}
-                </p>
-                {email && (
-                  <p className="text-[10px] text-zinc-500 mt-0.5 max-w-[140px] truncate">{email}</p>
-                )}
-                {!email && isAdmin && (
-                  <p className="text-[10px] text-violet-500/70 mt-0.5">Administrator</p>
-                )}
-              </div>
-            </div>
-          </>
-        )}
       </div>
     </header>
   );

@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   Mail,
   Globe,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -125,7 +126,10 @@ function CreateUserDialog({
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"admin" | "developer">("developer");
-  const [scopesStr, setScopesStr] = useState("");
+  const [selectedEnvironments, setSelectedEnvironments] = useState<Set<string>>(new Set());
+  const [availableEnvPairs, setAvailableEnvPairs] = useState<{ ns: string; env: string }[]>([]);
+  const [loadingEnvPairs, setLoadingEnvPairs] = useState(false);
+  const [expandedNs, setExpandedNs] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -133,9 +137,61 @@ function CreateUserDialog({
     setUsername("");
     setEmail("");
     setRole("developer");
-    setScopesStr("");
+    setSelectedEnvironments(new Set());
+    setExpandedNs(new Set());
     setError(null);
   };
+
+  // Fetch available environments when dialog opens
+  const loadEnvPairs = async () => {
+    if (!token) return;
+    setLoadingEnvPairs(true);
+    setAvailableEnvPairs([]);
+    try {
+      const envs = await api.metaEnvironments(token);
+      const pairs: { ns: string; env: string }[] = [];
+      for (const [ns, envList] of Object.entries(envs.environments || {})) {
+        for (const env of envList as string[]) {
+          pairs.push({ ns, env });
+        }
+      }
+      setAvailableEnvPairs(pairs);
+    } catch {
+      setAvailableEnvPairs([]);
+    } finally {
+      setLoadingEnvPairs(false);
+    }
+  };
+
+  const toggleEnv = (ns: string, env: string) => {
+    const key = `${ns}/${env}`;
+    setSelectedEnvironments(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleNs = (ns: string, envs: string[]) => {
+    setSelectedEnvironments(prev => {
+      const next = new Set(prev);
+      const allSelected = envs.every(e => next.has(`${ns}/${e}`));
+      if (allSelected) {
+        envs.forEach(e => next.delete(`${ns}/${e}`));
+      } else {
+        envs.forEach(e => next.add(`${ns}/${e}`));
+      }
+      return next;
+    });
+  };
+
+  // Load env pairs when dialog opens (CreateUserDialog)
+  useEffect(() => {
+    if (open) {
+      reset();
+      void loadEnvPairs();
+    }
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,10 +202,9 @@ function CreateUserDialog({
       return;
     }
 
-    const scopes = scopesStr
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const scopes = selectedEnvironments.size > 0
+      ? Array.from(selectedEnvironments)
+      : [];
 
     setLoading(true);
     try {
@@ -184,7 +239,7 @@ function CreateUserDialog({
         }
       }}
     >
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <DialogHeader>
           <DialogTitle className="text-zinc-100">Create User</DialogTitle>
           <DialogDescription>
@@ -237,18 +292,97 @@ function CreateUserDialog({
             </div>
           </div>
 
+          {/* Allowed Namespaces & Environments */}
           <div className="space-y-1.5">
-            <Label className="text-xs text-zinc-400">
-              Scopes (comma-separated, e.g. "production/main, staging/dev")
-            </Label>
-            <Input
-              value={scopesStr}
-              onChange={(e) => setScopesStr(e.target.value)}
-              placeholder="* for all access (leave empty for admin)"
-              className="bg-black/40 border-white/10 text-zinc-100 placeholder:text-zinc-600 h-9.5 font-mono text-xs"
-            />
+            <Label className="text-xs text-zinc-400">Allowed Namespaces & Environments</Label>
+            {loadingEnvPairs ? (
+              <Skeleton className="h-16 bg-white/10 rounded-lg" />
+            ) : availableEnvPairs.length === 0 ? (
+              <p className="text-xs text-zinc-600 italic">No environments available.</p>
+            ) : (
+              <>
+                {selectedEnvironments.size === 0 && (
+                  <p className="text-[11px] text-violet-400/80 flex items-center gap-1">
+                    <Globe className="h-3 w-3" />
+                    Nothing selected = full access
+                  </p>
+                )}
+                <div className="max-h-48 overflow-y-auto rounded-lg border border-white/10 bg-black/30 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  {(() => {
+                    const grouped = new Map<string, string[]>();
+                    availableEnvPairs.forEach(p => {
+                      if (!grouped.has(p.ns)) grouped.set(p.ns, []);
+                      grouped.get(p.ns)!.push(p.env);
+                    });
+                    return Array.from(grouped.entries()).map(([ns, envs]) => {
+                      const isOpen = expandedNs.has(ns);
+                      const selectedInNs = envs.filter(e => selectedEnvironments.has(`${ns}/${e}`)).length;
+                      const allSelected = selectedInNs === envs.length;
+                      return (
+                        <div key={ns} className="border-b border-white/5 last:border-b-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setExpandedNs(prev => {
+                                const next = new Set(prev);
+                                if (next.has(ns)) next.delete(ns); else next.add(ns);
+                                return next;
+                              });
+                            }}
+                            className="w-full flex items-center justify-between px-3 py-2 hover:bg-white/[0.03] transition-colors text-left"
+                          >
+                            <span className="flex items-center gap-2">
+                              <ChevronDown className={`h-3 w-3 text-zinc-500 transition-transform ${isOpen ? "" : "-rotate-90"}`} />
+                              <span className="text-xs font-medium text-zinc-300">{ns}</span>
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              {selectedInNs > 0 && (
+                                <span className={`text-[10px] font-medium ${allSelected ? "text-violet-400" : "text-zinc-500"}`}>
+                                  {selectedInNs}/{envs.length}
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); toggleNs(ns, envs); }}
+                                className="text-[10px] text-zinc-600 hover:text-violet-400 transition-colors"
+                              >
+                                {allSelected ? "clear" : "all"}
+                              </button>
+                            </span>
+                          </button>
+                          {isOpen && (
+                            <div className="flex flex-wrap gap-1 px-3 pb-2">
+                              {envs.map(env => {
+                                const key = `${ns}/${env}`;
+                                const sel = selectedEnvironments.has(key);
+                                return (
+                                  <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => toggleEnv(ns, env)}
+                                    className={`px-2 py-0.5 rounded text-[10px] font-mono transition-all border ${
+                                      sel
+                                        ? "bg-violet-500/20 text-violet-300 border-violet-500/40"
+                                        : "bg-white/[0.03] text-zinc-500 border-white/10 hover:border-white/20 hover:text-zinc-300"
+                                    }`}
+                                  >
+                                    {sel && "✓ "}{env}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </>
+            )}
             <p className="text-[10px] text-zinc-600">
-              Use namespace/environment pairs. &quot;*&quot; grants full access. Leave empty if using admin role.
+              {selectedEnvironments.size > 0
+                ? `${selectedEnvironments.size} environment(s) selected`
+                : "Leave empty for unrestricted access."}
             </p>
           </div>
 
@@ -309,29 +443,75 @@ function EditUserDialog({
   const { token } = useWorkspace();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"admin" | "developer">("developer");
-  const [scopesStr, setScopesStr] = useState("");
+  const [selectedEnvironments, setSelectedEnvironments] = useState<Set<string>>(new Set());
+  const [availableEnvPairs, setAvailableEnvPairs] = useState<{ ns: string; env: string }[]>([]);
+  const [loadingEnvPairs, setLoadingEnvPairs] = useState(false);
+  const [expandedNs, setExpandedNs] = useState<Set<string>>(new Set());
   const [status, setStatus] = useState<"active" | "disabled">("active");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const loadEnvPairs = async () => {
+    if (!token) return;
+    setLoadingEnvPairs(true);
+    setAvailableEnvPairs([]);
+    try {
+      const envs = await api.metaEnvironments(token);
+      const pairs: { ns: string; env: string }[] = [];
+      for (const [ns, envList] of Object.entries(envs.environments || {})) {
+        for (const env of envList as string[]) {
+          pairs.push({ ns, env });
+        }
+      }
+      setAvailableEnvPairs(pairs);
+    } catch {
+      setAvailableEnvPairs([]);
+    } finally {
+      setLoadingEnvPairs(false);
+    }
+  };
 
   useEffect(() => {
     if (user) {
       setEmail(user.email || "");
       setRole(user.role as "admin" | "developer");
-      setScopesStr((user.scopes || []).join(", "));
+      setSelectedEnvironments(new Set(user.scopes || []));
+      setExpandedNs(new Set());
       setStatus(user.status as "active" | "disabled");
       setError(null);
+      void loadEnvPairs();
     }
-  }, [user]);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toggleEnv = (ns: string, env: string) => {
+    const key = `${ns}/${env}`;
+    setSelectedEnvironments(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleNs = (ns: string, envs: string[]) => {
+    setSelectedEnvironments(prev => {
+      const next = new Set(prev);
+      const allSelected = envs.every(e => next.has(`${ns}/${e}`));
+      if (allSelected) {
+        envs.forEach(e => next.delete(`${ns}/${e}`));
+      } else {
+        envs.forEach(e => next.add(`${ns}/${e}`));
+      }
+      return next;
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
 
-    const scopes = scopesStr
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const scopes = selectedEnvironments.size > 0
+      ? Array.from(selectedEnvironments)
+      : [];
 
     setLoading(true);
     setError(null);
@@ -354,7 +534,7 @@ function EditUserDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <DialogHeader>
           <DialogTitle className="text-zinc-100">
             Edit User: {user?.username}
@@ -395,14 +575,98 @@ function EditUserDialog({
             </div>
           </div>
 
+          {/* Allowed Namespaces & Environments */}
           <div className="space-y-1.5">
-            <Label className="text-xs text-zinc-400">Scopes (comma-separated)</Label>
-            <Input
-              value={scopesStr}
-              onChange={(e) => setScopesStr(e.target.value)}
-              placeholder="* for all access"
-              className="bg-black/40 border-white/10 text-zinc-100 placeholder:text-zinc-600 h-9.5 font-mono text-xs"
-            />
+            <Label className="text-xs text-zinc-400">Allowed Namespaces & Environments</Label>
+            {loadingEnvPairs ? (
+              <Skeleton className="h-16 bg-white/10 rounded-lg" />
+            ) : availableEnvPairs.length === 0 ? (
+              <p className="text-xs text-zinc-600 italic">No environments available.</p>
+            ) : (
+              <>
+                {selectedEnvironments.size === 0 && (
+                  <p className="text-[11px] text-violet-400/80 flex items-center gap-1">
+                    <Globe className="h-3 w-3" />
+                    Nothing selected = full access
+                  </p>
+                )}
+                <div className="max-h-48 overflow-y-auto rounded-lg border border-white/10 bg-black/30 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                {(() => {
+                  const grouped = new Map<string, string[]>();
+                  availableEnvPairs.forEach(p => {
+                    if (!grouped.has(p.ns)) grouped.set(p.ns, []);
+                    grouped.get(p.ns)!.push(p.env);
+                  });
+                  return Array.from(grouped.entries()).map(([ns, envs]) => {
+                    const isOpen = expandedNs.has(ns);
+                    const selectedInNs = envs.filter(e => selectedEnvironments.has(`${ns}/${e}`)).length;
+                    const allSelected = selectedInNs === envs.length;
+                    return (
+                      <div key={ns} className="border-b border-white/5 last:border-b-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setExpandedNs(prev => {
+                              const next = new Set(prev);
+                              if (next.has(ns)) next.delete(ns); else next.add(ns);
+                              return next;
+                            });
+                          }}
+                          className="w-full flex items-center justify-between px-3 py-2 hover:bg-white/[0.03] transition-colors text-left"
+                        >
+                          <span className="flex items-center gap-2">
+                            <ChevronDown className={`h-3 w-3 text-zinc-500 transition-transform ${isOpen ? "" : "-rotate-90"}`} />
+                            <span className="text-xs font-medium text-zinc-300">{ns}</span>
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            {selectedInNs > 0 && (
+                              <span className={`text-[10px] font-medium ${allSelected ? "text-violet-400" : "text-zinc-500"}`}>
+                                {selectedInNs}/{envs.length}
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); toggleNs(ns, envs); }}
+                              className="text-[10px] text-zinc-600 hover:text-violet-400 transition-colors"
+                            >
+                              {allSelected ? "clear" : "all"}
+                            </button>
+                          </span>
+                        </button>
+                        {isOpen && (
+                          <div className="flex flex-wrap gap-1 px-3 pb-2">
+                            {envs.map(env => {
+                              const key = `${ns}/${env}`;
+                              const sel = selectedEnvironments.has(key);
+                              return (
+                                <button
+                                  key={key}
+                                  type="button"
+                                  onClick={() => toggleEnv(ns, env)}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-mono transition-all border ${
+                                    sel
+                                      ? "bg-violet-500/20 text-violet-300 border-violet-500/40"
+                                      : "bg-white/[0.03] text-zinc-500 border-white/10 hover:border-white/20 hover:text-zinc-300"
+                                  }`}
+                                >
+                                  {sel && "✓ "}{env}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+              </>
+            )}
+            <p className="text-[10px] text-zinc-600">
+              {selectedEnvironments.size > 0
+                ? `${selectedEnvironments.size} environment(s) selected`
+                : "Leave empty for unrestricted access."}
+            </p>
           </div>
 
           <div className="space-y-1.5">

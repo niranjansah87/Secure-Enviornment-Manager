@@ -206,7 +206,12 @@ def user_change_password():
         return api_error(ErrorCode.VALIDATION_MISSING_FIELD[0], message="new_password is required", status_code=400)
 
     # On must_change_password flow, skip current_password verification
+    # Check both JWT flag AND user record (JWT flag can be stale)
     must_change = getattr(payload, "must_change_password", False)
+    if not must_change:
+        user_record = user_service.get_user(user_id)
+        if user_record and user_record.get("must_change_password"):
+            must_change = True
     if not must_change and current_password is None:
         return api_error(
             ErrorCode.VALIDATION_MISSING_FIELD[0],

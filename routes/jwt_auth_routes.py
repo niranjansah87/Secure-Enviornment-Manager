@@ -149,6 +149,16 @@ def jwt_login():
                 scopes = ["*"]
             if namespace == "global" and key_info.get("namespace"):
                 namespace = key_info["namespace"]
+            # If API key is bound to a user, carry user identity in the JWT
+            bound_uid = key_info.get("bound_user_id")
+            if bound_uid:
+                from services.user_service import user_service as _user_svc2
+                bound_user = _user_svc2.get_user(bound_uid)
+                if bound_user:
+                    user_id = bound_user["user_id"]
+                    jwt_username = bound_user["username"]
+                    jwt_email = bound_user.get("email") or None
+                    is_admin = bound_user["role"] == "admin"
         else:
             track_failed_login()
             audit_logger.log_login_failure(

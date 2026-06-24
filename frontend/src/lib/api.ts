@@ -100,6 +100,7 @@ export type ApiKey = {
   status: string;
   custom_key: boolean;
   revoked_at?: string | null;
+  bound_user_id?: string | null;
 };
 
 export type User = {
@@ -363,6 +364,7 @@ export const api = {
       custom_key?: string;
       namespaces?: string[];
       environments?: string[];
+      bound_user_id?: string;
     }
   ) {
     return request<{
@@ -374,6 +376,7 @@ export const api = {
       expires_at: string | null;
       namespaces: string[];
       environments: string[];
+      bound_user_id: string | null;
       message: string;
     }>(
       `/api/v1/keys/${encodeURIComponent(namespace)}`,

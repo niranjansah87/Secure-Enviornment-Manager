@@ -44,7 +44,13 @@ export function ForceChangePassword() {
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setError(data.error?.message ?? "Failed to change password.");
+        // Try multiple error formats: new API envelope, old-style error string
+        const msg =
+          (data.error && typeof data.error === "object" ? data.error.message : null) ??
+          (typeof data.error === "string" ? data.error : null) ??
+          data.message ??
+          `Request failed with status ${res.status}`;
+        setError(msg);
         return;
       }
 
