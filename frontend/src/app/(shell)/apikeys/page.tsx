@@ -61,7 +61,6 @@ export default function ApiKeysPage() {
 
   // Create dialog state
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [selectedNamespace, setSelectedNamespace] = useState("");
   const [description, setDescription] = useState("");
   const [validityDays, setValidityDays] = useState(30);
   const [useCustomKey, setUseCustomKey] = useState(false);
@@ -177,7 +176,6 @@ export default function ApiKeysPage() {
   };
 
   const resetForm = () => {
-    setSelectedNamespace("");
     setDescription("");
     setValidityDays(30);
     setUseCustomKey(false);
@@ -200,10 +198,6 @@ export default function ApiKeysPage() {
         }
       }
       setAvailableEnvPairs(pairs);
-      const allNamespaces = Object.keys(envs.environments || {});
-      if (allNamespaces.length > 0) {
-        setSelectedNamespace(allNamespaces[0]);
-      }
     } catch {
       setAvailableEnvPairs([]);
     } finally {
@@ -529,180 +523,201 @@ export default function ApiKeysPage() {
 
       {/* Create Key Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="bg-zinc-900 border-white/10 text-zinc-100">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <KeyRound className="w-5 h-5 text-violet-400" />
+        <DialogContent className="bg-zinc-900 border-white/10 text-zinc-100 max-w-lg">
+          <DialogHeader className="pb-1">
+            <DialogTitle className="flex items-center gap-3 text-base">
+              <div className="w-8 h-8 rounded-lg bg-violet-500/20 border border-violet-500/30 flex items-center justify-center shrink-0">
+                <KeyRound className="w-4 h-4 text-violet-400" />
+              </div>
               Create API Key
             </DialogTitle>
-            <DialogDescription className="text-zinc-400">
-              Configure and create a new API key.
+            <DialogDescription className="text-zinc-500 text-xs ml-11">
+              Grant programmatic access to specific environments.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            {/* Namespace Selection */}
-            <div className="space-y-2">
-              <Label htmlFor="namespace" className="text-sm font-medium text-zinc-300">Namespace</Label>
-              <select
-                id="namespace"
-                value={selectedNamespace}
-                onChange={(e) => setSelectedNamespace(e.target.value)}
-                className="w-full px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-zinc-100 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 cursor-pointer"
-              >
-                <option value="">Select a namespace...</option>
-                {[...new Set(availableEnvPairs.map(p => p.ns))].map((ns) => (
-                  <option key={ns} value={ns}>
-                    {ns}
-                  </option>
-                ))}
-              </select>
-            </div>
-
+          <div className="space-y-5 py-2">
             {/* Description */}
-            <div className="space-y-2">
-              <Label htmlFor="description" className="text-sm font-medium text-zinc-300">Description (optional)</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Description</Label>
               <Input
-                id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="e.g., Production CI/CD pipeline"
-                className="w-full px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500"
+                className="bg-black/40 border-white/10 text-zinc-100 placeholder:text-zinc-600 focus:border-violet-500/60 focus:ring-1 focus:ring-violet-500/20 h-9"
               />
             </div>
 
-            {/* Validity Period */}
+            {/* Validity Period - pill buttons */}
             <div className="space-y-2">
-              <Label htmlFor="validity" className="text-sm font-medium text-zinc-300">Validity Period</Label>
-              <select
-                id="validity"
-                value={validityDays}
-                onChange={(e) => setValidityDays(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-zinc-100 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 cursor-pointer"
-              >
+              <Label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Validity Period</Label>
+              <div className="flex flex-wrap gap-1.5">
                 {VALIDITY_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setValidityDays(opt.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                      validityDays === opt.value
+                        ? "bg-violet-600/80 text-white border-violet-500 shadow-sm shadow-violet-500/20"
+                        : "bg-white/5 text-zinc-400 border-white/8 hover:border-white/20 hover:text-zinc-200 hover:bg-white/8"
+                    }`}
+                  >
                     {opt.label}
-                  </option>
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
 
-            {/* Allowed Environments */}
+            {/* Access Scope */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-zinc-300">Allowed Environments</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Access Scope</Label>
+                {selectedEnvironments.size > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedEnvironments(new Set())}
+                    className="text-xs text-zinc-600 hover:text-violet-400 transition-colors"
+                  >
+                    Clear → full access
+                  </button>
+                )}
+              </div>
+
+              {selectedEnvironments.size === 0 && !loadingNamespaces && availableEnvPairs.length > 0 && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-violet-500/10 border border-violet-500/20">
+                  <Globe className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                  <span className="text-xs text-violet-300">Full access — all namespaces and environments</span>
+                </div>
+              )}
+
               {loadingNamespaces ? (
-                <div className="text-sm text-zinc-500">Loading environments...</div>
-              ) : availableEnvPairs.length === 0 ? (
-                <div className="text-sm text-zinc-500">No environments available</div>
-              ) : (
-                <div className="space-y-1 max-h-52 overflow-y-auto border border-white/10 rounded-lg p-3 bg-black/20">
-                  <div className="flex items-center gap-2 pb-2 border-b border-white/10 mb-1">
-                    <input
-                      type="checkbox"
-                      id="selectAllEnvs"
-                      checked={selectedEnvironments.size === availableEnvPairs.length}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedEnvironments(new Set(availableEnvPairs.map(p => `${p.ns}/${p.env}`)));
-                        } else {
-                          setSelectedEnvironments(new Set());
-                        }
-                      }}
-                      className="rounded border-zinc-600 bg-zinc-800 text-violet-500 focus:ring-violet-500"
-                    />
-                    <Label htmlFor="selectAllEnvs" className="text-zinc-300 font-medium cursor-pointer text-xs">
-                      Select All
-                    </Label>
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-3.5 w-20 bg-white/5" />
+                    <div className="flex gap-2">
+                      <Skeleton className="h-7 w-14 rounded-lg bg-white/5" />
+                      <Skeleton className="h-7 w-18 rounded-lg bg-white/5" />
+                      <Skeleton className="h-7 w-16 rounded-lg bg-white/5" />
+                    </div>
                   </div>
-                  {availableEnvPairs.map(({ ns, env }) => {
-                    const key = `${ns}/${env}`;
+                </div>
+              ) : availableEnvPairs.length === 0 ? (
+                <p className="text-xs text-zinc-600 italic">No environments found</p>
+              ) : (
+                <div className="space-y-3 max-h-44 overflow-y-auto pr-1">
+                  {Object.entries(
+                    availableEnvPairs.reduce<Record<string, string[]>>((acc, { ns, env }) => {
+                      (acc[ns] = acc[ns] || []).push(env);
+                      return acc;
+                    }, {})
+                  ).map(([ns, envList]) => {
+                    const allNsSelected = envList.every(env => selectedEnvironments.has(`${ns}/${env}`));
                     return (
-                      <div key={key} className="flex items-center gap-2 py-0.5">
-                        <input
-                          type="checkbox"
-                          id={`env-${key}`}
-                          checked={selectedEnvironments.has(key)}
-                          onChange={(e) => {
-                            const newSet = new Set(selectedEnvironments);
-                            if (e.target.checked) newSet.add(key);
-                            else newSet.delete(key);
-                            setSelectedEnvironments(newSet);
-                          }}
-                          className="rounded border-zinc-600 bg-zinc-800 text-violet-500 focus:ring-violet-500"
-                        />
-                        <Label htmlFor={`env-${key}`} className="cursor-pointer text-xs">
-                          <span className="font-mono text-violet-400">{ns}</span>
-                          <span className="text-zinc-500">/</span>
-                          <span className="font-mono text-zinc-300">{env}</span>
-                        </Label>
+                      <div key={ns}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-xs font-mono font-semibold text-violet-400">{ns}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newSet = new Set(selectedEnvironments);
+                              if (allNsSelected) {
+                                envList.forEach(env => newSet.delete(`${ns}/${env}`));
+                              } else {
+                                envList.forEach(env => newSet.add(`${ns}/${env}`));
+                              }
+                              setSelectedEnvironments(newSet);
+                            }}
+                            className="text-xs text-zinc-600 hover:text-zinc-300 transition-colors"
+                          >
+                            {allNsSelected ? "deselect all" : "select all"}
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {envList.map(env => {
+                            const scopeKey = `${ns}/${env}`;
+                            const selected = selectedEnvironments.has(scopeKey);
+                            return (
+                              <button
+                                key={scopeKey}
+                                type="button"
+                                onClick={() => {
+                                  const newSet = new Set(selectedEnvironments);
+                                  if (selected) newSet.delete(scopeKey);
+                                  else newSet.add(scopeKey);
+                                  setSelectedEnvironments(newSet);
+                                }}
+                                className={`px-2.5 py-1 rounded-md text-xs font-mono transition-all border ${
+                                  selected
+                                    ? "bg-violet-600/25 border-violet-500/50 text-violet-200 shadow-sm shadow-violet-500/10"
+                                    : "bg-white/4 border-white/8 text-zinc-500 hover:border-white/20 hover:text-zinc-300 hover:bg-white/8"
+                                }`}
+                              >
+                                {selected && <span className="mr-1 text-violet-400 text-[10px]">✓</span>}
+                                {env}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                     );
                   })}
                 </div>
               )}
-              <p className="text-xs text-zinc-500">
-                {selectedEnvironments.size === 0
-                  ? "No selection = access to all environments"
-                  : `${selectedEnvironments.size} environment(s) selected`}
-              </p>
             </div>
 
-            {/* Custom Key Toggle */}
+            {/* Custom Key toggle */}
             <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="useCustomKey"
-                  checked={useCustomKey}
-                  onChange={(e) => setUseCustomKey(e.target.checked)}
-                  className="rounded border-zinc-600 bg-zinc-800 text-violet-500 focus:ring-violet-500"
-                />
-                <Label htmlFor="useCustomKey" className="text-zinc-300">
-                  Provide custom API key
-                </Label>
-              </div>
-
+              <button
+                type="button"
+                onClick={() => { setUseCustomKey(!useCustomKey); setCustomKey(""); setCustomKeyError(""); }}
+                className="flex items-center gap-3 group"
+              >
+                <div className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${useCustomKey ? "bg-violet-600" : "bg-zinc-700"}`}>
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${useCustomKey ? "translate-x-4" : "translate-x-0.5"}`} />
+                </div>
+                <span className="text-sm text-zinc-400 group-hover:text-zinc-200 transition-colors">Provide custom key</span>
+              </button>
               {useCustomKey && (
-                <div className="pl-6 space-y-2">
+                <div className="ml-12 space-y-1.5">
                   <Input
                     value={customKey}
-                    onChange={(e) => {
-                      setCustomKey(e.target.value);
-                      if (e.target.value) validateCustomKey(e.target.value);
-                      else setCustomKeyError("");
-                    }}
-                    placeholder="Enter custom key (8-64 characters)"
-                    className={"w-full px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500" + (customKeyError ? " border-red-500" : "")}
+                    onChange={(e) => { setCustomKey(e.target.value); if (e.target.value) validateCustomKey(e.target.value); else setCustomKeyError(""); }}
+                    placeholder="8–64 characters"
+                    className={`bg-black/40 border-white/10 text-zinc-100 placeholder:text-zinc-600 focus:border-violet-500/60 focus:ring-1 focus:ring-violet-500/20 h-9 font-mono text-sm ${customKeyError ? "border-red-500/60" : ""}`}
                   />
-                  {customKeyError && (
-                    <p className="text-xs text-red-400">{customKeyError}</p>
-                  )}
-                  <p className="text-xs text-zinc-500">
-                    8-64 characters, letters, numbers, underscores, hyphens only.
-                  </p>
+                  {customKeyError && <p className="text-xs text-red-400">{customKeyError}</p>}
+                  <p className="text-xs text-zinc-600">Letters, numbers, underscores, hyphens only</p>
                 </div>
               )}
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="pt-3 border-t border-white/5 gap-2">
+            <div className="flex-1 flex items-center">
+              <span className="text-xs text-zinc-600">
+                {selectedEnvironments.size === 0
+                  ? "Scope: all environments"
+                  : `Scope: ${selectedEnvironments.size} environment${selectedEnvironments.size > 1 ? "s" : ""}`}
+              </span>
+            </div>
             <Button
               variant="ghost"
-              onClick={() => {
-                setShowCreateDialog(false);
-                resetForm();
-              }}
-              className="text-zinc-400"
+              onClick={() => { setShowCreateDialog(false); resetForm(); }}
+              className="text-zinc-400 hover:text-zinc-200 h-9"
             >
               Cancel
             </Button>
             <Button
               onClick={() => void handleCreateKey()}
-              disabled={creating || !selectedNamespace || (useCustomKey && Boolean(customKeyError))}
-              className="bg-violet-600 hover:bg-violet-500 text-white"
+              disabled={creating || (useCustomKey && Boolean(customKeyError))}
+              className="bg-violet-600 hover:bg-violet-500 text-white h-9 px-4"
             >
-              {creating ? "Creating..." : "Create Key"}
+              {creating ? (
+                <><RefreshCw className="w-3.5 h-3.5 mr-2 animate-spin" />Creating…</>
+              ) : (
+                <><Plus className="w-3.5 h-3.5 mr-2" />Create Key</>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

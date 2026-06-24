@@ -83,13 +83,14 @@ def validate_csrf() -> None:
 # --- API Authentication ---
 
 
-def require_api_auth(namespace: str, token: str | None) -> bool:
-    """Check if the API token is valid for the given namespace."""
+def require_api_auth(namespace: str, token: str | None, environment: str | None = None) -> bool:
+    """Check if the API token is valid for the given namespace (and optionally environment)."""
     if not token:
         return False
-    # Use the new ApiKeyService for RBAC-aware verification
     from services.api_key_service import api_key_service
-    is_valid, key_info = api_key_service.verify_key(token, required_namespace=namespace)
+    is_valid, key_info = api_key_service.verify_key(
+        token, required_namespace=namespace, required_environment=environment
+    )
     return is_valid
 
 
@@ -133,7 +134,7 @@ def api_auth_ok(namespace: str, token: str | None, environment: str | None = Non
             return False
         return True
 
-    return require_api_auth(namespace, token)
+    return require_api_auth(namespace, token, environment)
 
 
 def namespaces_visible_to_token(token: str | None) -> list[str]:
@@ -193,16 +194,22 @@ def namespaces_visible_to_token(token: str | None) -> list[str]:
                     pass
             # Verify key matches (supports both legacy SHA-256 and current PBKDF2)
             if api_key_service._verify_key(key_data["key"], token):
-                # Key is valid - determine namespace access
+                allowed_environments = key_data.get("environments", [])
                 allowed_namespaces = key_data.get("namespaces", [])
-                if not allowed_namespaces:
-                    # Empty list means all namespaces
-                    return list(_list_all_environments().keys())
-                # Use the key's allowed_namespaces, filtered to valid namespaces
                 valid_ns = set(_list_all_environments().keys())
-                for ns_item in allowed_namespaces:
-                    if ns_item in valid_ns:
-                        visible.append(ns_item)
+                if allowed_environments:
+                    # Environment-level scopes: extract unique namespaces
+                    for scope in allowed_environments:
+                        ns_part = scope.split("/")[0] if "/" in scope else scope
+                        if ns_part in valid_ns:
+                            visible.append(ns_part)
+                elif allowed_namespaces:
+                    for ns_item in allowed_namespaces:
+                        if ns_item in valid_ns:
+                            visible.append(ns_item)
+                else:
+                    # No restrictions = all namespaces
+                    return list(valid_ns)
 
     return list(set(visible))
 

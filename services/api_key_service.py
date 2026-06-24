@@ -265,9 +265,10 @@ class ApiKeyService:
     def verify_key(
         self,
         provided_key: str,
-        required_namespace: Optional[str] = None
+        required_namespace: Optional[str] = None,
+        required_environment: Optional[str] = None,
     ) -> tuple[bool, Optional[Dict[str, Any]]]:
-        """Verify an API key and check namespace access.
+        """Verify an API key and check namespace/environment access.
 
         Returns:
             tuple of (is_valid, key_info) where key_info contains metadata if valid
@@ -284,15 +285,23 @@ class ApiKeyService:
 
                     # Check expiry
                     if self._is_expired(key_data.get("expires_at")):
-                        # Auto-mark as expired
                         key_data["status"] = "expired"
                         self._save_keys(keys)
                         return False, None
 
-                    # Check namespace access
+                    allowed_environments = key_data.get("environments", [])
                     allowed_namespaces = key_data.get("namespaces", [])
-                    if allowed_namespaces and required_namespace:
-                        # Key has limited namespace access
+
+                    # Environment-level scopes take priority over namespace-level
+                    if allowed_environments:
+                        if required_namespace and required_environment:
+                            if f"{required_namespace}/{required_environment}" not in allowed_environments:
+                                return False, None
+                        elif required_namespace:
+                            # Namespace-only check: allow if any env in that namespace is scoped
+                            if not any(e.startswith(f"{required_namespace}/") for e in allowed_environments):
+                                return False, None
+                    elif allowed_namespaces and required_namespace:
                         if required_namespace not in allowed_namespaces:
                             return False, None
 
@@ -309,7 +318,7 @@ class ApiKeyService:
                         "key_id": key_id,
                         "namespace": ns,
                         "namespaces": allowed_namespaces,
-                        "environments": key_data.get("environments", []),
+                        "environments": allowed_environments,
                         "expires_at": key_data.get("expires_at"),
                         "description": key_data.get("description", ""),
                     }

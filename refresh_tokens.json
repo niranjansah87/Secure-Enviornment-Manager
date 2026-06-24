@@ -922,5 +922,17 @@
     "revoked_at": null,
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
     "ip_address": "127.0.0.1"
+  },
+  "c7a3f2916ab3a8baa98f3824a7c043bad82ad567c84684f58e91ec85c7b5106a": {
+    "token_hash": "c7a3f2916ab3a8baa98f3824a7c043bad82ad567c84684f58e91ec85c7b5106a",
+    "session_id": "496_2MaR6kxQSnIwMJDFB1DUkWZMCYPYUHLt46sG2xw",
+    "device_id": null,
+    "created_at": "2026-06-24T07:56:48.688125+00:00",
+    "expires_at": "2026-07-01T07:56:48.688140+00:00",
+    "last_used": null,
+    "is_revoked": false,
+    "revoked_at": null,
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
+    "ip_address": "127.0.0.1"
   }
 }
