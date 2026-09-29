@@ -21,15 +21,18 @@ export default function HistoryPage({
   const { token } = useWorkspace();
   const [items, setItems] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [rolling, setRolling] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!token) return;
     setLoading(true);
+    setError(null);
     try {
       const res = await api.history(token, namespace, environment);
       setItems(res.history ?? []);
-    } catch {
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Failed to load history");
       setItems([]);
     } finally {
       setLoading(false);
@@ -71,6 +74,14 @@ export default function HistoryPage({
       <div className="space-y-3">
         <Skeleton className="h-24 w-full rounded-xl" />
         <Skeleton className="h-24 w-full rounded-xl" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-6 text-sm text-red-200">
+        {error}
       </div>
     );
   }

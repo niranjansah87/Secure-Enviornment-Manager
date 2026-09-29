@@ -12,7 +12,6 @@ import {
   LayoutTemplate,
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
   GitCompare,
   LogOut,
   History,
