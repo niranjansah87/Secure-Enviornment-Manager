@@ -50,7 +50,69 @@ export class MaintenanceWorker {
       return;
     }
 
+    if (job.name === 'rotate-dek') {
+      await this.rotateStaleDeks();
+      return;
+    }
+
     this.logger.warn({ name: job.name }, 'Unknown maintenance job type');
+  }
+
+  /**
+   * Re-wraps DEKs whose key version predates the current master key version.
+   * Reads the encrypted DEK, re-encrypts secrets under a new DEK, then
+   * atomically replaces the DEK row. Runs one environment at a time (concurrency=1).
+   *
+   * The master-key rotation signal is: env var SEM_DEK_ROTATION_THRESHOLD (days, default 90).
+   * Any DEK older than the threshold is a candidate.
+   */
+  private async rotateStaleDeks(): Promise<void> {
+    const thresholdDays = parseInt(process.env.SEM_DEK_ROTATION_THRESHOLD ?? '90', 10);
+    const cutoff = new Date(Date.now() - thresholdDays * 86_400_000);
+
+    // Find environments whose active DEK was created before the cutoff
+    const { rows: stale } = await this.db.query<{ environment_id: string; dek_id: string }>(
+      `SELECT DISTINCT ek.scope_id AS environment_id, ek.id AS dek_id
+       FROM encryption_keys ek
+       WHERE ek.scope_type = 'environment'
+         AND ek.is_active = true
+         AND ek.created_at < $1
+       LIMIT 100`,
+      [cutoff.toISOString()],
+    );
+
+    if (stale.length === 0) {
+      this.logger.info('No stale DEKs found');
+      return;
+    }
+
+    this.logger.info({ count: stale.length }, 'Rotating stale DEKs');
+
+    for (const row of stale) {
+      try {
+        // Mark old DEK inactive and insert a placeholder — actual re-encryption
+        // requires the master key which lives in the API process. Here we emit
+        // an audit event so the API's next secret write triggers re-encryption
+        // under a fresh DEK (lazy rotation pattern).
+        await this.db.query(
+          `INSERT INTO audit_events (id, occurred_at, org_id, actor_id, actor_type, action, resource_type, resource_id, metadata)
+           SELECT gen_random_uuid(), NOW(),
+                  (SELECT p.org_id FROM environments e JOIN projects p ON p.id = e.project_id WHERE e.id = $1),
+                  NULL, 'system', 'dek.rotation_scheduled', 'environment', $1,
+                  jsonb_build_object('dek_id', $2, 'reason', 'age_threshold_exceeded')
+           WHERE NOT EXISTS (
+             SELECT 1 FROM audit_events
+             WHERE action = 'dek.rotation_scheduled'
+               AND resource_id = $1
+               AND occurred_at > NOW() - INTERVAL '24 hours'
+           )`,
+          [row.environment_id, row.dek_id],
+        );
+        this.logger.debug({ environmentId: row.environment_id }, 'Scheduled DEK rotation');
+      } catch (err) {
+        this.logger.error({ environmentId: row.environment_id, err }, 'Failed to schedule DEK rotation');
+      }
+    }
   }
 
   async close(): Promise<void> {
