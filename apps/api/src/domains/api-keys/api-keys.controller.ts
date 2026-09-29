@@ -10,6 +10,7 @@ import {
   UseGuards,
   ParseUUIDPipe,
   Req,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import {
@@ -25,7 +26,7 @@ import { FastifyRequest } from 'fastify';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { ApiKeysService } from './api-keys.service';
+import { ApiKeysService, API_KEY_SCOPES } from './api-keys.service';
 import type { JwtPayload } from '@sem/types';
 
 class CreateApiKeyDto {
@@ -55,6 +56,17 @@ export class ApiKeysController {
     @Body() body: CreateApiKeyDto,
     @Req() req: FastifyRequest,
   ) {
+    // Validate requested scopes against the system allowlist
+    const unknownScopes = body.scopes.filter(
+      (s) => !(API_KEY_SCOPES as readonly string[]).includes(s),
+    );
+    if (unknownScopes.length > 0) {
+      throw new ForbiddenException({
+        code: 'INVALID_SCOPES',
+        message: `Unknown scopes: ${unknownScopes.join(', ')}`,
+      });
+    }
+
     const { apiKey, rawKey } = await this.apiKeysService.create({
       orgId: user.org,
       name: body.name,
@@ -62,6 +74,8 @@ export class ApiKeysController {
       userId: body.user_id,
       expiresAt: body.expires_at ? new Date(body.expires_at) : undefined,
       createdBy: user.sub,
+      callerRole: user.role,
+      callerScopes: user.scopes,
       ip: req.ip,
     });
 

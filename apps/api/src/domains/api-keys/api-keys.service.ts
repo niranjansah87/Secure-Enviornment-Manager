@@ -36,9 +36,46 @@ export class ApiKeysService {
     userId?: string;
     expiresAt?: Date;
     createdBy: string;
+    callerRole: string;
+    callerScopes: string[];
     ip?: string;
   }) {
-    const { raw, identifier, secret } = generateApiKey();
+    // Scope privilege check: non-admins can only grant scopes they hold
+    if (params.callerRole !== 'admin') {
+      const illegal = params.scopes.filter((s) => !params.callerScopes.includes(s));
+      if (illegal.length > 0) {
+        throw new ForbiddenException({
+          code: 'FORBIDDEN',
+          message: `Cannot grant scopes not in your own scope set: ${illegal.join(', ')}`,
+        });
+      }
+    }
+
+    // User-binding validation: target user must exist in the same org
+    if (params.userId) {
+      const [targetUser] = await this.db
+        .select({ id: schema.users.id, orgId: schema.users.orgId, isActive: schema.users.isActive })
+        .from(schema.users)
+        .where(and(eq(schema.users.id, params.userId), eq(schema.users.orgId, params.orgId), eq(schema.users.isActive, true)))
+        .limit(1);
+
+      if (!targetUser) {
+        throw new ForbiddenException({
+          code: 'FORBIDDEN',
+          message: 'Target user not found in this organization',
+        });
+      }
+
+      // Non-admins can only bind a key to themselves
+      if (params.callerRole !== 'admin' && params.userId !== params.createdBy) {
+        throw new ForbiddenException({
+          code: 'FORBIDDEN',
+          message: 'Only admins can bind API keys to other users',
+        });
+      }
+    }
+
+    const { raw: _raw, identifier, secret } = generateApiKey();
 
     const keyHash = await argon2.hash(secret, {
       type: argon2.argon2id,
