@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import {
   Plus,
   Trash2,
@@ -875,7 +876,7 @@ export default function AdminUsersPage() {
       {/* Hero */}
       <div className="relative overflow-hidden rounded-2xl">
         <div className="absolute inset-0">
-          <img src="/admin_header_image.png" alt="" className="h-full w-full object-cover object-center opacity-25" />
+          <Image src="/admin_header_image.png" alt="" fill className="object-cover object-center opacity-25" unoptimized />
           <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-black/20" />
         </div>
         <div className="relative z-10 px-7 py-7 min-h-[90px] flex items-center justify-between">

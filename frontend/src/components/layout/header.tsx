@@ -114,9 +114,10 @@ export function AppHeader() {
           <Link
             href="/dashboard"
             className="flex items-center justify-center h-8 w-8 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-white/5 transition-colors shrink-0"
+            aria-label="Go to dashboard"
             title="Dashboard"
           >
-            <Home className="h-4 w-4" />
+            <Home className="h-4 w-4" aria-hidden="true" />
           </Link>
 
           <Breadcrumb className="hidden md:flex">
@@ -149,6 +150,7 @@ export function AppHeader() {
         {/* Center: Search */}
         <button
           onClick={() => setCmdOpen(true)}
+          aria-label="Search secrets, projects (Ctrl+K)"
           className="hidden md:flex items-center gap-2 h-9 w-72 rounded-lg border border-white/8 bg-white/[0.03] px-3 text-xs text-zinc-500 hover:bg-white/[0.06] hover:border-white/12 hover:text-zinc-400 transition-all group"
         >
           <Search className="h-3.5 w-3.5 shrink-0" />
@@ -258,9 +260,10 @@ export function AppHeader() {
               href="https://github.com/niranjansah87/Secure-Enviornment-Manager"
               target="_blank"
               rel="noreferrer"
+              aria-label="GitHub repository (opens in new tab)"
               title="GitHub"
             >
-              <GithubIcon className="h-4 w-4" />
+              <GithubIcon className="h-4 w-4" aria-hidden="true" />
             </Link>
           </Button>
 
@@ -268,21 +271,21 @@ export function AppHeader() {
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Notifications"
             className="h-8 w-8 text-zinc-500 hover:text-zinc-200 hover:bg-white/5 rounded-lg relative"
-            title="Notifications"
           >
-            <Bell className="h-4 w-4" />
-            <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-red-500" />
+            <Bell className="h-4 w-4" aria-hidden="true" />
+            <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-red-500" aria-hidden="true" />
           </Button>
 
           {/* Theme toggle */}
           <Button
             variant="ghost"
             size="icon"
+            aria-label="Settings"
             className="h-8 w-8 text-zinc-500 hover:text-zinc-200 hover:bg-white/5 rounded-lg"
-            title="Settings"
           >
-            <Sun className="h-4 w-4" />
+            <Sun className="h-4 w-4" aria-hidden="true" />
           </Button>
 
           {/* User avatar */}

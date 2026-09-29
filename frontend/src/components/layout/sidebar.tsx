@@ -259,8 +259,8 @@ export function AppSidebar() {
         {collapsed ? (
           <button
             onClick={toggle}
+            aria-label="Expand sidebar"
             className="group relative flex items-center justify-center"
-            title="Expand sidebar"
           >
             <NextImage
               src="/logo.png"
@@ -292,9 +292,10 @@ export function AppSidebar() {
               variant="ghost"
               size="icon"
               onClick={toggle}
+              aria-label="Collapse sidebar"
               className="h-7 w-7 text-zinc-600 hover:text-zinc-300 hover:bg-white/5 rounded-md shrink-0"
             >
-              <ChevronLeft className="h-3.5 w-3.5" />
+              <ChevronLeft className="h-3.5 w-3.5" aria-hidden="true" />
             </Button>
           </>
         )}
@@ -366,9 +367,10 @@ export function AppSidebar() {
         {token && (
           <DropdownMenu open={userMenuOpen} onOpenChange={setUserMenuOpen}>
             <DropdownMenuTrigger asChild>
-              <div
+              <button
+                aria-label="User menu"
                 className={cn(
-                  "flex items-center cursor-pointer hover:bg-white/5 transition-colors",
+                  "w-full flex items-center cursor-pointer hover:bg-white/5 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-violet-500",
                   collapsed ? "justify-center py-4" : "gap-3 px-3 py-3"
                 )}
               >
@@ -393,9 +395,9 @@ export function AppSidebar() {
                   )}
                 </AnimatePresence>
                 {!collapsed && (
-                  <MoreHorizontal className="h-4 w-4 text-zinc-600 shrink-0" />
+                  <MoreHorizontal className="h-4 w-4 text-zinc-600 shrink-0" aria-hidden="true" />
                 )}
-              </div>
+              </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="start"

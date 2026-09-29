@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, use } from "react";
+import Image from "next/image";
 import { Shield, MonitorOff, UserCheck, SearchX, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { api, type AuditEntry } from "@/lib/api";
 import { useWorkspace } from "@/context/workspace-context";
@@ -126,7 +127,7 @@ export default function AuditPage({
     <div className="space-y-8">
       <div className="relative overflow-hidden rounded-2xl">
         <div className="absolute inset-0">
-          <img src="/admin_header_image.png" alt="" className="h-full w-full object-cover object-center opacity-25" />
+          <Image src="/admin_header_image.png" alt="" fill className="object-cover object-center opacity-25" unoptimized />
           <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-black/20" />
         </div>
         <div className="relative z-10 px-7 py-7 min-h-[90px]">

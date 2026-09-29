@@ -171,21 +171,25 @@ export default function ProjectsPage() {
             <div className="flex items-center gap-1 rounded-lg border border-white/8 bg-white/[0.03] p-1">
               <button
                 onClick={() => setViewMode("list")}
+                aria-label="List view"
+                aria-pressed={viewMode === "list"}
                 className={cn(
                   "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
                   viewMode === "list" ? "bg-white/10 text-zinc-200" : "text-zinc-600 hover:text-zinc-400"
                 )}
               >
-                <List className="h-3.5 w-3.5" />
+                <List className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
               <button
                 onClick={() => setViewMode("grid")}
+                aria-label="Grid view"
+                aria-pressed={viewMode === "grid"}
                 className={cn(
                   "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
                   viewMode === "grid" ? "bg-white/10 text-zinc-200" : "text-zinc-600 hover:text-zinc-400"
                 )}
               >
-                <LayoutGrid className="h-3.5 w-3.5" />
+                <LayoutGrid className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
             </div>
             <Button
