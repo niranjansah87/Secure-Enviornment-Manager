@@ -1,0 +1,112 @@
+version: '3.9'
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Secure Environment Manager V2 — local development / smoke-test stack
+# ─────────────────────────────────────────────────────────────────────────────
+# Usage:
+#   cp .env.example .env     # fill in secrets
+#   docker compose -f docker-compose.v2.yml up --build
+#
+# Production: use proper secrets management (Vault, AWS SSM, etc.)
+# and separate .env files per environment. Never commit .env.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sem
+      POSTGRES_USER: sem
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sem -d sem"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sem_internal
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required} --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sem_internal
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://sem:${POSTGRES_PASSWORD}@postgres:5432/sem
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY:?JWT_PRIVATE_KEY is required}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:?JWT_PUBLIC_KEY is required}
+      SEM_MASTER_KEY: ${SEM_MASTER_KEY:?SEM_MASTER_KEY is required}
+      SEM_TOKEN_HMAC_KEY: ${SEM_TOKEN_HMAC_KEY:?SEM_TOKEN_HMAC_KEY is required}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-noreply@sem.local}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "${API_PORT:-3001}:3001"
+    networks:
+      - sem_internal
+      - sem_public
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://sem:${POSTGRES_PASSWORD}@postgres:5432/sem
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      SEM_MASTER_KEY: ${SEM_MASTER_KEY}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-noreply@sem.local}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    networks:
+      - sem_internal
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  sem_internal:
+    internal: true
+  sem_public:
