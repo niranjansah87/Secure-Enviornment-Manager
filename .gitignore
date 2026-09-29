@@ -85,8 +85,16 @@ SKILLS.md
 # SEM V2 monorepo
 packages/*/dist/
 apps/*/dist/
+tools/*/dist/
 infra/docker/secrets/
 pnpm-lock.yaml
+
+# Coverage and turbo cache
+coverage/
+.turbo/
+
+# Internal tooling sessions (never commit)
+**/.claude/autoharness/
 GEMINI.md
 .windsurfrules
 .opencode.json
