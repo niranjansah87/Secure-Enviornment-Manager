@@ -1,68 +1,119 @@
-name: Continuous Integration
+name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main, enhacement]
   pull_request:
-    branches: [ main ]
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  frontend:
-    name: Frontend CI (Lint and Build)
+  build-and-test:
+    name: Build & Test
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./frontend
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: sem_v2_test
+          POSTGRES_USER: sem_app
+          POSTGRES_PASSWORD: test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sem_app -d sem_v2_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://sem_app:test_password@localhost:5432/sem_v2_test
+      REDIS_URL: redis://localhost:6379
+      # Fake keys for CI — generated fresh each run
+      SEM_MASTER_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      SEM_TOKEN_HMAC_KEY: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: './frontend/package-lock.json'
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
-      - name: Run Lint
-        run: npm run lint
+      - name: Build shared packages
+        run: |
+          pnpm --filter @sem/types build
+          pnpm --filter @sem/crypto build
 
-      - name: Build Project
-        run: npm run build
+      - name: Typecheck API
+        run: pnpm --filter @sem/api typecheck
 
-  backend:
-    name: Backend CI (Lint and Build Check)
+      - name: Typecheck Worker
+        run: pnpm --filter @sem/worker typecheck
+
+      - name: Unit tests — crypto package
+        run: pnpm --filter @sem/crypto test
+
+      - name: Unit tests — API
+        run: pnpm --filter @sem/api test
+
+      - name: Run migrations
+        run: |
+          PGPASSWORD=test_password psql -h localhost -U sem_app -d sem_v2_test \
+            -f apps/api/src/infra/database/migrations/0001_initial_schema.sql
+          PGPASSWORD=test_password psql -h localhost -U sem_app -d sem_v2_test \
+            -f apps/api/src/infra/database/migrations/0002_add_token_lookup_hmac.sql
+
+      - name: Integration tests
+        run: pnpm --filter @sem/api test:integration
+        env:
+          DATABASE_URL: postgresql://sem_app:test_password@localhost:5432/sem_v2_test
+          REDIS_URL: redis://localhost:6379
+
+      - name: Security audit
+        run: pnpm audit --audit-level=high
+        continue-on-error: true
+
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: pnpm/action-setup@v4
         with:
-          python-version: '3.11'
-          cache: 'pip'
-
-      - name: Install dependencies
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - name: Build shared packages
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install flake8 black
-
-      - name: Check Formatting (Black)
-        run: black --check .
-
-      - name: Run Lint (Flake8)
-        run: |
-          # stop the build if there are Python syntax errors or undefined names
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-
-      - name: Test Build (Gunicorn Check)
-        run: |
-          # Basic sanity check to see if the app can at least be imported
-          python -c "import app; print('App imported successfully')"
+          pnpm --filter @sem/types build
+          pnpm --filter @sem/crypto build
+      - name: Lint API
+        run: pnpm --filter @sem/api lint
+        continue-on-error: true

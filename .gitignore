@@ -81,6 +81,12 @@ SKILLS.md
 WORKFLOW.md
 # Added by code-review-graph
 .code-review-graph/
+
+# SEM V2 monorepo
+packages/*/dist/
+apps/*/dist/
+infra/docker/secrets/
+pnpm-lock.yaml
 GEMINI.md
 .windsurfrules
 .opencode.json

@@ -1,0 +1,62 @@
+# SEM V2 API — Multi-stage build
+# Stage 1: Build
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy workspace files
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml* ./
+COPY packages/types/package.json packages/types/tsconfig.json packages/types/
+COPY packages/crypto/package.json packages/crypto/tsconfig.json packages/crypto/
+COPY apps/api/package.json apps/api/tsconfig.json apps/api/
+COPY turbo.json ./
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy source files
+COPY packages/types/src packages/types/src/
+COPY packages/crypto/src packages/crypto/src/
+COPY apps/api/src apps/api/src/
+
+# Build packages then API
+RUN pnpm --filter @sem/types build && \
+    pnpm --filter @sem/crypto build && \
+    pnpm --filter @sem/api build
+
+# Stage 2: Production runtime
+FROM node:22-alpine AS runtime
+
+# Non-root user
+RUN addgroup -g 1001 -S sem && adduser -S -u 1001 -G sem sem
+
+WORKDIR /app
+
+# Install pnpm for production install
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+# Copy workspace manifests
+COPY --from=builder /app/pnpm-workspace.yaml /app/package.json ./
+COPY --from=builder /app/packages/types/package.json packages/types/
+COPY --from=builder /app/packages/crypto/package.json packages/crypto/
+COPY --from=builder /app/apps/api/package.json apps/api/
+
+# Production dependencies only
+RUN pnpm install --frozen-lockfile --prod
+
+# Copy compiled output
+COPY --from=builder /app/packages/types/dist packages/types/dist/
+COPY --from=builder /app/packages/crypto/dist packages/crypto/dist/
+COPY --from=builder /app/apps/api/dist apps/api/dist/
+
+USER sem
+
+EXPOSE 3001
+
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=3 \
+  CMD wget -qO- http://localhost:3001/healthz || exit 1
+
+CMD ["node", "apps/api/dist/main.js"]
