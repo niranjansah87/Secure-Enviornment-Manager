@@ -56,8 +56,8 @@ export default function AnalyticsPage() {
       if (cancelled) return;
       setData(analytics);
       setHealth(healthData);
-    }).catch(e => {
-      console.error("Failed to load analytics data", e);
+    }).catch(() => {
+      // Silently handled — analytics are non-critical
     }).finally(() => {
       if (!cancelled) setLoading(false);
     });

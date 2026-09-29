@@ -1,0 +1,112 @@
+# Secure Environment Manager (SEM)
+
+> Self-hosted, encrypted secrets management for development teams. Store, manage, and share environment variables across namespaces and environments with Fernet AES-256 encryption, audit logs, and a REST API.
+
+## Overview
+
+SEM is an open-source, self-hosted alternative to tools like Doppler or HashiCorp Vault for managing environment variables. Data never leaves your infrastructure. Each namespace/environment pair has its own encrypted file on disk.
+
+## Core Concepts
+
+- **Namespace**: A logical project group (e.g. `myapp`, `backend`)
+- **Environment**: A deployment target within a namespace (e.g. `production`, `staging`, `dev`)
+- **Secret**: A key=value environment variable stored encrypted at rest
+- **API Key**: A bearer token scoped to one or more namespaces
+- **Master Token**: Full administrative access token
+
+## Authentication
+
+Three modes are supported:
+
+1. **Dashboard password** – the `DASHBOARD_PASSWORD` env var; used for web UI login
+2. **Master token** – the `MASTER_TOKEN` env var; full admin access for API calls
+3. **API key** – scoped bearer token; created via the web UI or API; optionally bound to a user with inherited scopes
+4. **User credentials** – username + password login with JWT session tokens (15-min access token, refresh token)
+
+All API requests use `Authorization: Bearer <token>` header.
+
+## Public REST API
+
+Base URL: `http://localhost:8070` (or your configured host)
+
+### Get secrets
+```
+GET /api/v1/secrets/{namespace}/{environment}
+Authorization: Bearer <token>
+```
+
+### Set / update secrets
+```
+POST /api/v1/secrets/{namespace}/{environment}
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{ "KEY": "value", "ANOTHER_KEY": "another_value" }
+```
+
+### Delete a secret
+```
+DELETE /api/v1/secrets/{namespace}/{environment}/{key}
+Authorization: Bearer <token>
+```
+
+### List environments
+```
+GET /api/v1/meta/environments
+Authorization: Bearer <token>
+```
+
+### List API keys
+```
+GET /api/v1/keys/{namespace}
+Authorization: Bearer <token>
+```
+
+### Create API key
+```
+POST /api/v1/keys/{namespace}
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{ "description": "CI/CD", "validity_days": 90 }
+```
+
+## Frontend
+
+Next.js 15 App Router frontend on port 3000. Features:
+- Dashboard with environment overview and activity charts
+- Per-environment secrets editor with one-time reveal, copy, and bulk import
+- Version history with snapshot restore
+- Audit log viewer
+- API key management
+- User management with RBAC
+- Environment comparison diff tool
+- Template library
+
+## Security Model
+
+- Fernet AES-256-CBC encryption at rest; key loaded from `ENCRYPTION_KEY` env var
+- PBKDF2 password hashing for user accounts
+- JWT access tokens (15-min TTL) + refresh tokens for user sessions
+- Append-only audit log with tamper detection
+- Rate limiting on login and sensitive endpoints
+- SMTP email notifications for security events (optional)
+
+## Self-Hosting
+
+```bash
+# Generate encryption key
+python generate_keys.py
+
+# Backend (Flask, port 8070)
+pip install -r requirements.txt
+ENCRYPTION_KEY=<key> DASHBOARD_PASSWORD=<pwd> python app.py
+
+# Frontend (Next.js, port 3000)
+cd frontend && npm install && npm run dev
+```
+
+## Links
+
+- [GitHub](https://github.com/niranjansah87/Secure-Enviornment-Manager)
+- [Full API reference](/llms-full.txt)

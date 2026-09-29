@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageHero } from "@/components/layout/page-hero";
 
 type ApiKeyInfo = {
   key_id: string;
@@ -257,34 +258,30 @@ export default function ApiKeysPage({
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold text-zinc-100">API Keys</h2>
-          <p className="text-sm text-zinc-500">
-            Manage API keys for <span className="font-mono text-violet-400">{namespace}</span> namespace.
-          </p>
-        </div>
+      <PageHero
+        title="API Keys"
+        description={`Manage programmatic access keys for the ${namespace} namespace.`}
+      >
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
             size="sm"
             onClick={() => void loadKeys()}
-            className="border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300"
+            className="border-white/20 bg-white/10 hover:bg-white/15 text-zinc-200"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>
           <Button
-            variant="secondary"
             size="sm"
             onClick={() => void openCreateDialog()}
-            className="bg-zinc-100 hover:bg-white text-black font-semibold"
+            className="bg-white text-black hover:bg-zinc-200 font-semibold"
           >
             <Plus className="w-4 h-4 mr-2" />
             Create New Key
           </Button>
         </div>
-      </div>
+      </PageHero>
 
       {/* New Key Result */}
       {newKey && (

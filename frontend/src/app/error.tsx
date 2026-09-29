@@ -14,8 +14,13 @@ export default function Error({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Log error to an error reporting service
-    console.error(error);
+    // In production only log the digest hash — never the full error object
+    // which could contain tokens, secrets, or stack traces
+    if (process.env.NODE_ENV === "development") {
+      console.error(error);
+    } else if (error?.digest) {
+      console.error(`[SEM] Error digest: ${error.digest}`);
+    }
   }, [error]);
 
   return (

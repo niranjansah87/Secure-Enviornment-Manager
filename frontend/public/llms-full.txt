@@ -1,0 +1,369 @@
+# Secure Environment Manager — Full Reference
+
+> Complete API reference, architecture, and integration guide for Secure Environment Manager (SEM).
+> Self-hosted, AES-256 encrypted secrets management for modern development teams.
+
+## Architecture
+
+```
+Frontend (Next.js 15, port 3000)
+  └── API Client (fetch-based, JWT auth)
+        └── Flask REST API (port 8070)
+              └── Fernet encryption layer
+                    └── File storage: data/<namespace>/<environment>.enc
+```
+
+### Key design decisions
+
+- **File-based storage**: each namespace/environment is one `.enc` file on disk; no database dependency
+- **Encryption**: Python `cryptography` library, Fernet (AES-128-CBC + HMAC-SHA256 by default; upgrade path to AES-256 available)
+- **Stateless API**: JWT tokens carry identity; server validates signature, no session state
+- **Append-only audit**: audit log grows monotonically; integrity verified on read
+
+## Authentication Reference
+
+### Dashboard password login
+```http
+POST /api/v1/auth/validate-password
+Content-Type: application/json
+
+{ "password": "your-dashboard-password" }
+```
+Returns: `{ "valid": true }` — client then uses the raw password as a Bearer token.
+
+### User login (JWT)
+```http
+POST /api/v1/auth/login
+Content-Type: application/json
+
+{ "username": "alice", "password": "secret123", "namespace": "myapp", "environment": "production" }
+```
+Returns:
+```json
+{
+  "access_token": "<jwt>",
+  "refresh_token": "<jwt>",
+  "token_type": "bearer",
+  "expires_in": 900,
+  "must_change_password": false,
+  "username": "alice",
+  "scopes": ["read", "write"]
+}
+```
+
+### Refresh access token
+```http
+POST /api/v1/auth/refresh
+Content-Type: application/json
+
+{ "refresh_token": "<refresh_jwt>" }
+```
+
+### API key login
+```http
+POST /api/v1/auth/login
+Content-Type: application/json
+
+{ "api_key": "sem_xxxx...", "namespace": "myapp", "environment": "production" }
+```
+
+## Secrets API
+
+### Read all secrets
+```http
+GET /api/v1/secrets/{namespace}/{environment}
+Authorization: Bearer <token>
+```
+Response:
+```json
+{
+  "namespace": "myapp",
+  "environment": "production",
+  "secrets": {
+    "DATABASE_URL": "postgres://...",
+    "REDIS_URL": "redis://..."
+  },
+  "count": 2,
+  "last_updated": "2025-01-15T10:30:00Z"
+}
+```
+
+### Write secrets (merge)
+```http
+POST /api/v1/secrets/{namespace}/{environment}
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{ "DATABASE_URL": "postgres://new-host/db" }
+```
+Merges new keys into existing secrets. Existing keys not in the payload are unchanged.
+
+### Bulk replace
+```http
+PUT /api/v1/secrets/{namespace}/{environment}
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{ "KEY1": "val1", "KEY2": "val2" }
+```
+Replaces ALL secrets atomically. Previous values are lost (use history to recover).
+
+### Delete a secret key
+```http
+DELETE /api/v1/secrets/{namespace}/{environment}/{key}
+Authorization: Bearer <token>
+```
+
+### Export as .env
+```http
+GET /api/v1/secrets/{namespace}/{environment}/export
+Authorization: Bearer <token>
+Accept: text/plain
+```
+Returns a `.env`-formatted file:
+```
+DATABASE_URL=postgres://...
+REDIS_URL=redis://...
+```
+
+## Version History API
+
+### List snapshots
+```http
+GET /api/v1/history/{namespace}/{environment}
+Authorization: Bearer <token>
+```
+
+### Get a snapshot
+```http
+GET /api/v1/history/{namespace}/{environment}/{snapshot_id}
+Authorization: Bearer <token>
+```
+
+### Restore a snapshot
+```http
+POST /api/v1/history/{namespace}/{environment}/{snapshot_id}/restore
+Authorization: Bearer <token>
+```
+
+## Audit Log API
+
+### Get audit log
+```http
+GET /api/v1/audit/{namespace}/{environment}
+Authorization: Bearer <token>
+```
+Optional query params: `?limit=50&offset=0&action=set`
+
+Response:
+```json
+{
+  "entries": [
+    {
+      "id": "uuid",
+      "timestamp": "2025-01-15T10:30:00Z",
+      "action": "set",
+      "resource": "DATABASE_URL",
+      "namespace": "myapp",
+      "environment": "production",
+      "actor": "alice",
+      "ip": "127.0.0.1"
+    }
+  ],
+  "total": 42
+}
+```
+
+## API Keys API
+
+### List keys for a namespace
+```http
+GET /api/v1/keys/{namespace}
+Authorization: Bearer <master-token-or-dashboard-password>
+```
+
+### Create a key
+```http
+POST /api/v1/keys/{namespace}
+Authorization: Bearer <master-token-or-dashboard-password>
+Content-Type: application/json
+
+{
+  "description": "GitHub Actions CI",
+  "validity_days": 90,
+  "namespaces": ["myapp", "shared"],
+  "custom_key": "my-custom-key-value-here"
+}
+```
+- `validity_days: 0` = no expiry
+- `namespaces: []` = access to all namespaces
+- `custom_key` is optional; auto-generated if omitted
+
+Response includes the full key value only once — store it immediately.
+
+### Revoke a key
+```http
+DELETE /api/v1/keys/{namespace}/{key_id}
+Authorization: Bearer <master-token-or-dashboard-password>
+```
+
+## User Management API (admin only)
+
+### List users
+```http
+GET /api/v1/users
+Authorization: Bearer <master-token>
+```
+
+### Create user
+```http
+POST /api/v1/users
+Authorization: Bearer <master-token>
+Content-Type: application/json
+
+{
+  "username": "alice",
+  "password": "temporary-password",
+  "email": "alice@example.com",
+  "scopes": ["read", "write"],
+  "namespaces": ["myapp"]
+}
+```
+
+### Change password (authenticated user)
+```http
+POST /api/v1/user/change-password
+Authorization: Bearer <user-access-token>
+Content-Type: application/json
+
+{ "current_password": "old", "new_password": "new-secure-password" }
+```
+
+## Analytics API
+
+### Get usage statistics
+```http
+GET /api/v1/meta/stats
+Authorization: Bearer <token>
+```
+
+### Get activity analytics
+```http
+GET /api/v1/meta/analytics?days=7
+Authorization: Bearer <token>
+```
+
+Response includes:
+- `trends`: daily activity counts
+- `distribution.namespaces`: secret counts per namespace
+
+## Environment Comparison API
+
+### Compare two environments
+```http
+GET /api/v1/compare/{namespace}/{env1}/{env2}
+Authorization: Bearer <token>
+```
+
+Response:
+```json
+{
+  "only_in_env1": ["KEY_A"],
+  "only_in_env2": ["KEY_B"],
+  "different_values": ["DATABASE_URL"],
+  "identical": ["PORT", "NODE_ENV"]
+}
+```
+
+## Template API
+
+### List templates
+```http
+GET /api/v1/templates
+Authorization: Bearer <token>
+```
+
+### Apply a template
+```http
+POST /api/v1/templates/{namespace}/{environment}/apply
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{ "template_id": "nodejs-basic" }
+```
+
+## Error Response Format
+
+All errors follow this shape:
+```json
+{
+  "error": "Human-readable description",
+  "code": "MACHINE_READABLE_CODE",
+  "status": 401
+}
+```
+
+Common error codes:
+- `AUTH_TOKEN_MISSING` — no Authorization header
+- `AUTH_TOKEN_INVALID` — token expired or invalid
+- `AUTH_NAMESPACE_FORBIDDEN` — token lacks access to this namespace
+- `AUTH_MASTER_REQUIRED` — operation requires master token
+- `STORAGE_NOT_FOUND` — namespace or environment doesn't exist
+- `STORAGE_KEY_NOT_FOUND` — secret key doesn't exist
+- `VALIDATION_KEY_INVALID` — secret key contains invalid characters
+- `RATE_LIMIT_EXCEEDED` — too many requests (429)
+
+## Environment Variables (Server Configuration)
+
+The backend reads these environment variables on startup:
+
+| Variable | Required | Description |
+|---|---|---|
+| `ENCRYPTION_KEY` | Yes | Fernet key (base64); generate with `python generate_keys.py` |
+| `DASHBOARD_PASSWORD` | Yes | Password for web UI admin login |
+| `MASTER_TOKEN` | Recommended | Full-access API token for automation |
+| `ADMIN_USERNAME` | No | Display name for admin user (default: "admin") |
+| `ADMIN_EMAIL` | No | Admin email for notifications |
+| `SMTP_HOST` | No | SMTP server for email notifications |
+| `SMTP_PORT` | No | SMTP port (default: 587) |
+| `SMTP_USER` | No | SMTP username |
+| `SMTP_PASSWORD` | No | SMTP password |
+| `JWT_SECRET` | No | JWT signing secret (auto-generated if omitted) |
+| `PORT` | No | Backend port (default: 8070) |
+
+## Integration Examples
+
+### CI/CD (GitHub Actions)
+```yaml
+- name: Load secrets
+  run: |
+    curl -s -H "Authorization: Bearer ${{ secrets.SEM_API_KEY }}" \
+      https://sem.example.com/api/v1/secrets/myapp/production/export \
+      >> $GITHUB_ENV
+```
+
+### Node.js SDK pattern
+```js
+const res = await fetch(`${SEM_URL}/api/v1/secrets/${namespace}/${environment}`, {
+  headers: { Authorization: `Bearer ${SEM_API_KEY}` },
+});
+const { secrets } = await res.json();
+process.env = { ...process.env, ...secrets };
+```
+
+### Python pattern
+```python
+import requests, os
+
+resp = requests.get(
+    f"{os.environ['SEM_URL']}/api/v1/secrets/{namespace}/{environment}",
+    headers={"Authorization": f"Bearer {os.environ['SEM_API_KEY']}"},
+)
+secrets = resp.json()["secrets"]
+os.environ.update(secrets)
+```
+
+## Links
+
+- [Summary](/llms.txt)
+- [GitHub](https://github.com/niranjansah87/Secure-Enviornment-Manager)

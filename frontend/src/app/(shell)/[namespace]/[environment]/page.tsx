@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState, use } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { api, ApiError } from "@/lib/api";
+import { api } from "@/lib/api";
+import { formatUserError } from "@/lib/error-translation";
 import { useWorkspace } from "@/context/workspace-context";
 import { SecretsTable } from "@/components/tables/secrets-table";
 import { EmptyState } from "@/components/forms/empty-state";
@@ -43,7 +43,6 @@ export default function SecretsPage({
 }) {
   const { namespace, environment } = use(params);
   const { token, environments, setWorkspace } = useWorkspace();
-  const router = useRouter();
   const [vars, setVars] = useState<Record<string, string>>({});
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -72,7 +71,8 @@ export default function SecretsPage({
       }
       setLastUpdated(meta.last_updated);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Failed to load secrets");
+      const friendlyErr = formatUserError(e);
+      setError(friendlyErr.description);
       setVars({});
     } finally {
       setLoading(false);
