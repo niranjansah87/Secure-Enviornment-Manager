@@ -3,16 +3,19 @@ import type { Redis } from 'ioredis';
 import type { Logger } from 'pino';
 import nodemailer from 'nodemailer';
 
+// tempPassword is intentionally absent: the API returns it directly to the
+// caller; it must never travel through Redis/BullMQ as a job payload.
 export interface SendWelcomeEmailJob {
   to: string;
   username: string;
-  tempPassword: string;
 }
 
+// resetLink is the full password-reset URL (token embedded). Putting a
+// short-lived URL in Redis is acceptable; a raw reusable credential is not.
 export interface SendPasswordResetEmailJob {
   to: string;
   username: string;
-  resetToken: string;
+  resetLink: string;
 }
 
 export class EmailWorker {
@@ -52,8 +55,8 @@ export class EmailWorker {
         from,
         to: data.to,
         subject: 'Welcome to SEM — Your account is ready',
-        text: `Welcome ${data.username}! Your temporary password is: ${data.tempPassword}\n\nPlease change it on first login.`,
-        html: `<p>Welcome <strong>${data.username}</strong>!</p><p>Your temporary password is: <code>${data.tempPassword}</code></p><p>Please change it on first login.</p>`,
+        text: `Welcome ${data.username}! Your account has been created. Ask your administrator for your temporary password and change it on first login.`,
+        html: `<p>Welcome <strong>${data.username}</strong>!</p><p>Your account has been created. Ask your administrator for your temporary password and change it on first login.</p>`,
       });
       this.logger.info({ to: data.to }, 'Welcome email sent');
       return;
@@ -65,7 +68,8 @@ export class EmailWorker {
         from,
         to: data.to,
         subject: 'SEM — Password reset request',
-        text: `Password reset token for ${data.username}: ${data.resetToken}\n\nThis token expires in 1 hour.`,
+        text: `Password reset link for ${data.username}:\n\n${data.resetLink}\n\nThis link expires in 1 hour.`,
+        html: `<p>Password reset link for <strong>${data.username}</strong>:</p><p><a href="${data.resetLink}">${data.resetLink}</a></p><p>This link expires in 1 hour.</p>`,
       });
       this.logger.info({ to: data.to }, 'Password reset email sent');
       return;
