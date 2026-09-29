@@ -5,6 +5,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { RotateCcw, History } from "lucide-react";
 import { api, ApiError, type HistoryEntry } from "@/lib/api";
+import { formatUserError } from "@/lib/error-translation";
 import { useWorkspace } from "@/context/workspace-context";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,7 +34,7 @@ export default function HistoryPage({
       const res = await api.history(token, namespace, environment);
       setItems(res.history ?? []);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Failed to load history");
+      setError(formatUserError(e).description);
       setItems([]);
     } finally {
       setLoading(false);
@@ -52,7 +53,7 @@ export default function HistoryPage({
       toast.success("Restored snapshot");
       void load();
     } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : "Rollback failed");
+      toast.error(formatUserError(e).description);
     } finally {
       setRolling(null);
     }

@@ -88,7 +88,7 @@ export default function Home() {
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-black/40 backdrop-blur-xl border-b border-white/5">
         <Link href="/" className="flex items-center gap-2.5 group">
-          <Image src="/logo.png" width={32} height={32} alt="SEM" className="rounded-lg ring-1 ring-white/10 group-hover:ring-violet-400/50 transition-all" unoptimized />
+          <Image src="/logo.png" width={32} height={32} alt="SEM" className="rounded-lg ring-1 ring-white/10 group-hover:ring-violet-400/50 transition-all" priority />
           <div>
             <span className="text-white font-bold text-sm leading-none block">SEM</span>
             <span className="text-zinc-500 text-[10px] leading-none">Secure Environment Manager</span>
@@ -250,7 +250,7 @@ export default function Home() {
                   width={600}
                   height={400}
                   className="w-full object-cover opacity-60"
-                  unoptimized
+                  loading="lazy"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                 <div className="absolute bottom-6 left-6 right-6">
@@ -316,7 +316,7 @@ export default function Home() {
       <footer className="border-t border-white/5 py-10 px-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <Image src="/logo.png" width={28} height={28} alt="SEM" className="rounded-lg ring-1 ring-white/10" unoptimized />
+            <Image src="/logo.png" width={28} height={28} alt="SEM" className="rounded-lg ring-1 ring-white/10" />
             <span className="text-sm text-zinc-500">Secure Environment Manager</span>
           </div>
           <div className="flex items-center gap-4 text-xs text-zinc-600">

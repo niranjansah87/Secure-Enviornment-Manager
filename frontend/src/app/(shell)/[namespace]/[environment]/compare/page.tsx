@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, use } from "react";
 import { GitCompare, ArrowLeftRight, ChevronDown, Plus, Minus, RefreshCw, SearchX } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
+import { formatUserError } from "@/lib/error-translation";
 import { useWorkspace } from "@/context/workspace-context";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -158,7 +159,7 @@ export default function ComparePage({
     } catch (e: unknown) {
       setLeftData({});
       setRightData({});
-      setError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : String(e));
+      setError(formatUserError(e).description);
     } finally {
       setLoading(false);
     }

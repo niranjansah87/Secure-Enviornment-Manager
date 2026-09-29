@@ -5,6 +5,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { LayoutTemplate } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
+import { formatUserError } from "@/lib/error-translation";
 import { useWorkspace } from "@/context/workspace-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,7 +53,7 @@ export default function TemplatesPage({
       await api.applyTemplate(token, namespace, environment, key);
       toast.success("Template applied");
     } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : "Apply failed");
+      toast.error(formatUserError(e).description);
     } finally {
       setApplying(null);
     }

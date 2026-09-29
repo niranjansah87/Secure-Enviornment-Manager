@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useWorkspace } from "@/context/workspace-context";
 import { api, type User } from "@/lib/api";
+import { formatUserError } from "@/lib/error-translation";
 
 // ------------------------------------------------------------------ //
 //  Types                                                              //
@@ -223,8 +224,7 @@ function CreateUserDialog({
       });
       onClose();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to create user.";
-      setError(msg);
+      setError(formatUserError(err).description);
     } finally {
       setLoading(false);
     }
@@ -526,8 +526,7 @@ function EditUserDialog({
       onUpdated();
       onClose();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to update user.";
-      setError(msg);
+      setError(formatUserError(err).description);
     } finally {
       setLoading(false);
     }
@@ -825,8 +824,7 @@ export default function AdminUsersPage() {
       const data = await api.listUsers(token);
       setState({ phase: "ready", users: data.users });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to load users.";
-      setState({ phase: "error", message: msg });
+      setState({ phase: "error", message: formatUserError(err).description });
     }
   }, [token]);
 
