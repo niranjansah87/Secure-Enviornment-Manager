@@ -476,7 +476,8 @@ export function SecretsTable({
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-white/5 bg-black/40 backdrop-blur-sm shadow-2xl relative">
-        <table className="w-full text-sm border-collapse">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[600px] text-sm border-collapse">
           <thead>
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id} className="border-b border-white/5 bg-white/[0.02]">
@@ -525,6 +526,7 @@ export function SecretsTable({
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       <SecretDialog

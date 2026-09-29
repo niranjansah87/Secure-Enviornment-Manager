@@ -445,7 +445,8 @@ export default function ComparePage({
                   />
                 ) : (
                   <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#080809] shadow-inner">
-                    <table className="w-full text-sm">
+                    <div className="overflow-x-auto">
+                    <table className="w-full min-w-[640px] text-sm">
                       <thead>
                         <tr className="border-b border-white/5 bg-white/[0.02] text-left text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">
                           <th className="p-5">Variable Key</th>
@@ -521,6 +522,7 @@ export default function ComparePage({
                         ))}
                       </tbody>
                     </table>
+                    </div>
                   </div>
                 )}
               </>
