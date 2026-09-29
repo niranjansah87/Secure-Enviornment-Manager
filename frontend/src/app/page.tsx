@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useWorkspace } from "@/context/workspace-context";
+import { SmoothScroll } from "@/components/landing/smooth-scroll";
 
 const Security3DAnimation = dynamic(
   () => import("@/components/animations/security-3d").then((mod) => mod.Security3DAnimation),
@@ -83,6 +84,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen flex-col bg-[#060608] text-white overflow-x-hidden">
+      <SmoothScroll />
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-black/40 backdrop-blur-xl border-b border-white/5">
         <Link href="/" className="flex items-center gap-2.5 group">

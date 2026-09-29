@@ -362,6 +362,50 @@ export function AppSidebar() {
         ))}
       </div>
 
+      {/* Workspace indicator */}
+      {workspace && (
+        <div className="border-t border-white/5 px-2.5 py-2">
+          <Link
+            href={`/${workspace.namespace}/${workspace.environment}`}
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-2.5 py-2 transition-colors hover:bg-white/5 group",
+              collapsed ? "justify-center" : ""
+            )}
+            title={collapsed ? `${workspace.namespace} / ${workspace.environment}` : undefined}
+          >
+            <span
+              className={cn(
+                "shrink-0 rounded-full shadow-[0_0_6px]",
+                collapsed ? "h-2.5 w-2.5" : "h-2 w-2",
+                workspace.environment.toLowerCase() === "production" ? "bg-green-400 shadow-green-400/50" :
+                workspace.environment.toLowerCase() === "staging" ? "bg-orange-400 shadow-orange-400/50" :
+                ["dev", "development"].includes(workspace.environment.toLowerCase()) ? "bg-blue-400 shadow-blue-400/50" :
+                workspace.environment.toLowerCase() === "preview" ? "bg-purple-400 shadow-purple-400/50" :
+                "bg-zinc-400"
+              )}
+            />
+            <AnimatePresence initial={false}>
+              {!collapsed && (
+                <motion.div
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: "auto" }}
+                  exit={{ opacity: 0, width: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="min-w-0 overflow-hidden"
+                >
+                  <p className="text-[11px] font-medium text-zinc-300 truncate leading-none">
+                    {workspace.namespace}
+                    <span className="text-zinc-600"> / </span>
+                    {workspace.environment}
+                  </p>
+                  <p className="text-[10px] text-zinc-600 mt-0.5">Current workspace</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </Link>
+        </div>
+      )}
+
       {/* User section */}
       <div className="border-t border-white/5">
         {token && (

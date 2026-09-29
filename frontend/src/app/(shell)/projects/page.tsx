@@ -258,13 +258,13 @@ export default function ProjectsPage() {
                         <Layers className="h-5 w-5" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 mb-1.5">
                           <h3 className="text-sm font-semibold text-zinc-100">{p.namespace}</h3>
-                          <span className="text-[10px] text-zinc-600 font-medium uppercase tracking-wider border border-white/8 rounded px-1.5 py-0.5 bg-white/5">
+                          <span className="text-[10px] text-emerald-400 font-medium border border-emerald-500/20 bg-emerald-500/10 rounded px-1.5 py-0.5">
                             Active
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           {p.envs.map((e) => (
                             <span
                               key={e}
@@ -279,16 +279,20 @@ export default function ProjectsPage() {
                           ))}
                         </div>
                       </div>
-                      <div className="hidden lg:flex items-center gap-8 text-xs text-zinc-600 mx-4">
-                        <div className="text-center">
+                      <div className="hidden lg:flex items-center gap-8 text-xs text-zinc-500 mr-4">
+                        <div className="text-center min-w-[52px]">
                           <div className="text-sm font-semibold text-zinc-300">{p.envs.length}</div>
                           <div className="text-[10px] mt-0.5">Environments</div>
+                        </div>
+                        <div className="text-center min-w-[52px]">
+                          <div className="text-sm font-semibold text-zinc-300">—</div>
+                          <div className="text-[10px] mt-0.5">Secrets</div>
                         </div>
                       </div>
                       <Link
                         href={`/${p.namespace}/${p.envs[0]}`}
                         onClick={() => setWorkspace({ namespace: p.namespace, environment: p.envs[0] })}
-                        className="flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-white border border-white/8 hover:border-white/15 rounded-lg px-3 py-1.5 transition-all opacity-0 group-hover:opacity-100"
+                        className="flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-white border border-white/8 hover:border-white/15 rounded-lg px-3 py-1.5 transition-all shrink-0"
                       >
                         Open <ArrowRight className="h-3 w-3" />
                       </Link>
