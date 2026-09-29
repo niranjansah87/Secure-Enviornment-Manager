@@ -75,9 +75,15 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-8 pb-10">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold tracking-tight text-zinc-100">Analytics & Health</h1>
-        <p className="text-zinc-500">Real-time system monitoring and activity trends.</p>
+      <div className="relative overflow-hidden rounded-2xl">
+        <div className="absolute inset-0">
+          <img src="/admin_header_image.png" alt="" className="h-full w-full object-cover object-center opacity-25" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-black/20" />
+        </div>
+        <div className="relative z-10 px-7 py-7 min-h-[90px]">
+          <h1 className="text-2xl font-bold text-white">Analytics & Health</h1>
+          <p className="mt-1 text-sm text-zinc-400">Real-time system monitoring and activity trends across your environments.</p>
+        </div>
       </div>
 
       {/* Health Overview */}

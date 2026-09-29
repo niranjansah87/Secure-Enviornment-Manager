@@ -872,32 +872,36 @@ export default function AdminUsersPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-zinc-100 tracking-tight">Users</h1>
-          <p className="text-sm text-zinc-500 mt-0.5">
-            Manage developer accounts and access scopes
-          </p>
+      {/* Hero */}
+      <div className="relative overflow-hidden rounded-2xl">
+        <div className="absolute inset-0">
+          <img src="/admin_header_image.png" alt="" className="h-full w-full object-cover object-center opacity-25" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-black/20" />
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void fetchUsers()}
-            className="border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white hover:bg-white/[0.06] h-9 rounded-lg text-xs"
-          >
-            <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-            Refresh
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => setDialog({ kind: "create" })}
-            className="bg-violet-600 hover:bg-violet-500 text-white h-9 rounded-lg text-xs"
-          >
-            <Plus className="h-3.5 w-3.5 mr-1.5" />
-            Create User
-          </Button>
+        <div className="relative z-10 px-7 py-7 min-h-[90px] flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Users</h1>
+            <p className="mt-1 text-sm text-zinc-400">Manage developer accounts and access scopes.</p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void fetchUsers()}
+              className="border-white/20 bg-white/10 hover:bg-white/20 text-white h-9 rounded-lg text-xs"
+            >
+              <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+              Refresh
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setDialog({ kind: "create" })}
+              className="bg-violet-600 hover:bg-violet-500 text-white h-9 rounded-lg text-xs"
+            >
+              <Plus className="h-3.5 w-3.5 mr-1.5" />
+              Create User
+            </Button>
+          </div>
         </div>
       </div>
 

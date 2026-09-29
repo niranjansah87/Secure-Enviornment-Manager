@@ -206,16 +206,53 @@ export default function ComparePage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold text-zinc-100 italic tracking-tight">
-          Symmetric Compare
-        </h2>
-        <p className="text-sm text-zinc-500">
-          Analyze differences between any two environments side-by-side.
-        </p>
+      {/* Hero */}
+      <div className="relative overflow-hidden rounded-2xl">
+        <div className="absolute inset-0">
+          <img
+            src="/admin_header_image.png"
+            alt=""
+            className="h-full w-full object-cover object-center opacity-25"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-black/20" />
+        </div>
+        <div className="relative z-10 flex items-center justify-between px-7 py-7 min-h-[100px]">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Compare</h1>
+            <p className="mt-1 text-sm text-zinc-400">
+              Find configuration differences between environments, versions, or timepoints.
+            </p>
+          </div>
+          <div className="hidden lg:flex items-center gap-2 rounded-xl border border-white/10 bg-black/30 backdrop-blur-sm px-4 py-2.5 text-sm text-zinc-300">
+            <GitCompare className="h-4 w-4 text-violet-400" />
+            <span>Compare anything</span>
+          </div>
+        </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-white/5 bg-zinc-900/50 p-6 shadow-2xl backdrop-blur-md">
+      {/* Mode tabs */}
+      <div className="flex gap-3">
+        {[
+          { id: "environments", label: "Environments", desc: "Compare between environments" },
+          { id: "versions", label: "Versions", desc: "Compare historical changes" },
+          { id: "keys", label: "Specific keys", desc: "Compare selected secrets" },
+        ].map((tab, i) => (
+          <div
+            key={tab.id}
+            className={cn(
+              "flex-1 rounded-xl border p-4 cursor-pointer transition-all",
+              i === 0
+                ? "border-violet-500/30 bg-violet-500/10 text-white"
+                : "border-white/8 bg-white/[0.02] text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300"
+            )}
+          >
+            <div className="text-sm font-medium">{tab.label}</div>
+            <div className="text-[11px] mt-0.5 opacity-70">{tab.desc}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-white/8 bg-[#0d0f18] p-6 shadow-2xl">
         {/* Left Selector */}
         <div className="flex-1 space-y-2 min-w-[220px]">
           <Label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest pl-1">Source (Left)</Label>

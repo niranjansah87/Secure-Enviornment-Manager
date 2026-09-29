@@ -92,11 +92,17 @@ export default function TemplatesPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold text-zinc-100">Templates</h2>
-        <p className="text-sm text-zinc-500">
-          Bootstrap variables. Existing keys are overwritten when names collide.
-        </p>
+      <div className="relative overflow-hidden rounded-2xl">
+        <div className="absolute inset-0">
+          <img src="/admin_header_image.png" alt="" className="h-full w-full object-cover object-center opacity-25" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-black/20" />
+        </div>
+        <div className="relative z-10 px-7 py-7 min-h-[90px]">
+          <h1 className="text-2xl font-bold text-white">Templates</h1>
+          <p className="mt-1 text-sm text-zinc-400">
+            {namespace}/{environment} — bootstrap variables. Existing keys are overwritten when names collide.
+          </p>
+        </div>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         {entries.map(([key, t], i) => (

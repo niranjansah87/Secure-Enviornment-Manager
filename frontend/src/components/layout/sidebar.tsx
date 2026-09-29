@@ -3,7 +3,7 @@
 import NextImage from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
   FolderKanban,
@@ -21,6 +21,7 @@ import {
   Lock,
   ShieldCheck,
   UserCog,
+  MoreHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/context/workspace-context";
@@ -56,22 +57,24 @@ type NavItem = {
   adminOnly?: boolean;
 };
 
+type NavSection = {
+  label?: string;
+  items: NavItem[];
+};
+
 const buildNav = (
   workspace: { namespace: string; environment: string } | null,
   isAdmin: boolean
-): NavItem[] => {
+): NavSection[] => {
   const base =
     workspace != null
       ? `/${workspace.namespace}/${workspace.environment}`
       : null;
-  const items: NavItem[] = [
+
+  const mainSection: NavItem[] = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/projects", label: "Projects", icon: FolderKanban },
-    {
-      href: base ?? "/projects",
-      label: "Secrets",
-      icon: KeyRound,
-    },
+    { href: base ?? "/projects", label: "Secrets", icon: KeyRound },
     {
       href: base ? `${base}/compare` : "/projects",
       label: "Compare",
@@ -92,30 +95,28 @@ const buildNav = (
       label: "Templates",
       icon: LayoutTemplate,
     },
-    {
-      href: "/analytics",
-      label: "Analytics",
-      icon: BarChart3,
-    },
   ];
 
-  // Only add admin-only items for admin users
+  const observeSection: NavItem[] = [
+    { href: "/analytics", label: "Analytics", icon: BarChart3 },
+  ];
+
+  const accessSection: NavItem[] = [];
   if (isAdmin) {
-    items.push({
-      href: "/apikeys",
-      label: "API Keys",
-      icon: KeyRound,
-      adminOnly: true,
-    });
-    items.push({
-      href: "/admin/users",
-      label: "Users",
-      icon: Users,
-      adminOnly: true,
-    });
+    accessSection.push({ href: "/apikeys", label: "API Keys", icon: KeyRound, adminOnly: true });
+    accessSection.push({ href: "/admin/users", label: "Users", icon: Users, adminOnly: true });
   }
 
-  return items;
+  const sections: NavSection[] = [
+    { items: mainSection },
+    { label: "OBSERVE", items: observeSection },
+  ];
+
+  if (accessSection.length > 0) {
+    sections.push({ label: "ACCESS", items: accessSection });
+  }
+
+  return sections;
 };
 
 function navActive(
@@ -144,11 +145,9 @@ export function AppSidebar() {
   const { workspace, token, username, email, logout } = useWorkspace();
   const [collapsed, setCollapsed] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [, setLoadingAdmin] = useState(true);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
-  // Determine role label
-  const roleLabel = isAdmin ? "Admin" : "Developer";
+  const roleLabel = isAdmin ? "Administrator" : "Developer";
 
   // Change password dialog
   const [showChangePwd, setShowChangePwd] = useState(false);
@@ -161,7 +160,6 @@ export function AppSidebar() {
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setPwdError(null);
-
     if (newPwd.length < 8) {
       setPwdError("New password must be at least 8 characters.");
       return;
@@ -170,30 +168,33 @@ export function AppSidebar() {
       setPwdError("Passwords do not match.");
       return;
     }
-
     setPwdLoading(true);
     try {
-      const res = await fetch(`${window.location.protocol}//${window.location.hostname}:8070/api/v1/user/change-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          current_password: currentPwd || undefined,
-          new_password: newPwd,
-        }),
-      });
+      const res = await fetch(
+        `${window.location.protocol}//${window.location.hostname}:8070/api/v1/user/change-password`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            current_password: currentPwd || undefined,
+            new_password: newPwd,
+          }),
+        }
+      );
       const data = await res.json();
       if (!res.ok || !data.success) {
         const msg =
-          (data.error && typeof data.error === "object" ? data.error.message : null) ??
+          (data.error && typeof data.error === "object"
+            ? data.error.message
+            : null) ??
           (typeof data.error === "string" ? data.error : null) ??
           `Request failed (${res.status})`;
         setPwdError(msg);
         return;
       }
-      // Success — close dialog and reset
       setShowChangePwd(false);
       setCurrentPwd("");
       setNewPwd("");
@@ -216,29 +217,18 @@ export function AppSidebar() {
     try {
       const v = localStorage.getItem(STORAGE_KEY);
       if (v === "1") setCollapsed(true);
-    } catch {
-      /* ignore */
-    }
+    } catch { /* ignore */ }
   }, []);
 
-  // Check admin status when token changes
   useEffect(() => {
     if (!token) {
       setIsAdmin(false);
-      setLoadingAdmin(false);
       return;
     }
-
-    api.isAdmin(token)
-      .then((res) => {
-        setIsAdmin(res.is_admin);
-      })
-      .catch(() => {
-        setIsAdmin(false);
-      })
-      .finally(() => {
-        setLoadingAdmin(false);
-      });
+    api
+      .isAdmin(token)
+      .then((res) => setIsAdmin(res.is_admin))
+      .catch(() => setIsAdmin(false));
   }, [token]);
 
   const toggle = useCallback(() => {
@@ -246,28 +236,28 @@ export function AppSidebar() {
       const next = !c;
       try {
         localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
-      } catch {
-        /* ignore */
-      }
+      } catch { /* ignore */ }
       return next;
     });
   }, []);
 
-  const items = buildNav(workspace, isAdmin);
+  const sections = buildNav(workspace, isAdmin);
 
   return (
     <motion.aside
       initial={false}
-      animate={{ width: collapsed ? 80 : 256 }}
-      transition={{ type: "spring", damping: 24, stiffness: 200 }}
-      className="relative z-40 flex h-full shrink-0 flex-col border-r border-white/5 bg-[#030303] shadow-[4px_0_24px_rgba(0,0,0,0.5)]"
+      animate={{ width: collapsed ? 72 : 220 }}
+      transition={{ type: "spring", damping: 28, stiffness: 220 }}
+      className="relative z-40 flex h-full shrink-0 flex-col border-r border-white/5 bg-[#060608] shadow-[2px_0_24px_rgba(0,0,0,0.5)]"
     >
-      <div className={cn(
-        "flex items-center border-b border-white/5",
-        collapsed ? "h-24 justify-center" : "h-24 justify-between px-4"
-      )}>
+      {/* Logo area */}
+      <div
+        className={cn(
+          "flex items-center border-b border-white/5 h-[72px]",
+          collapsed ? "justify-center px-0" : "justify-between px-4"
+        )}
+      >
         {collapsed ? (
-          /* Collapsed: logo with expand on hover */
           <button
             onClick={toggle}
             className="group relative flex items-center justify-center"
@@ -275,131 +265,157 @@ export function AppSidebar() {
           >
             <NextImage
               src="/logo.png"
-              width={48}
-              height={48}
+              width={40}
+              height={40}
               alt="SEM"
-              className="h-12 w-12 shrink-0 rounded-xl object-cover opacity-80 group-hover:opacity-40 transition-opacity"
+              className="h-10 w-10 shrink-0 rounded-xl object-cover opacity-80 group-hover:opacity-40 transition-opacity"
               unoptimized
             />
-            <ChevronRight className="absolute h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+            <ChevronRight className="absolute h-4 w-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
           </button>
         ) : (
-          /* Expanded: logo + collapse button */
           <>
-            <Link href="/">
-              <motion.div
-                whileHover={{ scale: 1.1, rotate: 2 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center justify-center rounded-xl transition-all duration-200 hover:shadow-lg hover:shadow-violet-500/20"
-              >
-                <NextImage
-                  src="/logo.png"
-                  width={56}
-                  height={56}
-                  alt="Secure Environment Manager"
-                  className="h-14 w-14 shrink-0 rounded-xl object-cover"
-                  unoptimized
-                />
-              </motion.div>
+            <Link href="/" className="flex items-center gap-3 min-w-0">
+              <NextImage
+                src="/logo.png"
+                width={40}
+                height={40}
+                alt="SEM"
+                className="h-10 w-10 shrink-0 rounded-xl object-cover"
+                unoptimized
+              />
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-white truncate leading-none">SEM</p>
+                <p className="text-[10px] text-zinc-500 truncate mt-0.5">Secure Environment Manager</p>
+              </div>
             </Link>
             <Button
               variant="ghost"
               size="icon"
               onClick={toggle}
               className="h-7 w-7 text-zinc-600 hover:text-zinc-300 hover:bg-white/5 rounded-md shrink-0"
-              title="Collapse sidebar"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
           </>
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto py-6 px-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        <nav className="flex flex-col gap-1.5">
-          {items.map(({ href, label, icon: Icon }) => {
-            const isActive = navActive(label, pathname, workspace);
-
-            return (
-              <Link key={label} href={href} title={label} className="relative group">
-                <motion.div
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all relative overflow-hidden",
-                    isActive
-                      ? "text-white bg-white/5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]"
-                      : "text-zinc-400 hover:text-zinc-100 hover:bg-white/[0.03]"
-                  )}
-                >
-                  <Icon className={cn("h-4.5 w-4.5 shrink-0 transition-colors", isActive ? "text-violet-400" : "group-hover:text-zinc-200")} />
-                  {!collapsed && (
-                    <motion.span
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="truncate"
+      {/* Nav */}
+      <div className="flex-1 overflow-y-auto py-4 px-2.5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        {sections.map((section, si) => (
+          <div key={si} className={si > 0 ? "mt-4" : ""}>
+            {section.label && !collapsed && (
+              <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-zinc-600 mb-1">
+                {section.label}
+              </div>
+            )}
+            {section.label && collapsed && (
+              <div className="h-px bg-white/5 mx-1 my-2" />
+            )}
+            <nav className="flex flex-col gap-0.5">
+              {section.items.map(({ href, label, icon: Icon }) => {
+                const isActive = navActive(label, pathname, workspace);
+                return (
+                  <Link key={label} href={href} title={collapsed ? label : undefined}>
+                    <div
+                      className={cn(
+                        "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-all relative group",
+                        collapsed ? "justify-center" : "",
+                        isActive
+                          ? "text-white bg-white/8"
+                          : "text-zinc-500 hover:text-zinc-200 hover:bg-white/5"
+                      )}
                     >
-                      {label}
-                    </motion.span>
-                  )}
-                  
-                  {isActive && (
-                    <motion.div
-                      layoutId="nav-active-glow"
-                      className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-violet-500 blur-[2px] mr-2"
-                    />
-                  )}
-                </motion.div>
-              </Link>
-            );
-          })}
-        </nav>
+                      <Icon
+                        className={cn(
+                          "h-4 w-4 shrink-0 transition-colors",
+                          isActive ? "text-violet-400" : "group-hover:text-zinc-300"
+                        )}
+                      />
+                      <AnimatePresence initial={false}>
+                        {!collapsed && (
+                          <motion.span
+                            initial={{ opacity: 0, width: 0 }}
+                            animate={{ opacity: 1, width: "auto" }}
+                            exit={{ opacity: 0, width: 0 }}
+                            transition={{ duration: 0.15 }}
+                            className="truncate overflow-hidden whitespace-nowrap"
+                          >
+                            {label}
+                          </motion.span>
+                        )}
+                      </AnimatePresence>
+
+                      {isActive && (
+                        <motion.div
+                          layoutId="sidebar-active-indicator"
+                          className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full bg-violet-500"
+                        />
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        ))}
       </div>
 
-      {/* Bottom section: user menu + collapse icon */}
-      <div className="mt-auto border-t border-white/5 bg-[#050505]/50 backdrop-blur-sm">
-        {/* User Dropdown Menu */}
+      {/* User section */}
+      <div className="border-t border-white/5">
         {token && (
           <DropdownMenu open={userMenuOpen} onOpenChange={setUserMenuOpen}>
             <DropdownMenuTrigger asChild>
-              {collapsed ? (
-                <div className="flex justify-center py-3 cursor-pointer hover:bg-white/[0.03] transition-colors">
-                  <div className="w-8 h-8 rounded-full bg-violet-600/30 border border-violet-500/40 flex items-center justify-center text-xs font-bold text-violet-300">
-                    {username ? username.slice(0, 2).toUpperCase() : "AD"}
-                  </div>
+              <div
+                className={cn(
+                  "flex items-center cursor-pointer hover:bg-white/5 transition-colors",
+                  collapsed ? "justify-center py-4" : "gap-3 px-3 py-3"
+                )}
+              >
+                <div className="h-8 w-8 shrink-0 rounded-full bg-violet-600/30 border border-violet-500/30 flex items-center justify-center text-[11px] font-bold text-violet-300">
+                  {username ? username.slice(0, 2).toUpperCase() : "NS"}
                 </div>
-              ) : (
-                <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-white/[0.03] transition-colors">
-                  <div className="w-8 h-8 rounded-full bg-violet-600/30 border border-violet-500/40 flex items-center justify-center text-xs font-bold text-violet-300 shrink-0">
-                    {username ? username.slice(0, 2).toUpperCase() : "AD"}
-                  </div>
-                  <div className="min-w-0 flex-1 text-left">
-                    <p className="text-sm font-medium text-zinc-200 truncate">
-                      {username ?? "Admin"}
-                    </p>
-                    <p className="text-[11px] text-zinc-500 truncate">
-                      {roleLabel}
-                    </p>
-                  </div>
-                  <ChevronUp className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
-                </div>
-              )}
+                <AnimatePresence initial={false}>
+                  {!collapsed && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="flex-1 min-w-0"
+                    >
+                      <p className="text-sm font-medium text-zinc-200 truncate leading-none">
+                        {username ?? "Admin"}
+                      </p>
+                      <p className="text-[11px] text-zinc-600 truncate mt-0.5">
+                        {roleLabel}
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                {!collapsed && (
+                  <MoreHorizontal className="h-4 w-4 text-zinc-600 shrink-0" />
+                )}
+              </div>
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="start"
               side="top"
-              className="w-56 bg-zinc-900 border-white/10 shadow-2xl ml-2 mb-1"
+              className="w-56 bg-zinc-900/95 border-white/10 shadow-2xl backdrop-blur-xl ml-1 mb-1"
             >
-              {/* User info header */}
               <DropdownMenuLabel className="font-normal">
                 <div className="flex items-center gap-3 py-1">
-                  <div className="w-9 h-9 rounded-full bg-violet-600/30 border border-violet-500/40 flex items-center justify-center text-xs font-bold text-violet-300 shrink-0">
-                    {username ? username.slice(0, 2).toUpperCase() : "AD"}
+                  <div className="h-8 w-8 rounded-full bg-violet-600/30 border border-violet-500/30 flex items-center justify-center text-[11px] font-bold text-violet-300 shrink-0">
+                    {username ? username.slice(0, 2).toUpperCase() : "NS"}
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-zinc-200 truncate">
                       {username ?? "Admin"}
                     </p>
                     {email && (
-                      <p className="text-[11px] text-zinc-500 truncate max-w-[160px]">{email}</p>
+                      <p className="text-[11px] text-zinc-500 truncate max-w-[160px]">
+                        {email}
+                      </p>
                     )}
                     <div className="flex items-center gap-1 mt-0.5">
                       {isAdmin ? (
@@ -407,7 +423,12 @@ export function AppSidebar() {
                       ) : (
                         <UserCog className="h-3 w-3 text-zinc-400" />
                       )}
-                      <span className={`text-[11px] font-medium ${isAdmin ? "text-amber-400" : "text-zinc-400"}`}>
+                      <span
+                        className={cn(
+                          "text-[11px] font-medium",
+                          isAdmin ? "text-amber-400" : "text-zinc-400"
+                        )}
+                      >
                         {roleLabel}
                       </span>
                     </div>
@@ -415,7 +436,6 @@ export function AppSidebar() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-white/5" />
-              {/* Change Password */}
               <DropdownMenuItem
                 onClick={() => {
                   setUserMenuOpen(false);
@@ -428,7 +448,6 @@ export function AppSidebar() {
                 Change Password
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-white/5" />
-              {/* Log Out */}
               <DropdownMenuItem
                 onClick={async () => {
                   setUserMenuOpen(false);
@@ -443,19 +462,26 @@ export function AppSidebar() {
             </DropdownMenuContent>
           </DropdownMenu>
         )}
-
       </div>
 
       {/* Change Password Dialog */}
-      <Dialog open={showChangePwd} onOpenChange={(o) => { if (!o) setShowChangePwd(false); }}>
-        <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+      <Dialog
+        open={showChangePwd}
+        onOpenChange={(o) => {
+          if (!o) setShowChangePwd(false);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-zinc-100">Change Password</DialogTitle>
             <DialogDescription>
               Enter your current password and set a new one.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={(e) => void handleChangePassword(e)} className="space-y-4">
+          <form
+            onSubmit={(e) => void handleChangePassword(e)}
+            className="space-y-4"
+          >
             <div className="space-y-1.5">
               <Label className="text-xs text-zinc-400">Current Password</Label>
               <Input
@@ -463,7 +489,7 @@ export function AppSidebar() {
                 value={currentPwd}
                 onChange={(e) => setCurrentPwd(e.target.value)}
                 placeholder="Enter current password"
-                className="bg-black/40 border-white/10 text-zinc-100 placeholder:text-zinc-600 h-9.5"
+                className="bg-black/40 border-white/10 text-zinc-100 placeholder:text-zinc-600"
                 autoFocus
               />
             </div>
@@ -474,7 +500,7 @@ export function AppSidebar() {
                 value={newPwd}
                 onChange={(e) => setNewPwd(e.target.value)}
                 placeholder="At least 8 characters"
-                className="bg-black/40 border-white/10 text-zinc-100 placeholder:text-zinc-600 h-9.5"
+                className="bg-black/40 border-white/10 text-zinc-100 placeholder:text-zinc-600"
                 required
               />
             </div>
@@ -485,7 +511,7 @@ export function AppSidebar() {
                 value={confirmPwd}
                 onChange={(e) => setConfirmPwd(e.target.value)}
                 placeholder="Repeat new password"
-                className="bg-black/40 border-white/10 text-zinc-100 placeholder:text-zinc-600 h-9.5"
+                className="bg-black/40 border-white/10 text-zinc-100 placeholder:text-zinc-600"
                 required
               />
             </div>
@@ -517,4 +543,3 @@ export function AppSidebar() {
     </motion.aside>
   );
 }
-

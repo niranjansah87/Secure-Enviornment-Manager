@@ -316,32 +316,37 @@ export default function ApiKeysPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold text-zinc-100">API Keys</h2>
-          <p className="text-sm text-zinc-500">
-            Manage API keys across all namespaces. {totalKeys > 0 && <span className="text-violet-400">{totalKeys} total key(s)</span>}
-          </p>
+      <div className="relative overflow-hidden rounded-2xl">
+        <div className="absolute inset-0">
+          <img src="/admin_header_image.png" alt="" className="h-full w-full object-cover object-center opacity-25" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-black/20" />
         </div>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void loadKeys()}
-            className="border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => void openCreateDialog()}
-            className="bg-zinc-100 hover:bg-white text-black font-semibold"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Create New Key
-          </Button>
+        <div className="relative z-10 px-7 py-7 min-h-[90px] flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white">API Keys</h1>
+            <p className="mt-1 text-sm text-zinc-400">
+              Manage API keys across all namespaces.{totalKeys > 0 && <span className="text-violet-300 ml-1">{totalKeys} total key{totalKeys !== 1 ? "s" : ""}</span>}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void loadKeys()}
+              className="border-white/20 bg-white/10 hover:bg-white/20 text-white"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => void openCreateDialog()}
+              className="bg-violet-600 hover:bg-violet-500 text-white font-semibold"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create New Key
+            </Button>
+          </div>
         </div>
       </div>
 
