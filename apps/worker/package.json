@@ -3,6 +3,7 @@
   "version": "2.0.0",
   "private": true,
   "scripts": {
+    "dev": "ts-node src/main.ts",
     "build": "tsc",
     "start": "node dist/main",
     "start:dev": "ts-node src/main.ts",
