@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useMemo, useState } from "react";
+import { FileUp, Plus, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -11,223 +12,101 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { api } from "@/lib/api";
-
-import {
-  parseEnvPayload,
-  diffAgainstCurrent,
-  type DiffRow,
-} from "@/lib/bulk-diff";
-import { toast } from "sonner";
-import { formatUserError } from "@/lib/error-translation";
-
+import { useWorkspace } from "@/context/workspace-context";
+import { sem, ApiError } from "@/lib/sem-api";
+import { parseEnvPayload } from "@/lib/bulk-diff";
 
 type Props = {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  token: string;
-  namespace: string;
-  environment: string;
-  current: Record<string, string>;
+  projectId: string;
+  environmentId: string;
+  existingKeys: string[];
   onApplied: () => void;
 };
 
-function rowBadge(type: DiffRow["type"]) {
-  switch (type) {
-    case "add":
-      return <div className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 uppercase tracking-wider">Add</div>;
-    case "change":
-      return <div className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20 uppercase tracking-wider">Update</div>;
-    default:
-      return <div className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold bg-zinc-800 text-zinc-500 border border-white/5 uppercase tracking-wider">Unchanged</div>;
-  }
-}
-
-export function BulkImportDialog({
-  open,
-  onOpenChange,
-  token,
-  namespace,
-  environment,
-  current,
-  onApplied,
-}: Props) {
+export function BulkImportDialog({ open, onOpenChange, projectId, environmentId, existingKeys, onApplied }: Props) {
+  const { call } = useWorkspace();
   const [text, setText] = useState("");
-  const [step, setStep] = useState<"edit" | "preview">("edit");
-  const [loading, setLoading] = useState(false);
+  const [applying, setApplying] = useState(false);
 
-  const lines = useMemo(() => parseEnvPayload(text), [text]);
-  const rows = useMemo(
-    () => diffAgainstCurrent(lines, current),
-    [lines, current]
-  );
+  useEffect(() => {
+    if (!open) setText("");
+  }, [open]);
 
-  function toPayload(): string {
-    return lines.map((l) => `${l.key}=${l.value}`).join("\n");
-  }
+  const parsed = useMemo(() => parseEnvPayload(text), [text]);
+  const existing = useMemo(() => new Set(existingKeys), [existingKeys]);
+  const added = parsed.filter((l) => !existing.has(l.key)).length;
+  const overwritten = parsed.filter((l) => existing.has(l.key)).length;
 
   async function apply() {
-    const payload = toPayload();
-    if (!payload.trim()) {
-      toast.error("Paste at least one KEY=value line.");
+    if (parsed.length === 0) {
+      toast.error("Nothing to import. Paste KEY=value lines.");
       return;
     }
-    setLoading(true);
+    setApplying(true);
     try {
-      await api.bulkReplace(token, namespace, environment, payload);
-      toast.success("Environment synced successfully", {
-        description: `${lines.length} variables updated.`,
-      });
+      const res = await call((t) =>
+        sem.bulkReplaceSecrets(
+          t,
+          projectId,
+          environmentId,
+          parsed.map((l) => ({ key: l.key, value: l.value })),
+        ),
+      );
+      toast.success(`Imported ${res.count} variable${res.count === 1 ? "" : "s"}`);
       onOpenChange(false);
-      setText("");
-      setStep("edit");
       onApplied();
-    } catch (e) {
-      const err = formatUserError(e);
-      toast.error(err.title, {
-        description: err.description,
-      });
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Bulk import failed");
     } finally {
-      setLoading(false);
+      setApplying(false);
     }
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => {
-        onOpenChange(o);
-        if (!o) {
-          setStep("edit");
-          setText("");
-        }
-      }}
-    >
-      <DialogContent className="max-h-[90vh] overflow-hidden border-white/10 bg-[#0A0A0A] p-0 sm:max-w-3xl rounded-2xl shadow-2xl">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-violet-500 to-fuchsia-500" />
-        
-        <div className="flex max-h-[90vh] flex-col p-8">
-          <DialogHeader className="mb-6">
-            <div className="flex items-center justify-between">
-               <div>
-                  <DialogTitle className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-                    Bulk Variable Sync
-                    <div className="px-2 py-0.5 rounded-md bg-violet-500/10 border border-violet-500/20 text-[10px] text-violet-400 font-bold uppercase tracking-widest">
-                      {step === 'edit' ? 'Step 1: Edit' : 'Step 2: Review'}
-                    </div>
-                  </DialogTitle>
-                  <DialogDescription className="text-zinc-500 text-sm mt-2">
-                    {step === 'edit'
-                      ? "Paste your .env content below. This will merge with existing secrets — only matching keys are updated."
-                      : "Review the changes below. New keys will be added, matching keys updated, and existing secrets kept intact."}
-                  </DialogDescription>
-               </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-zinc-100">
+            <FileUp className="h-4 w-4 text-violet-400" /> Bulk import
+          </DialogTitle>
+          <DialogDescription>Paste a .env file. Lines starting with # are ignored. Existing keys are updated with a new version.</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <Label className="text-xs text-zinc-400">.env content</Label>
+          <Textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={"DATABASE_URL=postgres://…\nAPI_KEY=sk_live_…\n# comment"}
+            rows={10}
+            className="bg-black/40 border-white/10 font-mono text-xs resize-none"
+            autoFocus
+          />
+          {parsed.length > 0 && (
+            <div className="flex items-center gap-4 text-xs">
+              <span className="flex items-center gap-1.5 text-emerald-400">
+                <Plus className="h-3.5 w-3.5" /> {added} new
+              </span>
+              <span className="flex items-center gap-1.5 text-amber-400">
+                <RefreshCw className="h-3.5 w-3.5" /> {overwritten} updated
+              </span>
             </div>
-          </DialogHeader>
-
-          <div className="flex-1 overflow-hidden">
-            {step === "edit" ? (
-              <motion.div 
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="space-y-4"
-              >
-                <div className="relative">
-                  <div className="absolute top-3 right-3 text-[10px] font-bold text-zinc-600 uppercase tracking-widest pointer-events-none">
-                    .env format
-                  </div>
-                  <Textarea
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    placeholder={"STRIPE_KEY=sk_test_...\nDB_URL=postgresql://..."}
-                    className="min-h-[350px] font-mono text-xs bg-black/40 border-white/5 rounded-xl focus-visible:ring-violet-500/40 p-4 resize-none scrollbar-thin"
-                  />
-                </div>
-                
-                <DialogFooter className="pt-6 border-t border-white/5 h-20 -mx-8 px-8 mt-4">
-                  <Button variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl px-6 text-zinc-500 hover:text-white">
-                    Cancel
-                  </Button>
-                  <Button
-                    className="rounded-xl px-8 bg-zinc-100 hover:bg-white text-black font-bold"
-                    onClick={() => {
-                      if (!parseEnvPayload(text).length) {
-                        toast.error("No valid KEY=value pairs detected.");
-                        return;
-                      }
-                      setStep("preview");
-                    }}
-                  >
-                    Review Changes
-                  </Button>
-                </DialogFooter>
-              </motion.div>
-            ) : (
-              <motion.div 
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="flex flex-col h-full"
-              >
-                <div className="rounded-xl border border-white/5 bg-black/40 overflow-hidden mb-6">
-                  <ScrollArea className="h-[380px]">
-                    <table className="w-full text-left text-sm border-collapse">
-                      <thead className="sticky top-0 bg-[#111] text-[10px] font-bold uppercase tracking-widest text-zinc-500 border-b border-white/5">
-                        <tr>
-                          <th className="px-6 py-3">Variable Key</th>
-                          <th className="px-6 py-3">Action</th>
-                          <th className="px-6 py-3 text-right">Preview</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/[0.03]">
-                        {rows.map((r) => (
-                          <tr
-                            key={r.key}
-                            className="transition-colors hover:bg-white/[0.01]"
-                          >
-                            <td className="px-6 py-3 font-mono text-xs text-zinc-200">
-                              {r.key}
-                            </td>
-                            <td className="px-6 py-3">{rowBadge(r.type)}</td>
-                            <td className="px-6 py-3 text-right font-mono text-[10px] text-zinc-500">
-                              <div className="flex items-center justify-end gap-2">
-                                {r.type === "add" && <><span className="text-zinc-700 italic">none</span> <span className="text-emerald-500 font-bold">→</span> <span className="text-zinc-300">present</span></>}
-                                {r.type === "change" && <><span className="line-through opacity-50">modified</span> <span className="text-amber-500 font-bold">→</span> <span className="text-zinc-200">updated</span></>}
-                                {r.type !== "add" && r.type !== "change" && <span className="opacity-30 italic">No change</span>}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </ScrollArea>
-                </div>
-
-                <DialogFooter className="pt-6 border-t border-white/5 h-20 -mx-8 px-8 mt-auto">
-                  <Button variant="ghost" onClick={() => setStep("edit")} className="rounded-xl px-6 text-zinc-500 hover:text-white">
-                    Return to Editor
-                  </Button>
-                  <Button
-                    variant="default"
-                    onClick={() => void apply()}
-                    disabled={loading}
-                    className="rounded-xl px-8 font-bold bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-900/20"
-                  >
-                    {loading ? (
-                       <div className="flex items-center gap-2">
-                          <div className="h-3 w-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                          <span>Merging...</span>
-                       </div>
-                    ) : "Merge Changes"}
-                  </Button>
-                </DialogFooter>
-              </motion.div>
-            )}
-          </div>
+          )}
         </div>
+
+        <DialogFooter>
+          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={applying} className="text-zinc-400">
+            Cancel
+          </Button>
+          <Button onClick={() => void apply()} disabled={applying || parsed.length === 0} className="bg-violet-600 hover:bg-violet-500">
+            {applying ? "Importing…" : `Import ${parsed.length || ""} variable${parsed.length === 1 ? "" : "s"}`}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-
