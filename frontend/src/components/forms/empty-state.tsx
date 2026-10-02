@@ -1,6 +1,6 @@
 import { LucideIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export function EmptyState({
   icon: Icon,
@@ -8,12 +8,14 @@ export function EmptyState({
   description,
   actionLabel,
   actionHref,
+  onAction,
 }: {
   icon: LucideIcon;
   title: string;
   description: string;
   actionLabel?: string;
   actionHref?: string;
+  onAction?: () => void;
 }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-zinc-800 bg-[#111827]/40 px-8 py-16 text-center">
@@ -25,6 +27,11 @@ export function EmptyState({
       {actionLabel && actionHref && (
         <Button asChild className="mt-6">
           <Link href={actionHref}>{actionLabel}</Link>
+        </Button>
+      )}
+      {actionLabel && !actionHref && onAction && (
+        <Button className="mt-6" onClick={onAction}>
+          {actionLabel}
         </Button>
       )}
     </div>

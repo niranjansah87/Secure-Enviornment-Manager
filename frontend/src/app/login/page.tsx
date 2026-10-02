@@ -11,6 +11,7 @@ import {
   BookOpen, Terminal, Package,
 } from "lucide-react";
 import { useWorkspace } from "@/context/workspace-context";
+import { ApiError, type LoginParams } from "@/lib/sem-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -42,7 +43,7 @@ const FEATURES = [
 
 export default function LoginPage() {
   const router = useRouter();
-  const { loginWithPassword, setToken, refreshAccessToken, token } = useWorkspace();
+  const { login, refreshAccessToken, token } = useWorkspace();
 
   const [mode, setMode] = useState<LoginMode>("admin");
   const [password, setPassword] = useState("");
@@ -60,37 +61,23 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
 
+    const params: LoginParams = { device_name: "Web Browser" };
+    if (mode === "admin") params.master_token = password.trim();
+    else if (mode === "apikey") params.api_key = password.trim();
+    else {
+      params.username = username.trim();
+      params.password = password.trim();
+    }
+
     try {
-      await loginWithPassword(
-        password.trim(),
-        "global",
-        "main",
-        mode === "user" ? username.trim() : "",
-      );
+      await login(params);
       router.push("/dashboard");
-    } catch {
-      if (mode === "admin") {
-        try {
-          const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8070"}/api/v1/auth/validate-password`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ password: password.trim() }),
-            }
-          );
-          if (response.ok) {
-            setToken(password.trim());
-            router.push("/dashboard");
-            return;
-          }
-        } catch { /* ignore */ }
-      }
-      setError(
-        mode === "user"   ? "Invalid username or password." :
+    } catch (err) {
+      const fallback =
+        mode === "user" ? "Invalid username or password." :
         mode === "apikey" ? "Invalid API key." :
-                            "Invalid password or token."
-      );
+        "Invalid password or master token.";
+      setError(err instanceof ApiError ? err.message || fallback : fallback);
     } finally {
       setLoading(false);
     }

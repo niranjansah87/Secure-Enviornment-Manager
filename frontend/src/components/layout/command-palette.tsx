@@ -18,7 +18,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type Workspace = { namespace: string; environment: string };
+type Workspace = { projectSlug: string; envSlug: string };
+type WorkspaceOption = Workspace & { label: string };
 
 type CommandItem = {
   id: string;
@@ -33,7 +34,7 @@ type Props = {
   open: boolean;
   onClose: () => void;
   workspace: Workspace | null;
-  environments: Workspace[];
+  environments: WorkspaceOption[];
   onSelectWorkspace: (w: Workspace) => void;
 };
 
@@ -49,7 +50,7 @@ export function CommandPalette({
   const [selected, setSelected] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const base = workspace ? `/${workspace.namespace}/${workspace.environment}` : null;
+  const base = workspace ? `/${workspace.projectSlug}/${workspace.envSlug}` : null;
 
   const staticItems: CommandItem[] = [
     {
@@ -73,7 +74,7 @@ export function CommandPalette({
           {
             id: "secrets",
             label: "Open Secrets",
-            description: `${workspace!.namespace}/${workspace!.environment}`,
+            description: `${workspace!.projectSlug}/${workspace!.envSlug}`,
             icon: KeyRound,
             action: () => router.push(base!),
             category: "Workspace",
@@ -140,11 +141,11 @@ export function CommandPalette({
 
   // Workspace switcher items
   const wsItems: CommandItem[] = environments.map((e) => ({
-    id: `ws-${e.namespace}-${e.environment}`,
-    label: `${e.namespace} / ${e.environment}`,
+    id: `ws-${e.projectSlug}-${e.envSlug}`,
+    label: e.label,
     description: "Switch workspace",
     icon: FolderKanban,
-    action: () => onSelectWorkspace(e),
+    action: () => onSelectWorkspace({ projectSlug: e.projectSlug, envSlug: e.envSlug }),
     category: "Switch Workspace",
   }));
 
