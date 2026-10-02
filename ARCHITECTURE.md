@@ -4,7 +4,36 @@
 <!-- High-level system architecture -->
 <!-- AUTO-GENERATED END -->
 
-## System Architecture
+## Current architecture (v2 — 2026)
+
+> The project migrated off the original Flask backend. The sections below the
+> divider describe that **historical** Flask architecture and are retained for
+> reference only. They no longer reflect the running system.
+
+SEM is now a **pnpm + Turbo monorepo**:
+
+- **Backend — `apps/api`**: NestJS (Fastify adapter), listening on **port 3001**,
+  all routes under `/api/v1`. Persistence via **Drizzle ORM + PostgreSQL**;
+  **Redis** (ioredis) for sessions/rate-limiting; **BullMQ** worker in
+  `apps/worker`. Auth is JWT (ES256) with refresh-token rotation; secrets are
+  encrypted with envelope encryption (AES-256-GCM DEK/KEK). Shared packages:
+  `@sem/crypto`, `@sem/types`, `@sem/sdk`. CLI in `cli/`.
+- **Frontend — `frontend/`**: Next.js 15 (App Router) + React 19 + Tailwind +
+  Radix, framer-motion, Recharts, Lenis, Sonner. Talks to the NestJS API via
+  `src/lib/sem-api.ts` (envelope `{ success, data }`); auth/workspace state in
+  `src/context/workspace-context.tsx`; URL model `/[projectSlug]/[envSlug]`.
+- **Domains** (org-scoped, JWT-guarded): auth, organizations, projects,
+  environments, secrets (+ versions/rollback/history/export/bulk/remote-config),
+  api-keys, audit, analytics, users, health.
+
+Run locally: `pnpm install`, provision Postgres + Redis, set `.env`
+(`DATABASE_URL`, `REDIS_URL`, `SEM_MASTER_KEY`, `SEM_TOKEN_HMAC_KEY`, JWT keys),
+`pnpm db:migrate`, then `pnpm dev` (API) and `cd frontend && npm run dev` (UI on
+:3000). Templates in the UI are client-side starter presets (no backend domain yet).
+
+---
+
+## System Architecture (historical — Flask)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐

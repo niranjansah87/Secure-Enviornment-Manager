@@ -1,564 +1,414 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
-  Layers,
-  Key,
+  Boxes,
+  KeyRound,
   Users,
+  Activity,
   ArrowRight,
-  MoreHorizontal,
-  TrendingUp,
-  Plus,
-  FileInput,
+  FolderOpen,
+  FileUp,
   GitCompare,
   LayoutTemplate,
-  Activity,
+  Plus,
+  Pencil,
+  Trash2,
+  RotateCcw,
+  LogIn,
+  Shield,
 } from "lucide-react";
 import {
   BarChart,
   Bar,
   XAxis,
   YAxis,
-  Tooltip as RechartsTooltip,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   PieChart,
   Pie,
   Cell,
   Legend,
 } from "recharts";
-import { api, ApiError, type AuditEntry, type AnalyticsResponse } from "@/lib/api";
 import { useWorkspace } from "@/context/workspace-context";
-import { Button } from "@/components/ui/button";
+import { sem, type AuditEvent, type Project } from "@/lib/sem-api";
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-import { formatIso, cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { StatCard } from "@/components/layout/stat-card";
+import { envBadgeClass, envHex } from "@/lib/env-style";
+import { cn } from "@/lib/utils";
 
-const ACTION_ICON: Record<string, { icon: React.ComponentType<{ className?: string }>; color: string }> = {
-  set: { icon: Key, color: "text-blue-400 bg-blue-400/10" },
-  delete: { icon: Key, color: "text-red-400 bg-red-400/10" },
-  bulk_replace: { icon: FileInput, color: "text-orange-400 bg-orange-400/10" },
-  login: { icon: Users, color: "text-green-400 bg-green-400/10" },
-  create_key: { icon: Key, color: "text-violet-400 bg-violet-400/10" },
+type DashData = {
+  projects: Project[];
+  envTotal: number;
+  secretTotal: number;
+  byEnvKind: { name: string; value: number; color: string }[];
+  projectEnvBadges: Record<string, string[]>;
+  projectSecretCounts: Record<string, number>;
+  activeUsers: number;
+  auditEvents30d: number;
+  recent: AuditEvent[];
+  activitySeries: { day: string; created: number; updated: number }[];
 };
 
-function getActionDisplay(action: string) {
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+function envKind(slug: string): "Production" | "Staging" | "Development" | "Preview" | "Other" {
+  const s = slug.toLowerCase();
+  if (s === "production" || s === "prod") return "Production";
+  if (s === "staging" || s === "stage") return "Staging";
+  if (s === "development" || s === "dev") return "Development";
+  if (s === "preview") return "Preview";
+  return "Other";
+}
+
+const ACTION_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
+  "secret.create": Plus,
+  "secret.update": Pencil,
+  "secret.delete": Trash2,
+  "secret.rollback": RotateCcw,
+  "secret.bulk_replace": FileUp,
+  "auth.login": LogIn,
+};
+
+function actionLabel(a: string): string {
   const map: Record<string, string> = {
-    set: "Updated secret",
-    delete: "Deleted secret",
-    bulk_replace: "Bulk import",
-    login: "User login",
-    create_key: "Created API key",
-    create: "Created secret",
-    update: "Updated secret",
+    "secret.create": "Created secret",
+    "secret.update": "Updated secret",
+    "secret.delete": "Deleted secret",
+    "secret.rollback": "Rolled back secret",
+    "secret.bulk_replace": "Bulk import",
+    "secret.export": "Exported secrets",
+    "auth.login": "User login",
   };
-  return map[action] ?? action.replace(/_/g, " ");
+  return map[a] ?? a.replace(/[._]/g, " ");
 }
 
-const ENV_COLORS = ["#7c3aed", "#3b82f6", "#10b981", "#f59e0b", "#6b7280"];
-
-function StatCard({
-  title,
-  value,
-  delta,
-  icon: Icon,
-  color,
-}: {
-  title: string;
-  value: string;
-  delta?: string;
-  icon: React.ComponentType<{ className?: string }>;
-  color: string;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="relative overflow-hidden rounded-xl border border-white/8 bg-[#0d0f18] p-5"
-    >
-      <div className="flex items-start gap-4">
-        <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", color)}>
-          <Icon className="h-5 w-5" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-end gap-2">
-            <span className="text-2xl font-bold text-white leading-none">{value}</span>
-            {delta && (
-              <span className="text-xs text-green-400 flex items-center gap-0.5 mb-0.5">
-                <TrendingUp className="h-3 w-3" />
-                {delta}
-              </span>
-            )}
-          </div>
-          <p className="mt-1 text-xs text-zinc-500">{title}</p>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-const ENV_BADGE_COLORS: Record<string, string> = {
-  dev: "bg-blue-500/15 text-blue-400 border-blue-500/20",
-  staging: "bg-orange-500/15 text-orange-400 border-orange-500/20",
-  prod: "bg-green-500/15 text-green-400 border-green-500/20",
-  production: "bg-green-500/15 text-green-400 border-green-500/20",
-  preview: "bg-purple-500/15 text-purple-400 border-purple-500/20",
-};
-
-function EnvBadge({ label }: { label: string }) {
-  const cls = ENV_BADGE_COLORS[label.toLowerCase()] ?? "bg-zinc-500/15 text-zinc-400 border-zinc-500/20";
-  return (
-    <span className={cn("inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-medium", cls)}>
-      {label}
-    </span>
-  );
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m} min ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} hour${h > 1 ? "s" : ""} ago`;
+  const d = Math.floor(h / 24);
+  return `${d} day${d > 1 ? "s" : ""} ago`;
 }
 
 export default function DashboardPage() {
-  const { token, workspace, environments, username } = useWorkspace();
+  const router = useRouter();
+  const { call, displayName, isAdmin, selectWorkspace } = useWorkspace();
+  const [data, setData] = useState<DashData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<{
-    environment_count: number;
-    secret_count: number;
-    last_updated: string | null;
-    recent_activity: AuditEntry[];
-  } | null>(null);
-  const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null);
-  const [now, setNow] = useState(new Date());
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 60000);
-    return () => clearInterval(t);
-  }, []);
-
-  useEffect(() => {
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
+  const load = useCallback(async () => {
     setLoading(true);
-    Promise.all([
-      api.metaStats(token).catch(() => null),
-      api.metaAnalytics(token, 7).catch(() => null),
-    ]).then(([s, a]) => {
-      if (!cancelled) {
-        setStats(s);
-        setAnalytics(a);
-        setLoading(false);
+    setError(null);
+    try {
+      const [projects, summary, auditPage] = await Promise.all([
+        call((t) => sem.listProjects(t)),
+        call((t) => sem.analyticsSummary(t)).catch(() => ({ projects: 0, active_users: 0, audit_events_last_30d: 0 })),
+        call((t) => sem.audit(t, { limit: 200, from: new Date(Date.now() - 7 * 86400000).toISOString() })).catch(() => ({ events: [], pagination: { total: 0, limit: 0, offset: 0 } })),
+      ]);
+
+      // Resolve envs + secret counts per project.
+      const projectData = await Promise.all(
+        projects.map(async (p) => {
+          const envs = await call((t) => sem.listEnvironments(t, p.id)).catch(() => []);
+          const perEnv = await Promise.all(
+            envs.map(async (e) => ({
+              env: e,
+              count: await call((t) => sem.listSecrets(t, p.id, e.id)).then((s) => s.length).catch(() => 0),
+            })),
+          );
+          return { project: p, envs, perEnv };
+        }),
+      );
+
+      const byEnvKindMap: Record<string, number> = {};
+      const projectEnvBadges: Record<string, string[]> = {};
+      const projectSecretCounts: Record<string, number> = {};
+      let envTotal = 0;
+      let secretTotal = 0;
+      for (const pd of projectData) {
+        envTotal += pd.envs.length;
+        projectEnvBadges[pd.project.id] = pd.envs.map((e) => e.slug);
+        let projSecrets = 0;
+        for (const { env, count } of pd.perEnv) {
+          secretTotal += count;
+          projSecrets += count;
+          const kind = envKind(env.slug);
+          byEnvKindMap[kind] = (byEnvKindMap[kind] ?? 0) + count;
+        }
+        projectSecretCounts[pd.project.id] = projSecrets;
+      }
+
+      const byEnvKind = Object.entries(byEnvKindMap)
+        .filter(([, v]) => v > 0)
+        .map(([name, value]) => ({ name, value, color: envHex(name === "Other" ? "other" : name) }));
+
+      // Build a 7-day activity series from audit events.
+      const days: { day: string; key: string; created: number; updated: number }[] = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(Date.now() - i * 86400000);
+        days.push({ day: d.toLocaleDateString(undefined, { month: "short", day: "numeric" }), key: d.toISOString().slice(0, 10), created: 0, updated: 0 });
+      }
+      const byKey = Object.fromEntries(days.map((d) => [d.key, d]));
+      for (const ev of auditPage.events) {
+        const key = ev.occurred_at.slice(0, 10);
+        const bucket = byKey[key];
+        if (!bucket) continue;
+        if (ev.action === "secret.create") bucket.created++;
+        else if (ev.action === "secret.update" || ev.action === "secret.bulk_replace") bucket.updated++;
+      }
+
+      setData({
+        projects,
+        envTotal,
+        secretTotal,
+        byEnvKind,
+        projectEnvBadges,
+        projectSecretCounts,
+        activeUsers: summary.active_users,
+        auditEvents30d: summary.audit_events_last_30d,
+        recent: auditPage.events.slice(0, 6),
+        activitySeries: days.map(({ day, created, updated }) => ({ day, created, updated })),
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load dashboard");
+    } finally {
+      setLoading(false);
+    }
+  }, [call]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const now = useMemo(() => new Date(), []);
+
+  const openProject = (p: Project) => {
+    void call((t) => sem.listEnvironments(t, p.id)).then((envs) => {
+      const env = envs.find((e) => e.slug === "production") ?? envs[0];
+      if (env) {
+        selectWorkspace(p.slug, env.slug);
+        router.push(`/${p.slug}/${env.slug}`);
+      } else {
+        router.push("/projects");
       }
     });
-    return () => { cancelled = true; };
-  }, [token]);
-
-  const greeting = () => {
-    const h = now.getHours();
-    if (h < 12) return "Good morning";
-    if (h < 17) return "Good afternoon";
-    return "Good evening";
   };
 
-  const dateStr = now.toLocaleDateString("en-US", {
-    weekday: "long",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-  const timeStr = now.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
-  // Build projects list from environments
-  const projects: { namespace: string; envs: string[] }[] = [];
-  for (const [ns, envs] of Object.entries(environments)) {
-    projects.push({ namespace: ns, envs });
-  }
-
-  // Chart data from analytics
-  const activityData = analytics?.trends?.map((t) => ({
-    date: new Date(t.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-    Creations: t.updates,
-    Updates: t.access,
-  })) ?? [];
-
-  const envDistData = analytics?.distribution?.namespaces?.map((n, i) => ({
-    name: n.name,
-    value: n.estimated_secrets,
-    color: ENV_COLORS[i % ENV_COLORS.length],
-  })) ?? [];
-
-  const totalSecrets = analytics?.distribution?.total_secrets ?? stats?.secret_count ?? 0;
-
   return (
-    <div>
+    <div className="space-y-6">
       {/* Hero */}
-      <div className="relative mb-8 overflow-hidden rounded-2xl">
-        <div className="absolute inset-0">
-          <Image
-            src="/admin_header_image.png"
-            alt=""
-            fill
-            className="object-cover object-center opacity-40"
-            priority
-            unoptimized
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-black/20" />
-        </div>
-        <div className="relative z-10 flex items-end justify-between px-8 py-8 min-h-[120px]">
+      <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-gradient-to-br from-[#121a2e] via-[#0c111d] to-[#0a0d16] px-8 py-8">
+        <div className="relative z-10 flex items-start justify-between gap-6">
           <div>
-            <h1 className="text-3xl font-bold text-white">
-              {greeting()}, {username ?? "there"}
+            <h1 className="text-3xl font-bold tracking-tight text-white">
+              {greeting()}, {displayName}
             </h1>
-            <p className="mt-1 text-sm text-zinc-400">
-              Here&apos;s an overview of your environments and activity.
-            </p>
+            <p className="mt-1.5 text-sm text-zinc-400">Here&rsquo;s an overview of your environments and activity.</p>
           </div>
-          <div className="text-right hidden sm:block">
-            <p className="text-sm text-zinc-400">{dateStr}</p>
-            <p className="text-2xl font-semibold text-white mt-0.5">{timeStr}</p>
+          <div className="hidden text-right sm:block">
+            <p className="text-sm text-zinc-400">{now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short", year: "numeric" })}</p>
           </div>
         </div>
+        <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-violet-600/10 blur-3xl" />
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 mb-8">
-        {loading ? (
-          Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 rounded-xl bg-white/5" />
-          ))
-        ) : (
-          <>
-            <StatCard
-              title="Environments"
-              value={String(stats?.environment_count ?? 0)}
-              delta="vs last month"
-              icon={Layers}
-              color="bg-blue-500/10 text-blue-400"
-            />
-            <StatCard
-              title="Secrets"
-              value={String(totalSecrets)}
-              delta="vs last month"
-              icon={Key}
-              color="bg-violet-500/10 text-violet-400"
-            />
-            <StatCard
-              title="Team members"
-              value="—"
-              icon={Users}
-              color="bg-emerald-500/10 text-emerald-400"
-            />
-            <StatCard
-              title="Audit events"
-              value={String(stats?.recent_activity?.length ?? 0)}
-              icon={Activity}
-              color="bg-orange-500/10 text-orange-400"
-            />
-          </>
-        )}
+      {/* Stats */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard title="Environments" value={loading ? "—" : String(data?.envTotal ?? 0)} icon={Boxes} />
+        <StatCard title="Secrets" value={loading ? "—" : String(data?.secretTotal ?? 0)} icon={KeyRound} />
+        <StatCard title="Team members" value={loading ? "—" : String(data?.activeUsers ?? 0)} icon={Users} />
+        <StatCard title="Audit events (30d)" value={loading ? "—" : String(data?.auditEvents30d ?? 0)} icon={Activity} />
       </div>
 
-      {/* Charts row */}
-      <div className="grid gap-6 lg:grid-cols-3 mb-8">
-        {/* Activity chart */}
-        <div className="lg:col-span-2 rounded-xl border border-white/8 bg-[#0d0f18] p-6">
-          <div className="flex items-start justify-between mb-6">
-            <div>
-              <h2 className="text-sm font-semibold text-white">Environment activity</h2>
-              <p className="text-xs text-zinc-500 mt-0.5">
-                Secret changes and configuration updates across environments.
-              </p>
-            </div>
-            <button className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300 border border-white/8 rounded-lg px-3 py-1.5 transition-colors">
-              Last 7 days
-              <MoreHorizontal className="h-3 w-3 ml-1" />
-            </button>
-          </div>
-          {activityData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={activityData} barSize={8} barGap={2}>
-                <XAxis
-                  dataKey="date"
-                  tick={{ fill: "#52525b", fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fill: "#52525b", fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <RechartsTooltip
-                  contentStyle={{
-                    background: "#18181b",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    borderRadius: "8px",
-                    fontSize: "11px",
-                    color: "#e4e4e7",
-                  }}
-                />
-                <Bar dataKey="Creations" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Updates" fill="#7c3aed" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : loading ? (
-            <Skeleton className="h-44 rounded-lg bg-white/5" />
-          ) : (
-            <div className="flex h-44 items-center justify-center text-sm text-zinc-600">
-              No activity data available
-            </div>
-          )}
-          {!loading && activityData.length > 0 && (
-            <div className="flex items-center gap-4 mt-2">
-              <div className="flex items-center gap-1.5 text-xs text-zinc-500">
-                <div className="h-2 w-2 rounded-full bg-blue-500" />
-                Creations
-              </div>
-              <div className="flex items-center gap-1.5 text-xs text-zinc-500">
-                <div className="h-2 w-2 rounded-full bg-violet-500" />
-                Updates
-              </div>
-            </div>
-          )}
-        </div>
+      {error && (
+        <Card className="border-red-500/20 bg-red-500/5 p-4 text-sm text-red-400">{error}</Card>
+      )}
 
-        {/* Donut chart */}
-        <div className="rounded-xl border border-white/8 bg-[#0d0f18] p-6">
-          <div className="mb-4">
-            <h2 className="text-sm font-semibold text-white">Secrets by environment</h2>
-            <p className="text-xs text-zinc-500 mt-0.5">
-              Total secrets across all environments.
-            </p>
+      {/* Charts */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.6fr_1fr]">
+        <Card className="p-6">
+          <h3 className="text-base font-semibold text-zinc-100">Environment activity</h3>
+          <p className="text-xs text-zinc-500">Secret creations and updates over the last 7 days.</p>
+          <div className="mt-6 h-64">
+            {loading ? (
+              <Skeleton className="h-full w-full rounded-lg bg-white/5" />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data?.activitySeries ?? []} barGap={4}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <XAxis dataKey="day" tick={{ fill: "#71717a", fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: "#71717a", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
+                  <Tooltip
+                    cursor={{ fill: "rgba(255,255,255,0.03)" }}
+                    contentStyle={{ background: "#111827", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
+                    labelStyle={{ color: "#e4e4e7" }}
+                  />
+                  <Bar dataKey="created" name="Creations" fill="#3b82f6" radius={[3, 3, 0, 0]} maxBarSize={18} />
+                  <Bar dataKey="updated" name="Updates" fill="#8b5cf6" radius={[3, 3, 0, 0]} maxBarSize={18} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
-          {envDistData.length > 0 ? (
-            <>
-              <div className="relative">
-                <ResponsiveContainer width="100%" height={140}>
-                  <PieChart>
-                    <Pie
-                      data={envDistData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={42}
-                      outerRadius={60}
-                      dataKey="value"
-                      strokeWidth={0}
-                    >
-                      {envDistData.map((entry, index) => (
-                        <Cell key={index} fill={entry.color} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-2xl font-bold text-white">{totalSecrets}</span>
-                  <span className="text-[10px] text-zinc-500">Total</span>
-                </div>
-              </div>
-              <div className="space-y-1.5 mt-3">
-                {envDistData.slice(0, 5).map((e, i) => (
-                  <div key={i} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="h-2 w-2 rounded-full shrink-0"
-                        style={{ background: e.color }}
-                      />
-                      <span className="text-zinc-400 truncate max-w-[100px]">{e.name}</span>
-                    </div>
-                    <span className="text-zinc-300 font-medium">{e.value}</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : loading ? (
-            <Skeleton className="h-40 rounded-lg bg-white/5" />
-          ) : (
-            <div className="flex h-40 items-center justify-center text-sm text-zinc-600">
-              No data
-            </div>
-          )}
-        </div>
+        </Card>
+
+        <Card className="p-6">
+          <h3 className="text-base font-semibold text-zinc-100">Secrets by environment</h3>
+          <p className="text-xs text-zinc-500">Total secrets across all environments.</p>
+          <div className="mt-6 h-64">
+            {loading ? (
+              <Skeleton className="h-full w-full rounded-lg bg-white/5" />
+            ) : (data?.byEnvKind.length ?? 0) === 0 ? (
+              <div className="flex h-full items-center justify-center text-sm text-zinc-600">No secrets yet.</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={data!.byEnvKind} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={2} stroke="none">
+                    {data!.byEnvKind.map((d) => (
+                      <Cell key={d.name} fill={d.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ background: "#111827", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }} />
+                  <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{ fontSize: 11, color: "#a1a1aa" }} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </Card>
       </div>
 
       {/* Bottom row */}
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Recent activity */}
-        <div className="lg:col-span-1 rounded-xl border border-white/8 bg-[#0d0f18] p-6">
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h2 className="text-sm font-semibold text-white">Recent activity</h2>
-              <p className="text-xs text-zinc-500 mt-0.5">Latest changes across your environments.</p>
-            </div>
-            {workspace && (
-              <Link
-                href={`/${workspace.namespace}/${workspace.environment}/audit`}
-                className="text-[11px] text-zinc-500 hover:text-zinc-300 flex items-center gap-1 transition-colors"
-              >
-                View all <ArrowRight className="h-3 w-3" />
-              </Link>
-            )}
-          </div>
-          <div className="space-y-3">
-            {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 rounded-lg bg-white/5" />
-              ))
-            ) : !stats?.recent_activity?.length ? (
-              <p className="text-sm text-zinc-600 py-4 text-center">No recent activity</p>
-            ) : (
-              stats.recent_activity.slice(0, 8).map((a, i) => {
-                const meta = ACTION_ICON[a.action] ?? { icon: Activity, color: "text-zinc-400 bg-zinc-400/10" };
-                const Icon = meta.icon;
-                return (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, x: -4 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.03 }}
-                    className="flex items-start gap-3"
-                  >
-                    <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg mt-0.5", meta.color)}>
-                      <Icon className="h-3.5 w-3.5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-zinc-200 leading-none">
-                        {getActionDisplay(a.action)}
-                      </p>
-                      {a.resource && (
-                        <p className="text-[11px] text-zinc-500 truncate mt-0.5">
-                          {a.resource}
-                          {a.environment ? ` in ${a.environment}` : ""}
-                        </p>
-                      )}
-                    </div>
-                    <span className="text-[10px] text-zinc-600 shrink-0 mt-0.5">
-                      {formatIso(a.timestamp)}
-                    </span>
-                  </motion.div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* Your projects */}
-        <div className="lg:col-span-1 rounded-xl border border-white/8 bg-[#0d0f18] p-6">
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h2 className="text-sm font-semibold text-white">Your projects</h2>
-              <p className="text-xs text-zinc-500 mt-0.5">Quick access to your workspaces.</p>
-            </div>
-            <Link
-              href="/projects"
-              className="text-[11px] text-zinc-500 hover:text-zinc-300 flex items-center gap-1 transition-colors"
-            >
+        <Card className="p-6 lg:col-span-1">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-base font-semibold text-zinc-100">Recent activity</h3>
+            <Link href="/analytics" className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300">
               View all <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
-          <div className="space-y-2">
-            {loading ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-14 rounded-lg bg-white/5" />
-              ))
-            ) : projects.length === 0 ? (
-              <p className="text-sm text-zinc-600 py-4 text-center">No projects yet</p>
-            ) : (
-              projects.slice(0, 6).map((p, i) => (
-                <motion.div
-                  key={p.namespace}
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.04 }}
-                  className="flex items-center gap-3 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2.5 hover:bg-white/[0.05] hover:border-white/8 transition-all group"
-                >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-400">
-                    <Layers className="h-3.5 w-3.5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold text-zinc-200 truncate">{p.namespace}</p>
-                    <div className="flex items-center gap-1 mt-1 flex-wrap">
-                      {p.envs.slice(0, 3).map((e) => (
-                        <EnvBadge key={e} label={e} />
-                      ))}
-                      {p.envs.length > 3 && (
-                        <span className="text-[9px] text-zinc-600">+{p.envs.length - 3}</span>
-                      )}
+          {loading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full rounded-lg bg-white/5" />
+              ))}
+            </div>
+          ) : (data?.recent.length ?? 0) === 0 ? (
+            <p className="py-6 text-center text-xs text-zinc-600">No recent activity.</p>
+          ) : (
+            <ul className="space-y-1">
+              {data!.recent.map((ev) => {
+                const Icon = ACTION_ICON[ev.action] ?? Shield;
+                const key = (ev.metadata?.key as string) ?? (ev.resource_type ?? "");
+                return (
+                  <li key={ev.id} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-white/5">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/5 text-zinc-400">
+                      <Icon className="h-4 w-4" />
                     </div>
-                  </div>
-                  <Link
-                    href={`/${p.namespace}/${p.envs[0]}`}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <ArrowRight className="h-4 w-4 text-zinc-500" />
-                  </Link>
-                </motion.div>
-              ))
-            )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm text-zinc-200">{actionLabel(ev.action)}</p>
+                      {key && <p className="truncate text-xs text-zinc-500 font-mono">{key}</p>}
+                    </div>
+                    <span className="shrink-0 text-xs text-zinc-600">{relativeTime(ev.occurred_at)}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+
+        {/* Your projects */}
+        <Card className="p-6 lg:col-span-1">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-base font-semibold text-zinc-100">Your projects</h3>
+            <Link href="/projects" className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300">
+              View all <ArrowRight className="h-3 w-3" />
+            </Link>
           </div>
-        </div>
+          {loading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full rounded-lg bg-white/5" />
+              ))}
+            </div>
+          ) : (data?.projects.length ?? 0) === 0 ? (
+            <p className="py-6 text-center text-xs text-zinc-600">No projects yet.</p>
+          ) : (
+            <ul className="space-y-1">
+              {data!.projects.slice(0, 5).map((p) => (
+                <li key={p.id}>
+                  <button onClick={() => openProject(p)} className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-white/5">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-600/15 text-violet-400">
+                      <FolderOpen className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm text-zinc-200">{p.name}</p>
+                      <p className="text-xs text-zinc-500">{data!.projectSecretCounts[p.id] ?? 0} secrets</p>
+                    </div>
+                    <div className="flex shrink-0 gap-1">
+                      {(data!.projectEnvBadges[p.id] ?? []).slice(0, 3).map((s) => (
+                        <span key={s} className={cn("rounded px-1.5 py-0.5 text-[9px] font-medium border", envBadgeClass(s))}>
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
 
         {/* Quick actions */}
-        <div className="rounded-xl border border-white/8 bg-[#0d0f18] p-6">
-          <div className="mb-5">
-            <h2 className="text-sm font-semibold text-white">Quick actions</h2>
-          </div>
+        <Card className="p-6 lg:col-span-1">
+          <h3 className="mb-4 text-base font-semibold text-zinc-100">Quick actions</h3>
           <div className="space-y-2">
-            {[
-              {
-                icon: Key,
-                label: "Open secrets",
-                desc: "Manage environment variables",
-                href: workspace ? `/${workspace.namespace}/${workspace.environment}` : "/projects",
-              },
-              {
-                icon: Layers,
-                label: "Browse projects",
-                desc: "View all workspaces",
-                href: "/projects",
-              },
-              {
-                icon: FileInput,
-                label: "Import variables",
-                desc: "Bulk import from .env file",
-                href: workspace ? `/${workspace.namespace}/${workspace.environment}` : "/projects",
-              },
-              {
-                icon: GitCompare,
-                label: "Compare environments",
-                desc: "Find configuration differences",
-                href: workspace ? `/${workspace.namespace}/${workspace.environment}/compare` : "/projects",
-              },
-              {
-                icon: LayoutTemplate,
-                label: "Use a template",
-                desc: "Start with pre-configured templates",
-                href: workspace ? `/${workspace.namespace}/${workspace.environment}/templates` : "/projects",
-              },
-            ].map((action, i) => {
-              const Icon = action.icon;
-              return (
-                <Link
-                  key={i}
-                  href={action.href}
-                  className="flex items-center gap-3 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2.5 hover:bg-white/[0.05] hover:border-white/8 transition-all group"
-                >
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/5 border border-white/8 text-zinc-400 group-hover:text-zinc-200 group-hover:bg-white/8 transition-colors">
-                    <Icon className="h-3.5 w-3.5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium text-zinc-200 leading-none">{action.label}</p>
-                    <p className="text-[11px] text-zinc-600 truncate mt-0.5">{action.desc}</p>
-                  </div>
-                  <ArrowRight className="h-3.5 w-3.5 text-zinc-600 group-hover:text-zinc-400 transition-colors shrink-0" />
-                </Link>
-              );
-            })}
+            <QuickAction href="/projects" icon={FolderOpen} title="Browse projects" desc="View all workspaces" />
+            <QuickAction href="/analytics" icon={Activity} title="View analytics" desc="Usage and security insights" />
+            {isAdmin && <QuickAction href="/apikeys" icon={KeyRound} title="API keys" desc="Manage access tokens" />}
+            <QuickAction href="/projects" icon={GitCompare} title="Compare environments" desc="Find configuration drift" />
+            <QuickAction href="/projects" icon={LayoutTemplate} title="Use a template" desc="Start with presets" />
           </div>
-        </div>
+        </Card>
       </div>
     </div>
+  );
+}
+
+function QuickAction({
+  href,
+  icon: Icon,
+  title,
+  desc,
+}: {
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  desc: string;
+}) {
+  return (
+    <Link href={href} className="group flex items-center gap-3 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2.5 transition-colors hover:border-violet-500/30 hover:bg-white/[0.05]">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/5 text-zinc-400 group-hover:text-violet-400">
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-zinc-200">{title}</p>
+        <p className="text-xs text-zinc-500">{desc}</p>
+      </div>
+      <ArrowRight className="h-4 w-4 shrink-0 text-zinc-600 transition-transform group-hover:translate-x-0.5 group-hover:text-zinc-400" />
+    </Link>
   );
 }

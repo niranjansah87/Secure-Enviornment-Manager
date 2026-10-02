@@ -1,535 +1,273 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, use } from "react";
-import { GitCompare, ArrowLeftRight, ChevronDown, Plus, Minus, RefreshCw, SearchX } from "lucide-react";
-import { api, ApiError } from "@/lib/api";
-import { formatUserError } from "@/lib/error-translation";
-import { useWorkspace } from "@/context/workspace-context";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
-import { EmptyState } from "@/components/forms/empty-state";
-import { Skeleton } from "@/components/ui/skeleton";
+import { use, useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import {
+  GitCompare,
+  ArrowLeftRight,
+  Boxes,
+  Plus,
+  Trash2,
+  Pencil,
+  Search,
+  Eye,
+  EyeOff,
+  Loader2,
+} from "lucide-react";
+import { useWorkspace } from "@/context/workspace-context";
+import { sem, ApiError, type Environment } from "@/lib/sem-api";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/forms/empty-state";
+import { envDotClass } from "@/lib/env-style";
+import { cn, maskValue } from "@/lib/utils";
 
-type Row = {
+type Status = "added" | "removed" | "modified" | "unchanged";
+
+type DiffRow = {
   key: string;
-  left: string | null;
-  right: string | null;
-  kind: "same" | "changed" | "only_left" | "only_right";
+  source: string | null;
+  target: string | null;
+  status: Status;
 };
 
-function computeDiff(
-  a: Record<string, string>,
-  b: Record<string, string>
-): Row[] {
-  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
-  const rows: Row[] = [];
-  for (const key of Array.from(keys).sort()) {
-    const va = a[key];
-    const vb = b[key];
-    if (va !== undefined && vb === undefined) {
-      rows.push({ key, left: va, right: null, kind: "only_left" });
-    } else if (va === undefined && vb !== undefined) {
-      rows.push({ key, left: null, right: vb, kind: "only_right" });
-    } else if (va !== undefined && vb !== undefined) {
-      rows.push({
-        key,
-        left: va,
-        right: vb,
-        kind: va === vb ? "same" : "changed",
-      });
-    }
-  }
-  return rows;
-}
+const STATUS_STYLE: Record<Status, string> = {
+  added: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
+  removed: "border-red-500/30 bg-red-500/10 text-red-400",
+  modified: "border-amber-500/30 bg-amber-500/10 text-amber-400",
+  unchanged: "border-white/10 bg-white/5 text-zinc-500",
+};
 
-function computeDiffStats(rows: Row[]) {
-  return {
-    identical: rows.filter(r => r.kind === "same").length,
-    changed: rows.filter(r => r.kind === "changed").length,
-    onlyLeft: rows.filter(r => r.kind === "only_left").length,
-    onlyRight: rows.filter(r => r.kind === "only_right").length,
-    total: rows.length,
-  };
-}
+export default function ComparePage({ params }: { params: Promise<{ namespace: string; environment: string }> }) {
+  const { namespace: projectSlug, environment: envSlug } = use(params);
+  const { projects, environmentsFor, call } = useWorkspace();
+  const project = projects.find((p) => p.slug === projectSlug) ?? null;
 
-function highlightDiff(oldVal: string, newVal: string): { old: React.ReactNode; new: React.ReactNode } {
-  // Simple character-level diff visualization
-  const oldChars = oldVal.split("");
-  const newChars = newVal.split("");
-  const maxLen = Math.max(oldChars.length, newChars.length);
-  const minLen = Math.min(oldChars.length, newChars.length);
-
-  const oldParts: React.ReactNode[] = [];
-  const newParts: React.ReactNode[] = [];
-
-  for (let i = 0; i < maxLen; i++) {
-    if (i < minLen && oldChars[i] === newChars[i]) {
-      oldParts.push(<span key={i}>{oldChars[i]}</span>);
-      newParts.push(<span key={i}>{newChars[i]}</span>);
-    } else {
-      // Changed or added character
-      if (i < oldChars.length) {
-        oldParts.push(<mark key={i} className="bg-red-500/30 text-red-300 rounded-sm px-0.5">{oldChars[i]}</mark>);
-      }
-      if (i < newChars.length) {
-        newParts.push(<mark key={i} className="bg-emerald-500/30 text-emerald-300 rounded-sm px-0.5">{newChars[i]}</mark>);
-      }
-    }
-  }
-
-  return { old: <>{oldParts}</>, new: <>{newParts}</> };
-}
-
-export default function ComparePage({
-  params,
-}: {
-  params: Promise<{ namespace: string; environment: string }>;
-}) {
-  const { namespace, environment } = use(params);
-  const { token, environments } = useWorkspace();
-
-  // "Left" Side State - Source
-  const [leftNs, setLeftNs] = useState<string>("");
-  const [leftEnv, setLeftEnv] = useState<string>("");
-
-  // "Right" Side State - Target
-  const [rightNs, setRightNs] = useState<string>("");
-  const [rightEnv, setRightEnv] = useState<string>("");
-
-  const [leftData, setLeftData] = useState<Record<string, string>>({});
-  const [rightData, setRightData] = useState<Record<string, string>>({});
+  const [envs, setEnvs] = useState<Environment[]>([]);
+  const [source, setSource] = useState<string>("");
+  const [target, setTarget] = useState<string>(envSlug);
+  const [rows, setRows] = useState<DiffRow[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"all" | "changed" | "only_left" | "only_right">("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [lastCompared, setLastCompared] = useState<{ left: string; right: string } | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [reveal, setReveal] = useState(false);
 
-  // Flatten environments for selection
-  const allPairs = useMemo(() => {
-    const out: { namespace: string; environment: string }[] = [];
-    for (const [ns, envs] of Object.entries(environments)) {
-      for (const e of envs) {
-        out.push({ namespace: ns, environment: e });
-      }
-    }
-    return out;
-  }, [environments]);
-
-  // Initial setup from URL params
   useEffect(() => {
-    if (namespace && environment && !leftNs) {
-      setLeftNs(namespace);
-      setLeftEnv(environment);
-      
-      // Default right side to the first available different environment
-      const other = allPairs.find(p => p.namespace !== namespace || p.environment !== environment);
-      if (other) {
-        setRightNs(other.namespace);
-        setRightEnv(other.environment);
+    if (!project) return;
+    void environmentsFor(project.id).then((list) => {
+      setEnvs(list);
+      if (!source) {
+        const other = list.find((e) => e.slug !== envSlug);
+        if (other) setSource(other.slug);
       }
-    }
-  }, [namespace, environment, leftNs, allPairs]);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [project]);
 
-  const runCompare = useCallback(async () => {
-    if (!token || !leftNs || !leftEnv || !rightNs || !rightEnv) return;
+  const runCompareAuthed = useCallback(async () => {
+    if (!source || !target || source === target) {
+      setError("Pick two different environments.");
+      return;
+    }
     setLoading(true);
     setError(null);
+    setSelected(null);
     try {
-      const [l, r] = await Promise.all([
-        api.getSecrets(token, leftNs, leftEnv),
-        api.getSecrets(token, rightNs, rightEnv),
+      const [src, tgt] = await Promise.all([
+        call((t) => sem.remoteConfig(t, projectSlug, source)),
+        call((t) => sem.remoteConfig(t, projectSlug, target)),
       ]);
-      
-      if (l && typeof l === "object" && "error" in l) throw new Error((l as { error: string }).error);
-      if (r && typeof r === "object" && "error" in r) throw new Error((r as { error: string }).error);
-      
-      setLeftData(l as Record<string, string>);
-      setRightData(r as Record<string, string>);
-      setLastCompared({ left: `${leftNs}/${leftEnv}`, right: `${rightNs}/${rightEnv}` });
-    } catch (e: unknown) {
-      setLeftData({});
-      setRightData({});
-      setError(formatUserError(e).description);
+      setRows(buildDiff(src, tgt));
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Failed to compare environments");
+      setRows(null);
     } finally {
       setLoading(false);
     }
-  }, [token, leftNs, leftEnv, rightNs, rightEnv]);
+  }, [source, target, projectSlug, call]);
 
-  const swapSides = () => {
-    const oldLeftNs = leftNs;
-    const oldLeftEnv = leftEnv;
-    const oldLeftData = leftData;
+  const stats = useMemo(() => {
+    if (!rows) return null;
+    return {
+      total: rows.filter((r) => r.target !== null).length,
+      added: rows.filter((r) => r.status === "added").length,
+      modified: rows.filter((r) => r.status === "modified").length,
+      removed: rows.filter((r) => r.status === "removed").length,
+    };
+  }, [rows]);
 
-    setLeftNs(rightNs);
-    setLeftEnv(rightEnv);
-    setLeftData(rightData);
+  const filtered = useMemo(() => (rows ?? []).filter((r) => r.key.toLowerCase().includes(query.toLowerCase())), [rows, query]);
+  const selectedRow = filtered.find((r) => r.key === selected) ?? rows?.find((r) => r.key === selected) ?? null;
 
-    setRightNs(oldLeftNs);
-    setRightEnv(oldLeftEnv);
-    setRightData(oldLeftData);
-  };
-
-  const rows = useMemo(() => computeDiff(leftData, rightData), [leftData, rightData]);
-
-  if (!token) {
-    return (
-      <EmptyState
-        icon={GitCompare}
-        title="API token required"
-        description="Compare loads two environments via the REST API."
-        actionHref="/settings"
-        actionLabel="Settings"
-      />
-    );
-  }
-
-  if (allPairs.length < 2) {
-    return (
-      <EmptyState
-        icon={GitCompare}
-        title="Insufficient environments"
-        description="You need at least two environments to run a comparison."
-        actionHref="/projects"
-        actionLabel="Projects"
-      />
-    );
+  if (!project) {
+    return <EmptyState icon={Boxes} title="Project not found" description="This project doesn't exist or you lack access." actionLabel="Back to projects" actionHref="/projects" />;
   }
 
   return (
     <div className="space-y-6">
-      {/* Hero */}
-      <div className="relative overflow-hidden rounded-2xl">
-        <div className="absolute inset-0">
-          <img
-            src="/admin_header_image.png"
-            alt=""
-            className="h-full w-full object-cover object-center opacity-25"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-black/20" />
+      <div>
+        <div className="flex items-center gap-1.5 text-xs text-zinc-500 mb-2">
+          <GitCompare className="h-3.5 w-3.5" /> {projectSlug} / Compare
         </div>
-        <div className="relative z-10 flex items-center justify-between px-7 py-7 min-h-[100px]">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Compare</h1>
-            <p className="mt-1 text-sm text-zinc-400">
-              Find configuration differences between environments, versions, or timepoints.
-            </p>
-          </div>
-          <div className="hidden lg:flex items-center gap-2 rounded-xl border border-white/10 bg-black/30 backdrop-blur-sm px-4 py-2.5 text-sm text-zinc-300">
-            <GitCompare className="h-4 w-4 text-violet-400" />
-            <span>Compare anything</span>
-          </div>
-        </div>
+        <h1 className="text-3xl font-bold tracking-tight text-white">Compare</h1>
+        <p className="mt-1.5 text-sm text-zinc-400 max-w-2xl">Find configuration differences between environments.</p>
       </div>
 
-      {/* Mode tabs */}
-      <div className="flex gap-3">
-        {[
-          { id: "environments", label: "Environments", desc: "Compare between environments" },
-          { id: "versions", label: "Versions", desc: "Compare historical changes" },
-          { id: "keys", label: "Specific keys", desc: "Compare selected secrets" },
-        ].map((tab, i) => (
-          <div
-            key={tab.id}
-            className={cn(
-              "flex-1 rounded-xl border p-4 cursor-pointer transition-all",
-              i === 0
-                ? "border-violet-500/30 bg-violet-500/10 text-white"
-                : "border-white/8 bg-white/[0.02] text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300"
+      {/* Selectors */}
+      <Card className="p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
+          <EnvSelect label="Source environment" value={source} envs={envs} onChange={setSource} />
+          <Button variant="outline" size="icon" className="mb-0.5 shrink-0 border-white/10" onClick={() => { const s = source; setSource(target); setTarget(s); }} aria-label="Swap environments">
+            <ArrowLeftRight className="h-4 w-4" />
+          </Button>
+          <EnvSelect label="Target environment" value={target} envs={envs} onChange={setTarget} />
+          <Button className="mb-0.5 bg-violet-600 hover:bg-violet-500" onClick={() => void runCompareAuthed()} disabled={loading}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <GitCompare className="h-4 w-4" />}
+            Compare
+          </Button>
+        </div>
+        {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
+      </Card>
+
+      {stats && (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <DiffStat icon={Boxes} label="Total secrets" value={stats.total} tint="text-blue-400 bg-blue-500/10" />
+          <DiffStat icon={Plus} label={`Added in ${target}`} value={stats.added} tint="text-emerald-400 bg-emerald-500/10" />
+          <DiffStat icon={Pencil} label="Modified" value={stats.modified} tint="text-amber-400 bg-amber-500/10" />
+          <DiffStat icon={Trash2} label={`Removed from ${target}`} value={stats.removed} tint="text-red-400 bg-red-500/10" />
+        </div>
+      )}
+
+      {rows && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_1fr]">
+          {/* Key list */}
+          <Card className="flex max-h-[600px] flex-col p-0">
+            <div className="border-b border-white/5 p-4">
+              <p className="mb-2 text-sm font-semibold text-zinc-100">Secrets ({rows.length})</p>
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
+                <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search secrets…" className="pl-9 bg-black/40 border-white/8 h-9" />
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2">
+              {filtered.length === 0 ? (
+                <p className="py-6 text-center text-xs text-zinc-600">No secrets.</p>
+              ) : (
+                filtered.map((r) => (
+                  <button
+                    key={r.key}
+                    onClick={() => setSelected(r.key)}
+                    className={cn("mb-1 flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left transition-colors", selected === r.key ? "bg-white/8" : "hover:bg-white/5")}
+                  >
+                    <span className="truncate font-mono text-xs text-zinc-200">{r.key}</span>
+                    <span className={cn("shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-medium capitalize", STATUS_STYLE[r.status])}>{r.status}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </Card>
+
+          {/* Diff view */}
+          <Card className="p-5">
+            {!selectedRow ? (
+              <div className="flex h-full min-h-[300px] items-center justify-center text-sm text-zinc-600">Select a secret to see the difference.</div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-mono text-sm font-semibold text-zinc-100">{selectedRow.key}</p>
+                    <span className={cn("mt-1 inline-flex rounded-md border px-1.5 py-0.5 text-[10px] font-medium capitalize", STATUS_STYLE[selectedRow.status])}>{selectedRow.status}</span>
+                  </div>
+                  <Button variant="outline" size="sm" className="border-white/10" onClick={() => setReveal((r) => !r)}>
+                    {reveal ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {reveal ? "Mask" : "Reveal"}
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <DiffPane title={source} tone={selectedRow.status === "added" ? "muted" : "red"} value={selectedRow.source} reveal={reveal} />
+                  <DiffPane title={target} tone={selectedRow.status === "removed" ? "muted" : "green"} value={selectedRow.target} reveal={reveal} />
+                </div>
+              </div>
             )}
-          >
-            <div className="text-sm font-medium">{tab.label}</div>
-            <div className="text-[11px] mt-0.5 opacity-70">{tab.desc}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-white/8 bg-[#0d0f18] p-6 shadow-2xl">
-        {/* Left Selector */}
-        <div className="flex-1 space-y-2 min-w-[220px]">
-          <Label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest pl-1">Source (Left)</Label>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-full justify-between border-white/10 bg-black/40 font-mono text-xs hover:bg-black/60 transition-all py-6 rounded-xl">
-                <span className="truncate">{leftNs} / {leftEnv}</span>
-                <ChevronDown className="h-4 w-4 opacity-40 shrink-0 ml-2" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="max-h-64 overflow-y-auto w-64 bg-zinc-950 border-white/10">
-              {allPairs.map((p) => (
-                <DropdownMenuItem
-                  key={`left-${p.namespace}/${p.environment}`}
-                  className="font-mono text-xs focus:bg-violet-500/20 focus:text-violet-200"
-                  onSelect={() => {
-                    setLeftNs(p.namespace);
-                    setLeftEnv(p.environment);
-                  }}
-                >
-                  {p.namespace} / {p.environment}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        {/* Swap Action */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="mt-6 h-10 w-10 rounded-full border border-white/5 bg-white/5 hover:bg-violet-600 hover:text-white transition-all duration-300 shadow-lg shadow-black/50"
-          onClick={swapSides}
-          title="Swap sides"
-        >
-          <ArrowLeftRight className="h-4 w-4" />
-        </Button>
-
-        {/* Right Selector */}
-        <div className="flex-1 space-y-2 min-w-[220px]">
-          <Label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest pl-1">Target (Right)</Label>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-full justify-between border-white/10 bg-black/40 font-mono text-xs hover:bg-black/60 transition-all py-6 rounded-xl">
-                <span className="truncate">{rightNs} / {rightEnv}</span>
-                <ChevronDown className="h-4 w-4 opacity-40 shrink-0 ml-2" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="max-h-64 overflow-y-auto w-64 bg-zinc-950 border-white/10">
-              {allPairs.map((p) => (
-                <DropdownMenuItem
-                  key={`right-${p.namespace}/${p.environment}`}
-                  className="font-mono text-xs focus:bg-violet-500/20 focus:text-violet-200"
-                  onSelect={() => {
-                    setRightNs(p.namespace);
-                    setRightEnv(p.environment);
-                  }}
-                >
-                  {p.namespace} / {p.environment}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        <Button 
-          onClick={() => void runCompare()} 
-          disabled={loading}
-          className="mt-6 h-12 px-8 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold transition-all shadow-xl shadow-violet-900/40 active:scale-95"
-        >
-          {loading ? "Loading…" : "Compare Now"}
-        </Button>
-      </div>
-
-      {error && (
-        <p className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
-          {error}
-        </p>
-      )}
-
-      {loading && (
-        <div className="space-y-4">
-          <Skeleton className="h-12 w-full rounded-xl bg-white/5" />
-          <Skeleton className="h-64 w-full rounded-2xl bg-white/5" />
+          </Card>
         </div>
       )}
 
-      {!loading && (Object.keys(leftData).length > 0 || Object.keys(rightData).length > 0) && (
-        <div className="space-y-4">
-          {/* Stats Bar */}
-          {(() => {
-            const stats = computeDiffStats(rows);
-            const filteredRows = rows.filter(r => {
-              if (filter === "all") return true;
-              return r.kind === filter;
-            }).filter(r => {
-              if (!searchQuery) return true;
-              const q = searchQuery.toLowerCase();
-              return r.key.toLowerCase().includes(q) ||
-                (r.left?.toLowerCase().includes(q) ?? false) ||
-                (r.right?.toLowerCase().includes(q) ?? false);
-            });
-            return (
-              <>
-                <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/5 bg-zinc-900/50 p-4">
-                  <div className="flex items-center gap-6">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-zinc-100">{stats.total}</div>
-                      <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Total Keys</div>
-                    </div>
-                    <div className="h-8 w-px bg-white/10" />
-                    <button
-                      onClick={() => setFilter(filter === "changed" ? "all" : "changed")}
-                      className={cn(
-                        "text-center transition-all",
-                        filter === "changed" ? "opacity-100" : "opacity-60 hover:opacity-80"
-                      )}
-                    >
-                      <div className="text-2xl font-bold text-amber-400">{stats.changed}</div>
-                      <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Changed</div>
-                    </button>
-                    <button
-                      onClick={() => setFilter(filter === "only_left" ? "all" : "only_left")}
-                      className={cn(
-                        "text-center transition-all",
-                        filter === "only_left" ? "opacity-100" : "opacity-60 hover:opacity-80"
-                      )}
-                    >
-                      <div className="text-2xl font-bold text-rose-400">{stats.onlyLeft}</div>
-                      <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Left Only</div>
-                    </button>
-                    <button
-                      onClick={() => setFilter(filter === "only_right" ? "all" : "only_right")}
-                      className={cn(
-                        "text-center transition-all",
-                        filter === "only_right" ? "opacity-100" : "opacity-60 hover:opacity-80"
-                      )}
-                    >
-                      <div className="text-2xl font-bold text-emerald-400">{stats.onlyRight}</div>
-                      <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Right Only</div>
-                    </button>
-                    <div className="h-8 w-px bg-white/10" />
-                    <button
-                      onClick={() => setFilter(filter === "all" ? "all" : "all")}
-                      className={cn(
-                        "text-center transition-all",
-                        filter === "all" ? "opacity-100" : "opacity-60 hover:opacity-80"
-                      )}
-                    >
-                      <div className="text-2xl font-bold text-zinc-400">{stats.identical}</div>
-                      <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Identical</div>
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <SearchX className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-                      <Input
-                        placeholder="Filter keys..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="h-9 w-48 pl-9 bg-black/30 border-white/5 text-xs rounded-lg"
-                      />
-                    </div>
-                    {lastCompared && (
-                      <span className="text-[10px] text-zinc-600 font-mono">
-                        {lastCompared.left} ↔ {lastCompared.right}
-                      </span>
-                    )}
-                  </div>
-                </div>
+      {!rows && !loading && (
+        <EmptyState icon={GitCompare} title="Compare two environments" description="Choose a source and target environment above, then run the comparison to see what changed." />
+      )}
+    </div>
+  );
+}
 
-                {/* Legend */}
-                <div className="flex items-center gap-4 text-[10px] text-zinc-500">
-                  <span className="flex items-center gap-1.5">
-                    <Plus className="h-3 w-3 text-emerald-500" /> Added on right
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <Minus className="h-3 w-3 text-rose-500" /> Removed from left
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <RefreshCw className="h-3 w-3 text-amber-500" /> Value changed
-                  </span>
-                </div>
+function buildDiff(src: Record<string, string>, tgt: Record<string, string>): DiffRow[] {
+  const keys = Array.from(new Set([...Object.keys(src), ...Object.keys(tgt)])).sort();
+  return keys.map((key) => {
+    const s = key in src ? src[key] : null;
+    const t = key in tgt ? tgt[key] : null;
+    let status: Status;
+    if (s === null && t !== null) status = "added";
+    else if (s !== null && t === null) status = "removed";
+    else if (s !== t) status = "modified";
+    else status = "unchanged";
+    return { key, source: s, target: t, status };
+  });
+}
 
-                {filteredRows.length === 0 ? (
-                  <EmptyState
-                    icon={SearchX}
-                    title="No matching keys"
-                    description={searchQuery ? `No keys match "${searchQuery}"` : "No keys match the selected filter."}
-                  />
-                ) : (
-                  <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#080809] shadow-inner">
-                    <div className="overflow-x-auto">
-                    <table className="w-full min-w-[640px] text-sm">
-                      <thead>
-                        <tr className="border-b border-white/5 bg-white/[0.02] text-left text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">
-                          <th className="p-5">Variable Key</th>
-                          <th className="p-5 max-w-[200px] truncate text-violet-400/80">{leftNs}/{leftEnv}</th>
-                          <th className="p-5 max-w-[200px] truncate text-emerald-400/80">{rightNs}/{rightEnv}</th>
-                          <th className="p-5 text-center">Comparison</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredRows.map((r, i) => (
-                          <motion.tr
-                            key={r.key}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: Math.min(i * 0.003, 0.3) }}
-                            className={cn(
-                              "border-b border-white/[0.03] transition-colors group",
-                              r.kind === "changed" && "bg-amber-500/5",
-                              r.kind === "only_left" && "bg-rose-500/5",
-                              r.kind === "only_right" && "bg-emerald-500/5"
-                            )}
-                          >
-                            <td className="p-5 font-mono text-[11px] text-zinc-300 group-hover:text-white transition-colors">
-                              {r.key}
-                            </td>
-                            <td className="max-w-[200px] p-5">
-                              {r.kind === "only_right" ? (
-                                <span className="opacity-20 italic text-zinc-600">missing</span>
-                              ) : r.kind === "changed" && r.left !== null && r.right !== null ? (
-                                <div className="font-mono text-[11px] text-zinc-500 group-hover:text-zinc-400 break-all">
-                                  {highlightDiff(r.left, r.right).old}
-                                </div>
-                              ) : (
-                                <div className="max-w-[200px] truncate font-mono text-[11px] text-zinc-500 group-hover:text-zinc-400">
-                                  {r.left ?? <span className="opacity-20 italic">missing</span>}
-                                </div>
-                              )}
-                            </td>
-                            <td className="max-w-[200px] p-5">
-                              {r.kind === "only_left" ? (
-                                <span className="opacity-20 italic text-zinc-600">missing</span>
-                              ) : r.kind === "changed" && r.left !== null && r.right !== null ? (
-                                <div className="font-mono text-[11px] text-zinc-500 group-hover:text-zinc-400 break-all">
-                                  {highlightDiff(r.left, r.right).new}
-                                </div>
-                              ) : (
-                                <div className="max-w-[200px] truncate font-mono text-[11px] text-zinc-500 group-hover:text-zinc-400">
-                                  {r.right ?? <span className="opacity-20 italic">missing</span>}
-                                </div>
-                              )}
-                            </td>
-                            <td className="p-5 text-center">
-                              {r.kind === "same" && (
-                                <span className="text-[10px] font-bold text-zinc-600 uppercase">✓ Identical</span>
-                              )}
-                              {r.kind === "changed" && (
-                                <Badge variant="warning" className="bg-amber-500/10 text-amber-500 border-amber-500/20 px-2 py-0 text-[10px]">
-                                  <RefreshCw className="h-3 w-3 mr-1" /> Mismatch
-                                </Badge>
-                              )}
-                              {r.kind === "only_left" && (
-                                <Badge variant="destructive" className="bg-rose-500/10 text-rose-500 border-rose-500/20 px-2 py-0 text-[10px]">
-                                  <Minus className="h-3 w-3 mr-1" /> Left Only
-                                </Badge>
-                              )}
-                              {r.kind === "only_right" && (
-                                <Badge variant="success" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 px-2 py-0 text-[10px]">
-                                  <Plus className="h-3 w-3 mr-1" /> Right Only
-                                </Badge>
-                              )}
-                            </td>
-                          </motion.tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    </div>
-                  </div>
-                )}
-              </>
-            );
-          })()}
-        </div>
+function EnvSelect({ label, value, envs, onChange }: { label: string; value: string; envs: Environment[]; onChange: (v: string) => void }) {
+  return (
+    <div className="flex-1 space-y-1.5">
+      <label className="text-xs text-zinc-400">{label}</label>
+      <div className="relative">
+        <span className={cn("absolute left-3 top-3 h-2 w-2 rounded-full", envDotClass(value))} />
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-10 w-full appearance-none rounded-lg border border-white/8 bg-black/40 pl-8 pr-8 text-sm capitalize text-zinc-100 focus:outline-none focus:ring-2 focus:ring-violet-500/40"
+        >
+          <option value="" disabled>
+            Select…
+          </option>
+          {envs.map((e) => (
+            <option key={e.id} value={e.slug} className="bg-zinc-900">
+              {e.name}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
+
+function DiffStat({ icon: Icon, label, value, tint }: { icon: React.ComponentType<{ className?: string }>; label: string; value: number; tint: string }) {
+  return (
+    <Card className="flex items-center gap-3 p-4">
+      <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl", tint)}>
+        <Icon className="h-5 w-5" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-xl font-semibold text-zinc-100">{value}</p>
+        <p className="truncate text-[11px] text-zinc-500">{label}</p>
+      </div>
+    </Card>
+  );
+}
+
+function DiffPane({ title, tone, value, reveal }: { title: string; tone: "green" | "red" | "muted"; value: string | null; reveal: boolean }) {
+  const toneClass = tone === "green" ? "border-emerald-500/20" : tone === "red" ? "border-red-500/20" : "border-white/8";
+  return (
+    <div className={cn("rounded-xl border bg-black/30 p-3", toneClass)}>
+      <p className="mb-2 flex items-center gap-1.5 text-xs font-medium capitalize text-zinc-300">
+        <span className={cn("h-1.5 w-1.5 rounded-full", envDotClass(title))} /> {title}
+      </p>
+      {value === null ? (
+        <p className="font-mono text-xs italic text-zinc-600">— not present —</p>
+      ) : (
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="break-all font-mono text-xs text-zinc-300">
+          {maskValue(value, reveal)}
+        </motion.p>
       )}
     </div>
   );

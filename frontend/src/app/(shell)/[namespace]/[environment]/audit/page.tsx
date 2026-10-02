@@ -1,332 +1,203 @@
 "use client";
 
-import { useEffect, useState, useCallback, use } from "react";
-import Image from "next/image";
-import { Shield, MonitorOff, UserCheck, SearchX, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
-import { api, type AuditEntry } from "@/lib/api";
+import { use, useCallback, useEffect, useMemo, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Shield,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Pencil,
+  Trash2,
+  RotateCcw,
+  FileUp,
+  Download,
+  LogIn,
+  KeyRound,
+} from "lucide-react";
 import { useWorkspace } from "@/context/workspace-context";
-import { Timeline } from "@/components/layout/timeline";
+import { sem, ApiError, type AuditEvent } from "@/lib/sem-api";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/forms/empty-state";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { formatIso } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { formatIso, cn } from "@/lib/utils";
 
-const PAGE_SIZE_OPTIONS = [25, 50, 100];
+const PAGE_SIZE = 25;
 
-function actionVariant(
-  action: string
-): "default" | "success" | "warning" | "destructive" {
-  if (action.includes("DELETE")) return "destructive";
-  if (action.includes("CREATE")) return "success";
-  if (action.includes("EXPORT") || action.includes("LOGIN")) return "warning";
-  return "default";
+const ACTION_META: Record<string, { icon: React.ComponentType<{ className?: string }>; tint: string }> = {
+  "secret.create": { icon: Plus, tint: "text-emerald-400 bg-emerald-500/10" },
+  "secret.update": { icon: Pencil, tint: "text-blue-400 bg-blue-500/10" },
+  "secret.delete": { icon: Trash2, tint: "text-red-400 bg-red-500/10" },
+  "secret.rollback": { icon: RotateCcw, tint: "text-violet-400 bg-violet-500/10" },
+  "secret.bulk_replace": { icon: FileUp, tint: "text-amber-400 bg-amber-500/10" },
+  "secret.export": { icon: Download, tint: "text-zinc-300 bg-white/5" },
+  "secret.read": { icon: KeyRound, tint: "text-zinc-300 bg-white/5" },
+  "auth.login": { icon: LogIn, tint: "text-blue-400 bg-blue-500/10" },
+};
+
+const FILTER_ACTIONS = ["", "secret.create", "secret.update", "secret.delete", "secret.rollback", "secret.bulk_replace", "secret.export"];
+
+function labelFor(action: string): string {
+  return action.replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-export default function AuditPage({
-  params,
-}: {
-  params: Promise<{ namespace: string; environment: string }>;
-}) {
-  const { namespace, environment } = use(params);
-  const { token } = useWorkspace();
-  const [logs, setLogs] = useState<AuditEntry[]>([]);
-  const [logins, setLogins] = useState<AuditEntry[]>([]);
+export default function AuditPage({ params }: { params: Promise<{ namespace: string; environment: string }> }) {
+  const { namespace: projectSlug, environment: envSlug } = use(params);
+  const { call } = useWorkspace();
+
+  const [events, setEvents] = useState<AuditEvent[]>([]);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const [action, setAction] = useState("");
+  const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [filteredIp, setFilteredIp] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
-  // Filter state
-  const [actionFilter, setActionFilter] = useState<string>("");
-  // Pagination state
-  const [pagination, setPagination] = useState({ offset: 0, limit: 50, total: 0, has_more: false });
-  const [pageSize, setPageSize] = useState(50);
-
-  const loadInitial = useCallback(async (size = pageSize) => {
-    if (!token) return;
+  const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      const [auditRes, loginRes] = await Promise.all([
-        api.audit(token, namespace, environment, size, 0, actionFilter || undefined),
-        api.metaLogins(token)
-      ]);
-      setLogs(auditRes.logs ?? []);
-      setPagination(auditRes.pagination ?? { offset: 0, limit: size, total: 0, has_more: false });
-      setLogins(loginRes.logins ?? []);
-    } catch {
-      setLogs([]);
-      setLogins([]);
+      const page = await call((t) => sem.audit(t, { limit: PAGE_SIZE, offset, action: action || undefined }));
+      setEvents(page.events);
+      setTotal(page.pagination.total);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Failed to load audit log");
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, namespace, environment, actionFilter]);
-
-  const loadMore = useCallback(async () => {
-    if (!token || !pagination.has_more || loadingMore) return;
-    setLoadingMore(true);
-    try {
-      const nextOffset = pagination.offset + pagination.limit;
-      const auditRes = await api.audit(token, namespace, environment, pagination.limit, nextOffset, actionFilter || undefined);
-      setLogs(prev => [...prev, ...(auditRes.logs ?? [])]);
-      setPagination(auditRes.pagination ?? pagination);
-    } catch {
-      // Silently fail on load more - user can retry
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [token, namespace, environment, pagination, loadingMore, actionFilter]);
+  }, [call, offset, action]);
 
   useEffect(() => {
-    void loadInitial();
-  }, [loadInitial]);
+    void load();
+  }, [load]);
 
-  if (!token) {
-    return (
-      <EmptyState
-        icon={Shield}
-        title="API token required"
-        description="Audit entries are loaded from the server JSONL log."
-        actionHref="/settings"
-        actionLabel="Settings"
-      />
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase();
+    if (!q) return events;
+    return events.filter(
+      (e) => e.action.toLowerCase().includes(q) || (e.resource_type ?? "").toLowerCase().includes(q) || JSON.stringify(e.metadata ?? {}).toLowerCase().includes(q),
     );
-  }
+  }, [events, query]);
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-40 w-full rounded-xl" />
-        <div className="space-y-3">
-          <Skeleton className="h-20 w-full rounded-xl" />
-          <Skeleton className="h-20 w-full rounded-xl" />
-        </div>
-      </div>
-    );
-  }
-
-  const presentedLogs = filteredIp ? logs.filter(l => l.ip_address === filteredIp) : logs;
-
-  const items = presentedLogs.map((log, i) => ({
-    id: `${log.timestamp}-${i}`,
-    title: log.action,
-    subtitle: [
-      log.resource && `Resource: ${log.resource}`,
-      log.user_id && `Actor: ${log.user_id}`,
-      log.ip_address && `IP: ${log.ip_address}`,
-    ]
-      .filter(Boolean)
-      .join(" · "),
-    timestamp: log.timestamp,
-    variant: actionVariant(log.action),
-  }));
+  const page = Math.floor(offset / PAGE_SIZE) + 1;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <div className="space-y-8">
-      <div className="relative overflow-hidden rounded-2xl">
-        <div className="absolute inset-0">
-          <Image src="/admin_header_image.png" alt="" fill className="object-cover object-center opacity-25" unoptimized />
-          <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-black/20" />
+    <div className="space-y-6">
+      <div>
+        <div className="flex items-center gap-1.5 text-xs text-zinc-500 mb-2">
+          <Shield className="h-3.5 w-3.5" /> {projectSlug} / {envSlug} / Audit
         </div>
-        <div className="relative z-10 px-7 py-7 min-h-[90px]">
-          <h1 className="text-2xl font-bold text-white">Audit & Access Logs</h1>
-          <p className="mt-1 text-sm text-zinc-400">
-            {namespace}/{environment} — trace authentication history to corresponding operational actions.
-          </p>
-        </div>
+        <h1 className="text-3xl font-bold tracking-tight text-white">Audit logs</h1>
+        <p className="mt-1.5 text-sm text-zinc-400 max-w-2xl">Tamper-evident record of every access and change across your organization.</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-4 items-start">
-        {/* Left Column: Login History / Sessions */}
-        <div className="lg:col-span-1 space-y-4">
-          <Card className="border-white/10 bg-black/40 backdrop-blur-xl">
-            <CardHeader className="pb-3 border-b border-white/5 bg-white/5">
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <UserCheck className="w-4 h-4 text-violet-400" /> Global Logins
-              </CardTitle>
-              <CardDescription className="text-xs text-zinc-400">
-                Recent authentication sessions across your tokens. Click a session to trace their actions.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="max-h-[500px] overflow-y-auto custom-scrollbar p-2 space-y-2">
-                {logins.length === 0 && (
-                  <div className="p-4 text-center text-sm text-zinc-500">
-                    <MonitorOff className="w-6 h-6 mx-auto mb-2 opacity-30" />
-                    No recent logins.
-                  </div>
-                )}
-                {logins.map((login, idx) => {
-                  const isFailure = login.action === "LOGIN_FAILURE";
-                  const isActiveIp = filteredIp === login.ip_address;
-                  return (
-                    <div
-                      key={`login-${idx}`}
-                      onClick={() => setFilteredIp(isActiveIp ? null : (login.ip_address || null))}
-                      className={cn(
-                        "p-3 rounded-lg border cursor-pointer transition-all",
-                        isActiveIp
-                          ? "border-violet-500/50 bg-violet-500/10 shadow-[0_0_15px_rgba(139,92,246,0.15)]"
-                          : "border-white/5 bg-white/5 hover:border-white/10 hover:bg-white/10"
-                      )}
-                    >
-                      <div className="flex justify-between items-start mb-1">
-                        <Badge variant={isFailure ? "destructive" : "secondary"} className="text-[10px] uppercase font-bold">
-                          {isFailure ? "Failed" : "Success"}
-                        </Badge>
-                        <span className="text-[10px] text-zinc-500">
-                          {formatIso(login.timestamp).split(',')[0]}
-                        </span>
-                      </div>
-                      <div className="text-sm font-medium text-zinc-200 truncate">
-                        {login.ip_address || "Unknown IP"}
-                      </div>
-                      <div className="text-xs text-zinc-400 truncate flex items-center mt-1">
-                        Actor: {login.user_id}
-                      </div>
+      {/* Filters */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter current page…" className="pl-9 bg-white/[0.03] border-white/8" />
+        </div>
+        <select
+          value={action}
+          onChange={(e) => {
+            setOffset(0);
+            setAction(e.target.value);
+          }}
+          className="h-10 rounded-lg border border-white/8 bg-black/40 px-3 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-violet-500/40"
+        >
+          {FILTER_ACTIONS.map((a) => (
+            <option key={a || "all"} value={a} className="bg-zinc-900">
+              {a ? labelFor(a) : "All actions"}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {loading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-14 w-full rounded-lg bg-white/5" />)}
+        </div>
+      ) : error ? (
+        <Card className="border-red-500/20 bg-red-500/5 p-6 text-sm text-red-400">
+          {error}
+          <Button variant="outline" size="sm" className="ml-4" onClick={() => void load()}>Retry</Button>
+        </Card>
+      ) : filtered.length === 0 ? (
+        <EmptyState icon={Shield} title="No audit events" description={query || action ? "No events match your filters." : "Activity will appear here as you and your team work."} />
+      ) : (
+        <Card className="overflow-hidden p-0">
+          <ul className="divide-y divide-white/[0.03]">
+            {filtered.map((ev) => {
+              const meta = ACTION_META[ev.action] ?? { icon: Shield, tint: "text-zinc-300 bg-white/5" };
+              const Icon = meta.icon;
+              const key = (ev.metadata?.key as string) ?? ev.resource_type ?? "";
+              const open = expanded === ev.id;
+              return (
+                <li key={ev.id}>
+                  <button className="flex w-full items-center gap-4 px-4 py-3 text-left hover:bg-white/[0.02]" onClick={() => setExpanded(open ? null : ev.id)}>
+                    <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", meta.tint)}>
+                      <Icon className="h-4 w-4" />
                     </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Right Column: Actions Timeline */}
-        <div className="lg:col-span-3 space-y-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-black/20 p-4 rounded-xl border border-white/5">
-            <div>
-              <h3 className="font-semibold text-zinc-200">Action Trail</h3>
-              <p className="text-xs text-zinc-400">
-                {filteredIp
-                  ? `Filtering timeline strictly by IP: ${filteredIp}`
-                  : `Showing ${items.length} of ${pagination.total} actions across this repository.`}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              {filteredIp && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setFilteredIp(null)}
-                  className="bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20 hover:text-red-300"
-                >
-                  Clear IP Filter
-                </Button>
-              )}
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-zinc-500">Action</span>
-                <select
-                  value={actionFilter}
-                  onChange={(e) => {
-                    setActionFilter(e.target.value);
-                    void loadInitial();
-                  }}
-                  className="h-8 px-2 bg-zinc-900 border border-white/10 rounded-lg text-xs text-zinc-300 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
-                >
-                  <option value="">All</option>
-                  <option value="CREATE_VARIABLE">Create</option>
-                  <option value="UPDATE_VARIABLE">Update</option>
-                  <option value="DELETE_VARIABLE">Delete</option>
-                  <option value="BULK_REPLACE">Bulk Replace</option>
-                  <option value="EXPORT_VARIABLES">Export</option>
-                  <option value="LOGIN_SUCCESS">Login Success</option>
-                  <option value="LOGIN_FAILURE">Login Failure</option>
-                  <option value="SESSION_CREATED">Session Created</option>
-                  <option value="SESSION_REVOKED">Session Revoked</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-zinc-500">Show</span>
-                <select
-                  value={pageSize}
-                  onChange={(e) => {
-                    const newSize = Number(e.target.value);
-                    setPageSize(newSize);
-                    void loadInitial(newSize);
-                  }}
-                  className="h-8 px-2 bg-zinc-900 border border-white/10 rounded-lg text-xs text-zinc-300 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
-                >
-                  {PAGE_SIZE_OPTIONS.map(size => (
-                    <option key={size} value={size}>{size}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {items.length > 0 ? (
-            <>
-              <Timeline items={items} />
-              {pagination.has_more && (
-                <div className="flex justify-center pt-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => void loadMore()}
-                    disabled={loadingMore}
-                    className="border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300"
-                  >
-                    {loadingMore ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Loading...
-                      </>
-                    ) : (
-                      <>
-                        <ChevronRight className="w-4 h-4 mr-2" />
-                        Load More ({pagination.total - pagination.offset - pagination.limit} remaining)
-                      </>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm text-zinc-200">{labelFor(ev.action)}</p>
+                      {key && <p className="truncate font-mono text-[11px] text-zinc-500">{key}</p>}
+                    </div>
+                    <div className="hidden shrink-0 text-right sm:block">
+                      <p className="text-xs text-zinc-400">{formatIso(ev.occurred_at)}</p>
+                      <p className="text-[11px] text-zinc-600">{ev.actor_type}{ev.ip ? ` · ${ev.ip}` : ""}</p>
+                    </div>
+                  </button>
+                  <AnimatePresence>
+                    {open && (
+                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                        <div className="grid grid-cols-2 gap-x-8 gap-y-1.5 border-t border-white/5 bg-black/20 px-4 py-3 text-xs sm:grid-cols-3">
+                          <Field label="Event ID" value={ev.id} mono />
+                          <Field label="Actor" value={ev.actor_id ?? ev.actor_type} mono />
+                          <Field label="Resource" value={`${ev.resource_type ?? "—"}${ev.resource_id ? ` (${ev.resource_id.slice(0, 8)}…)` : ""}`} />
+                          <Field label="IP" value={ev.ip ?? "—"} />
+                          <Field label="Time" value={formatIso(ev.occurred_at)} />
+                          {ev.metadata && Object.entries(ev.metadata).map(([k, v]) => <Field key={k} label={k} value={String(v)} mono />)}
+                        </div>
+                      </motion.div>
                     )}
-                  </Button>
-                </div>
-              )}
-              <div className="flex justify-between items-center pt-2">
-                <span className="text-xs text-zinc-600">
-                  Showing {pagination.offset + items.length} of {pagination.total}
-                </span>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => {
-                      const newOffset = Math.max(0, pagination.offset - pagination.limit);
-                      setPagination(prev => ({ ...prev, offset: newOffset }));
-                      void loadInitial();
-                    }}
-                    disabled={pagination.offset === 0}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-xs text-zinc-500 px-2">
-                    Page {Math.floor(pagination.offset / pagination.limit) + 1}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => void loadMore()}
-                    disabled={!pagination.has_more}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <EmptyState
-              icon={SearchX}
-              title="No Actions Found"
-              description={filteredIp
-                ? "This IP address performed no subsequent actions in this specific environment."
-                : "No operational history found for this environment."}
-            />
-          )}
+                  </AnimatePresence>
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      )}
+
+      {/* Pagination */}
+      {!loading && !error && total > PAGE_SIZE && (
+        <div className="flex items-center justify-between text-xs text-zinc-500">
+          <span>
+            Page {page} of {pageCount} · {total} events
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="border-white/10" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}>
+              <ChevronLeft className="h-4 w-4" /> Prev
+            </Button>
+            <Button variant="outline" size="sm" className="border-white/10" disabled={offset + PAGE_SIZE >= total} onClick={() => setOffset(offset + PAGE_SIZE)}>
+              Next <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
+    </div>
+  );
+}
+
+function Field({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] uppercase tracking-wide text-zinc-600">{label}</p>
+      <p className={cn("truncate text-zinc-300", mono && "font-mono")}>{value}</p>
     </div>
   );
 }
