@@ -45,7 +45,7 @@ export interface RestoreVersionRequest {
   version: number;
 }
 
-export type ExportFormat = 'env' | 'json' | 'docker';
+export type ExportFormat = 'env' | 'json' | 'yaml' | 'docker';
 
 export interface ExportRequest {
   format: ExportFormat;

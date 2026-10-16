@@ -22,7 +22,7 @@
  */
 
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
-import { join, basename } from 'node:path';
+import { join, basename, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { Client } from 'pg';
 import * as argon2 from 'argon2';
@@ -34,6 +34,9 @@ import {
   encryptValue,
 } from '@sem/crypto';
 import { fernetDecrypt } from './fernet.js';
+
+const workspaceEnv = resolve(process.cwd(), '../../.env');
+if (existsSync(workspaceEnv)) process.loadEnvFile(workspaceEnv);
 
 // ─────────────────────────────────────────────────────────── helpers ──
 
@@ -253,7 +256,7 @@ async function buildPlan(opts: ReturnType<typeof parseArgs>, fernetKey: string):
   return { orgName: opts.orgName, orgSlug: opts.orgSlug, users, envGroups, totalSecrets, totalHistoryEntries, skippedEnvs };
 }
 
-function printPlan(plan: MigrationPlan): void {
+function printPlan(plan: MigrationPlan, fernetKey: string): void {
   console.log('\n═══════════════════════════════════════════════════════');
   console.log('  SEM V1 → V2 Migration Plan (DRY RUN)');
   console.log('═══════════════════════════════════════════════════════\n');
@@ -263,7 +266,7 @@ function printPlan(plan: MigrationPlan): void {
   console.log(`Projects:     ${plan.envGroups.size}`);
   console.log(`Environments: ${Array.from(plan.envGroups.values()).flat().length}`);
   console.log(`Secrets:      ${plan.totalSecrets}`);
-  console.log(`History:      ${plan.totalHistoryEntries} snapshots (as audit events)`);
+  console.log(`History:      ${plan.totalHistoryEntries} encrypted snapshots`);
   console.log(`API keys:     ALL INVALIDATED — fixed-salt PBKDF2 is not safe to migrate\n`);
 
   if (plan.skippedEnvs.length > 0) {
@@ -278,7 +281,7 @@ function printPlan(plan: MigrationPlan): void {
     for (const e of envs) {
       let count = 0;
       try {
-        count = Object.keys(decryptV1Env(e.filePath, '')).length; // already validated above
+        count = Object.keys(decryptV1Env(e.filePath, fernetKey)).length;
       } catch { /* skip */ }
       console.log(`    ${e.environment}  (${count} secrets${e.historyPath ? ', has history' : ''})`);
     }
@@ -322,7 +325,8 @@ async function execute(plan: MigrationPlan, client: Client, masterKey: Buffer, f
          ON CONFLICT (org_id, username) DO NOTHING`,
         [newId, actualOrgId, u.username, u.email ?? null, placeholder, u.role, ['secrets:read', 'secrets:write']],
       );
-      userIdMap.set(u.user_id, newId);
+      const actualUser = await client.query<{ id: string }>('SELECT id FROM users WHERE org_id=$1 AND username=$2', [actualOrgId, u.username]);
+      userIdMap.set(u.user_id, actualUser.rows[0]!.id);
       console.log(`✓ User: ${u.username} (must reset password)`);
     }
 
@@ -424,29 +428,38 @@ async function execute(plan: MigrationPlan, client: Client, masterKey: Buffer, f
             secretCount++;
           }
 
-          // Migrate history as audit events
+          // Preserve V1 whole-environment history as encrypted V2 snapshots.
           let historyCount = 0;
           if (envMeta.historyPath) {
             try {
               const history = loadV1History(envMeta.historyPath, fernetKey);
               for (const h of history) {
                 const actorId = userIdMap.get(h.user_id) ?? null;
+                const snapshotVariables = JSON.parse(fernetDecrypt(fernetKey, h.variables)) as Record<string, string>;
+                const snapshotAad = Buffer.from(`sem:snapshot:${h.id}:${environmentId}:dek1`);
+                const snapshotBlob = encryptValue({ plaintext: JSON.stringify(snapshotVariables), key: dek, aad: snapshotAad });
+                await client.query(
+                  `INSERT INTO environment_snapshots (id, environment_id, encrypted_variables, nonce, tag, aad, dek_id, action, description, actor_id, created_at)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+                   ON CONFLICT (id) DO NOTHING`,
+                  [
+                    h.id,
+                    environmentId,
+                    snapshotBlob.ciphertext,
+                    snapshotBlob.nonce,
+                    snapshotBlob.tag,
+                    snapshotBlob.aad,
+                    dekId,
+                    h.action,
+                    h.description,
+                    actorId,
+                    h.timestamp,
+                  ],
+                );
                 await client.query(
                   `INSERT INTO audit_events (id, occurred_at, org_id, actor_id, actor_type, action, resource_type, resource_id, metadata)
-                   VALUES ($1,$2,$3,$4,'user','secret.import','environment',$5,$6)`,
-                  [
-                    randomUUID(),
-                    h.timestamp,
-                    actualOrgId,
-                    actorId,
-                    environmentId,
-                    JSON.stringify({
-                      v1_snapshot_id: h.id,
-                      action: h.action,
-                      description: h.description,
-                      migrated_from: 'v1',
-                    }),
-                  ],
+                   VALUES ($1,$2,$3,$4,'user','snapshot.import','environment',$5,$6)`,
+                  [randomUUID(), h.timestamp, actualOrgId, actorId, environmentId, JSON.stringify({ v1_snapshot_id: h.id, migrated_from: 'v1' })],
                 );
                 historyCount++;
               }
@@ -479,7 +492,7 @@ async function execute(plan: MigrationPlan, client: Client, masterKey: Buffer, f
 
 async function main() {
   const opts = parseArgs();
-  const fernetKey = env('SEM_V1_ENCRYPTION_KEY');
+  const fernetKey = process.env['SEM_V1_ENCRYPTION_KEY'] ?? env('ENCRYPTION_KEY');
   const masterKeyB64 = env('SEM_MASTER_KEY');
   const dbUrl = env('DATABASE_URL');
   const masterKey = base64ToBuffer(masterKeyB64);
@@ -493,7 +506,7 @@ async function main() {
   if (opts.dryRun) {
     // Dry-run uses the already-decrypted plan data to print counts correctly
     const fernetKeyForPlan = fernetKey;
-    printPlan(plan);
+    printPlan(plan, fernetKey);
     // Verify each environment is actually decryptable
     let allOk = true;
     for (const [ns, envList] of plan.envGroups) {

@@ -18,6 +18,7 @@ export interface JwtPayload {
 export type UserRole = 'admin' | 'developer' | 'viewer';
 
 export interface LoginRequest {
+  organization?: string;
   username?: string;
   password?: string;
   api_key?: string;

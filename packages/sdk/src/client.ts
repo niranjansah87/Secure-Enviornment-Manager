@@ -94,8 +94,8 @@ export class SemClient {
     body: BulkReplaceRequest,
   ): Promise<void> {
     await this.request<ApiResponse<void>>(
-      'PUT',
-      `/api/v1/projects/${projectId}/environments/${environmentId}/secrets`,
+      'POST',
+      `/api/v1/projects/${projectId}/environments/${environmentId}/secrets/bulk`,
       body,
     );
   }
@@ -105,13 +105,11 @@ export class SemClient {
     environmentId: string,
     format: ExportFormat = 'env',
   ): Promise<string> {
-    const token = await this.getAccessToken();
-    const url = `${this.baseUrl}/api/v1/projects/${projectId}/environments/${environmentId}/secrets/export?format=${format}`;
-    const res = await this.fetchFn(url, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) await this.throwApiError(res);
-    return res.text();
+    const res = await this.request<ApiResponse<{ format: ExportFormat; content: string }>>(
+      'GET',
+      `/api/v1/projects/${projectId}/environments/${environmentId}/secrets/export?format=${format}`,
+    );
+    return res.data.content;
   }
 
   async compareEnvironments(
@@ -181,7 +179,7 @@ export class SemClient {
       body: JSON.stringify({ api_key: this.apiKey }),
     });
     if (!res.ok) await this.throwApiError(res);
-    return this.storeTokenResponse(await res.json());
+    return this.storeTokenResponse(await res.json() as { data: { access_token: string; refresh_token: string; expires_in: number } });
   }
 
   private async loginWithPassword(): Promise<string> {
@@ -191,7 +189,7 @@ export class SemClient {
       body: JSON.stringify(this.credentials),
     });
     if (!res.ok) await this.throwApiError(res);
-    return this.storeTokenResponse(await res.json());
+    return this.storeTokenResponse(await res.json() as { data: { access_token: string; refresh_token: string; expires_in: number } });
   }
 
   private async rotateRefreshToken(): Promise<string> {
@@ -201,7 +199,7 @@ export class SemClient {
       body: JSON.stringify({ refresh_token: this.tokenState!.refreshToken }),
     });
     if (!res.ok) throw new Error('Token refresh failed');
-    return this.storeTokenResponse(await res.json());
+    return this.storeTokenResponse(await res.json() as { data: { access_token: string; refresh_token: string; expires_in: number } });
   }
 
   private storeTokenResponse(body: {
