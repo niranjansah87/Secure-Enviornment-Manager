@@ -1,9 +1,17 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import React, { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronDown, Bell, Home, Search, Command, Check } from "lucide-react";
+import {
+  ChevronDown,
+  Bell,
+  Search,
+  Command,
+  Check,
+  Sun,
+  Moon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,14 +21,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import { useWorkspace } from "@/context/workspace-context";
 import { CommandPalette } from "@/components/layout/command-palette";
 import { envDotClass } from "@/lib/env-style";
@@ -36,13 +36,13 @@ type Pair = { projectSlug: string; envSlug: string; label: string };
 
 export function AppHeader() {
   const router = useRouter();
-  const pathname = usePathname();
-  const { token, projects, workspace, selectWorkspace, environmentsFor } = useWorkspace();
+  const { token, projects, workspace, selectWorkspace, environmentsFor, displayName } = useWorkspace();
   const [cmdOpen, setCmdOpen] = useState(false);
   const [pairs, setPairs] = useState<Pair[]>([]);
   const [loadingPairs, setLoadingPairs] = useState(false);
+  const [isDark, setIsDark] = useState(true);
 
-  // Lazily build the full list of project/environment pairs for the switcher.
+  // Lazily build the full list of project/environment pairs for the switcher
   const loadPairs = useCallback(async () => {
     if (projects.length === 0) return;
     setLoadingPairs(true);
@@ -50,8 +50,12 @@ export function AppHeader() {
       const nested = await Promise.all(
         projects.map(async (p) => {
           const envs = await environmentsFor(p.id).catch(() => []);
-          return envs.map((e) => ({ projectSlug: p.slug, envSlug: e.slug, label: `${p.slug} / ${e.slug}` }));
-        }),
+          return envs.map((e) => ({
+            projectSlug: p.slug,
+            envSlug: e.slug,
+            label: `${p.slug} / ${e.slug}`,
+          }));
+        })
       );
       setPairs(nested.flat());
     } finally {
@@ -62,15 +66,6 @@ export function AppHeader() {
   useEffect(() => {
     if (token && projects.length > 0) void loadPairs();
   }, [token, projects, loadPairs]);
-
-  const breadcrumbs = useMemo(() => {
-    const segs = pathname.split("/").filter(Boolean);
-    return segs.map((segment, index) => ({
-      href: "/" + segs.slice(0, index + 1).join("/"),
-      label: segment.charAt(0).toUpperCase() + segment.slice(1),
-      isLast: index === segs.length - 1,
-    }));
-  }, [pathname]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -99,81 +94,56 @@ export function AppHeader() {
         onSelectWorkspace={goTo}
       />
 
-      <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-white/5 bg-black/80 px-4 backdrop-blur-xl">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          <Link
-            href="/dashboard"
-            className="flex items-center justify-center h-8 w-8 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-white/5 transition-colors shrink-0"
-            aria-label="Go to dashboard"
-            title="Dashboard"
+      <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-4 border-b border-white/[0.08] bg-[#07090e]/85 px-6 backdrop-blur-xl">
+        {/* Search Input Bar (Matching Reference Design) */}
+        <div className="flex-1 max-w-md">
+          <button
+            onClick={() => setCmdOpen(true)}
+            aria-label="Search secrets, projects, environments (Ctrl+K)"
+            className="flex items-center gap-2.5 h-10 w-full rounded-xl border border-white/[0.08] bg-[#0d121f]/70 px-3.5 text-xs text-zinc-400 hover:bg-[#12192b] hover:border-blue-500/30 hover:text-zinc-200 transition-all group shadow-inner"
           >
-            <Home className="h-4 w-4" aria-hidden="true" />
-          </Link>
-
-          <Breadcrumb className="hidden md:flex">
-            <BreadcrumbList className="text-xs">
-              {breadcrumbs.map((bc) => (
-                <React.Fragment key={bc.href}>
-                  <BreadcrumbItem>
-                    {bc.isLast ? (
-                      <BreadcrumbPage className="text-zinc-200 font-medium">{bc.label}</BreadcrumbPage>
-                    ) : (
-                      <BreadcrumbLink href={bc.href} className="text-zinc-500 hover:text-white transition-colors">
-                        {bc.label}
-                      </BreadcrumbLink>
-                    )}
-                  </BreadcrumbItem>
-                  {!bc.isLast && <BreadcrumbSeparator className="text-zinc-700 text-[10px]" />}
-                </React.Fragment>
-              ))}
-            </BreadcrumbList>
-          </Breadcrumb>
+            <Search className="h-4 w-4 text-zinc-400 group-hover:text-blue-400 transition-colors shrink-0" />
+            <span className="flex-1 text-left truncate">Search secrets, projects, environments...</span>
+            <span className="flex items-center gap-1 rounded-md border border-white/[0.1] bg-white/[0.05] px-1.5 py-0.5 font-mono text-[10px] text-zinc-400 group-hover:border-blue-400/30 group-hover:text-zinc-300 transition-colors">
+              <Command className="h-2.5 w-2.5" /> K
+            </span>
+          </button>
         </div>
 
-        <button
-          onClick={() => setCmdOpen(true)}
-          aria-label="Search secrets and projects (Ctrl+K)"
-          className="hidden md:flex items-center gap-2 h-9 w-72 rounded-lg border border-white/8 bg-white/[0.03] px-3 text-xs text-zinc-500 hover:bg-white/[0.06] hover:border-white/12 hover:text-zinc-400 transition-all group"
-        >
-          <Search className="h-3.5 w-3.5 shrink-0" />
-          <span className="flex-1 text-left">Search secrets, projects…</span>
-          <span className="flex items-center gap-0.5 rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-zinc-600 group-hover:border-white/15 group-hover:text-zinc-500 transition-colors">
-            <Command className="h-2.5 w-2.5" />K
-          </span>
-        </button>
-
-        <div className="flex items-center gap-1.5 shrink-0">
-          {/* Workspace selector */}
+        {/* Right Actions */}
+        <div className="flex items-center gap-2.5 shrink-0">
+          {/* Workspace Pill Switcher */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 min-w-[152px] justify-between border-white/8 bg-white/[0.03] text-zinc-300 hover:bg-white/[0.07] hover:text-white transition-all rounded-lg text-xs font-mono gap-2"
+              <button
+                className="flex items-center gap-2 h-9 px-3 rounded-xl border border-white/[0.08] bg-[#0d121f]/80 text-zinc-200 hover:bg-[#131b2e] hover:border-blue-500/30 transition-all text-xs font-medium shadow-sm"
                 disabled={!token}
               >
+                {/* Decorative Diamond Icon */}
+                <div className="flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-tr from-amber-500 to-orange-400 shadow-sm shrink-0">
+                  <div className="h-2 w-2 rotate-45 bg-white/90 rounded-xs" />
+                </div>
                 {workspace ? (
-                  <span className="flex items-center gap-1.5 truncate">
-                    <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", envDotClass(workspace.envSlug))} />
-                    {workspace.projectSlug} / {workspace.envSlug}
+                  <span className="truncate max-w-[150px]">
+                    {workspace.projectSlug} <span className="text-zinc-500">/</span> {workspace.envSlug}
                   </span>
                 ) : (
-                  <span className="text-zinc-600">Select workspace</span>
+                  <span className="text-zinc-400">Select workspace</span>
                 )}
-                <ChevronDown className="h-3 w-3 opacity-50 shrink-0" />
-              </Button>
+                <ChevronDown className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+              </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-60 bg-zinc-900/95 border-white/10 shadow-2xl backdrop-blur-xl">
-              <DropdownMenuLabel className="text-zinc-500 text-[10px] uppercase tracking-wider px-2 py-1.5">
-                Workspaces
+            <DropdownMenuContent align="end" className="w-64 bg-[#0c101a]/95 border-white/[0.1] shadow-2xl backdrop-blur-xl rounded-xl p-1.5">
+              <DropdownMenuLabel className="text-zinc-400 text-[10px] uppercase tracking-wider px-2 py-1">
+                Select Workspace & Environment
               </DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-white/5" />
+              <DropdownMenuSeparator className="bg-white/[0.08]" />
               <div className="max-h-72 overflow-y-auto py-1">
                 {loadingPairs && pairs.length === 0 && (
-                  <div className="px-3 py-2 text-xs text-zinc-600">Loading…</div>
+                  <div className="px-3 py-2 text-xs text-zinc-500">Loading workspaces…</div>
                 )}
                 {!loadingPairs && pairs.length === 0 && (
-                  <div className="px-3 py-2 text-xs text-zinc-600 italic">No environments yet.</div>
+                  <div className="px-3 py-2 text-xs text-zinc-500 italic">No environments found.</div>
                 )}
                 {pairs.map((p) => {
                   const active = workspace?.projectSlug === p.projectSlug && workspace?.envSlug === p.envSlug;
@@ -181,14 +151,14 @@ export function AppHeader() {
                     <DropdownMenuItem
                       key={p.label}
                       className={cn(
-                        "px-3 py-2 text-xs font-mono cursor-pointer",
-                        active ? "text-white bg-white/8" : "text-zinc-400 hover:text-white focus:bg-white/5",
+                        "flex items-center gap-2.5 px-3 py-2 text-xs font-mono cursor-pointer rounded-lg",
+                        active ? "text-white bg-blue-600/20 border border-blue-500/30" : "text-zinc-400 hover:text-white hover:bg-white/[0.05]"
                       )}
                       onSelect={() => goTo(p)}
                     >
-                      <span className={cn("h-1.5 w-1.5 rounded-full shrink-0 mr-2", envDotClass(p.envSlug))} />
+                      <span className={cn("h-2 w-2 rounded-full shrink-0 shadow-sm", envDotClass(p.envSlug))} />
                       <span className="flex-1 truncate">{p.label}</span>
-                      {active && <Check className="h-3 w-3 text-violet-400" />}
+                      {active && <Check className="h-3.5 w-3.5 text-blue-400" />}
                     </DropdownMenuItem>
                   );
                 })}
@@ -196,17 +166,22 @@ export function AppHeader() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <div className="h-5 w-px bg-white/8 mx-0.5" />
+          <div className="h-5 w-px bg-white/[0.08] mx-0.5" />
 
-          <Button variant="ghost" size="icon" asChild className="h-8 w-8 text-zinc-500 hover:text-zinc-200 hover:bg-white/5 rounded-lg">
+          {/* GitHub Repo */}
+          <Button
+            variant="ghost"
+            size="icon"
+            asChild
+            className="h-9 w-9 text-zinc-400 hover:text-white hover:bg-white/[0.06] rounded-xl"
+          >
             <Link
               href="https://github.com/niranjansah87/Secure-Enviornment-Manager"
               target="_blank"
               rel="noreferrer"
-              aria-label="GitHub repository (opens in new tab)"
-              title="GitHub"
+              aria-label="GitHub repository"
             >
-              <GithubIcon className="h-4 w-4" aria-hidden="true" />
+              <GithubIcon className="h-4 w-4" />
             </Link>
           </Button>
 
@@ -217,17 +192,38 @@ export function AppHeader() {
                 variant="ghost"
                 size="icon"
                 aria-label="Notifications"
-                className="h-8 w-8 text-zinc-500 hover:text-zinc-200 hover:bg-white/5 rounded-lg relative"
+                className="relative h-9 w-9 text-zinc-400 hover:text-white hover:bg-white/[0.06] rounded-xl"
               >
-                <Bell className="h-4 w-4" aria-hidden="true" />
+                <Bell className="h-4 w-4" />
+                <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-[#07090e]" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-72 bg-zinc-900/95 border-white/10 shadow-2xl backdrop-blur-xl">
-              <DropdownMenuLabel className="text-zinc-300 text-xs">Notifications</DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-white/5" />
-              <div className="px-3 py-6 text-center text-xs text-zinc-600">You&rsquo;re all caught up.</div>
+            <DropdownMenuContent align="end" className="w-80 bg-[#0c101a]/95 border-white/[0.1] shadow-2xl backdrop-blur-xl rounded-xl p-3">
+              <div className="flex items-center justify-between pb-2 border-b border-white/[0.08]">
+                <span className="text-xs font-semibold text-zinc-200">Notifications</span>
+                <span className="text-[10px] text-blue-400 cursor-pointer hover:underline">Mark all read</span>
+              </div>
+              <div className="py-6 text-center text-xs text-zinc-500">
+                All systems operating normally. Tamper seals verified.
+              </div>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Light/Dark Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsDark((d) => !d)}
+            aria-label="Toggle theme"
+            className="h-9 w-9 text-zinc-400 hover:text-white hover:bg-white/[0.06] rounded-xl"
+          >
+            {isDark ? <Sun className="h-4 w-4 text-zinc-400" /> : <Moon className="h-4 w-4 text-blue-400" />}
+          </Button>
+
+          {/* User Avatar Circle */}
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 border border-blue-400/40 text-xs font-bold text-white shadow-md">
+            {displayName.slice(0, 2).toUpperCase()}
+          </div>
         </div>
       </header>
     </>

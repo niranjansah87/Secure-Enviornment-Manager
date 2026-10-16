@@ -221,9 +221,9 @@ export function CommandPalette({
             transition={{ duration: 0.15, ease: "easeOut" }}
             className="fixed left-1/2 top-[20vh] z-50 w-full max-w-xl -translate-x-1/2"
           >
-            <div className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/95 shadow-2xl backdrop-blur-2xl">
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0c101a]/95 shadow-2xl backdrop-blur-2xl">
               {/* Input */}
-              <div className="flex items-center gap-3 border-b border-white/8 px-4 py-3">
+              <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
                 <Search className="h-4 w-4 text-zinc-500 shrink-0" />
                 <input
                   ref={inputRef}
@@ -233,7 +233,7 @@ export function CommandPalette({
                   placeholder="Search secrets, projects, commands..."
                   className="flex-1 bg-transparent text-sm text-zinc-100 placeholder:text-zinc-600 outline-none"
                 />
-                <kbd className="hidden sm:flex items-center gap-0.5 rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-zinc-600">
+                <kbd className="hidden sm:flex items-center gap-0.5 rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-zinc-500">
                   ESC
                 </kbd>
               </div>
@@ -244,13 +244,13 @@ export function CommandPalette({
                 onKeyDown={handleKeyDown}
               >
                 {filtered.length === 0 ? (
-                  <div className="px-4 py-8 text-center text-sm text-zinc-600">
+                  <div className="px-4 py-8 text-center text-sm text-zinc-500">
                     No results for &ldquo;{query}&rdquo;
                   </div>
                 ) : (
                   Object.entries(grouped).map(([category, items]) => (
                     <div key={category}>
-                      <div className="px-4 py-1.5 text-[10px] font-medium uppercase tracking-wider text-zinc-600">
+                      <div className="px-4 py-1.5 text-[10px] font-mono uppercase tracking-wider text-zinc-500">
                         {category}
                       </div>
                       {items.map((item) => {
@@ -263,7 +263,7 @@ export function CommandPalette({
                             className={cn(
                               "flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors",
                               isSelected
-                                ? "bg-white/8 text-white"
+                                ? "bg-blue-500/10 text-white"
                                 : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
                             )}
                             onClick={() => {
@@ -274,10 +274,10 @@ export function CommandPalette({
                           >
                             <div
                               className={cn(
-                                "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border",
+                                "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border transition-colors",
                                 isSelected
-                                  ? "border-white/15 bg-white/10"
-                                  : "border-white/8 bg-white/5"
+                                  ? "border-blue-500/30 bg-blue-500/20 text-blue-400"
+                                  : "border-white/8 bg-white/5 text-zinc-400"
                               )}
                             >
                               <Icon className="h-3.5 w-3.5" />

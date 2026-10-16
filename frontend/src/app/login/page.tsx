@@ -4,11 +4,23 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
-  Lock, ArrowRight, ShieldCheck, Zap, Server,
-  Eye, EyeOff, RefreshCw, User, KeyRound,
-  BookOpen, Terminal, Package,
+  Lock,
+  ArrowRight,
+  Shield,
+  ShieldCheck,
+  Eye,
+  EyeOff,
+  User,
+  KeyRound,
+  Boxes,
+  Layers,
+  LayoutGrid,
+  Info,
+  BookOpen,
+  Terminal,
+  Code2,
 } from "lucide-react";
 import { useWorkspace } from "@/context/workspace-context";
 import { ApiError, type LoginParams } from "@/lib/sem-api";
@@ -18,36 +30,43 @@ import { Input } from "@/components/ui/input";
 type LoginMode = "admin" | "apikey" | "user";
 
 const MODES: { id: LoginMode; label: string; icon: React.ReactNode }[] = [
-  { id: "admin",  label: "Admin Access", icon: <ShieldCheck className="w-3.5 h-3.5" /> },
-  { id: "apikey", label: "API Key",       icon: <KeyRound className="w-3.5 h-3.5" /> },
-  { id: "user",   label: "User Login",    icon: <User className="w-3.5 h-3.5" /> },
+  { id: "admin", label: "Admin Access", icon: <ShieldCheck className="w-4 h-4" /> },
+  { id: "apikey", label: "API Key", icon: <KeyRound className="w-4 h-4" /> },
+  { id: "user", label: "User Login", icon: <User className="w-4 h-4" /> },
 ];
 
-const FEATURES = [
+const VALUE_PROPS = [
   {
-    icon: <ShieldCheck className="w-5 h-5 text-violet-400" />,
+    icon: <Boxes className="w-5 h-5 text-zinc-200" />,
     title: "Full data ownership",
-    desc: "Your secrets never leave your infrastructure. Self-hosted, encrypted at rest.",
+    desc: "Self-hosted & open source",
   },
   {
-    icon: <Zap className="w-5 h-5 text-violet-400" />,
+    icon: <Shield className="w-5 h-5 text-zinc-200" />,
     title: "Enterprise ready",
-    desc: "RBAC, audit logs, API keys, team management, and SMTP notifications.",
+    desc: "RBAC, audit logs, API keys",
   },
   {
-    icon: <Server className="w-5 h-5 text-violet-400" />,
+    icon: <Layers className="w-5 h-5 text-zinc-200" />,
     title: "Developer friendly",
-    desc: "REST API, CLI tool, SDK support, and .env export in seconds.",
+    desc: "Web UI, CLI, SDK and remote dotenv",
   },
 ];
+
+const GithubIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
+  </svg>
+);
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, refreshAccessToken, token } = useWorkspace();
+  const { login, refreshAccessToken } = useWorkspace();
 
   const [mode, setMode] = useState<LoginMode>("admin");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
+  const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -74,9 +93,11 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch (err) {
       const fallback =
-        mode === "user" ? "Invalid username or password." :
-        mode === "apikey" ? "Invalid API key." :
-        "Invalid password or master token.";
+        mode === "user"
+          ? "Invalid username or password."
+          : mode === "apikey"
+          ? "Invalid API key."
+          : "Invalid password or master token.";
       setError(err instanceof ApiError ? err.message || fallback : fallback);
     } finally {
       setLoading(false);
@@ -91,289 +112,314 @@ export default function LoginPage() {
       if (success) {
         router.push("/dashboard");
       } else {
-        setError("Session expired. Please login again.");
+        setError("No existing session found or session expired. Please sign in.");
       }
     } catch {
-      setError("Failed to restore session.");
+      setError("Failed to restore session. Please enter your credentials.");
     } finally {
       setIsRefreshing(false);
     }
   };
 
-  const hasExistingSession = typeof window !== "undefined" && (
-    localStorage.getItem("sem_refresh_token") ||
-    localStorage.getItem("sem_access_token")
-  );
-
   return (
-    <div className="flex min-h-screen bg-[#060608]">
-      {/* Left panel */}
-      <div className="relative hidden lg:flex lg:w-1/2 flex-col">
-        {/* Background */}
-        <div className="absolute inset-0">
-          <Image
-            src="/admin_header_image.png"
-            alt=""
-            fill
-            className="object-cover object-center"
-            priority
-            unoptimized
-          />
-          <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-black/60 to-violet-950/40" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
-        </div>
-
-        {/* Content */}
-        <div className="relative z-10 flex flex-col h-full px-12 py-10">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <Image
-              src="/logo.png"
-              width={40}
-              height={40}
-              alt="SEM"
-              className="rounded-xl ring-1 ring-white/20 group-hover:ring-violet-400/50 transition-all"
-              unoptimized
-            />
-            <div>
-              <span className="text-white font-bold text-lg leading-none block">SEM</span>
-              <span className="text-zinc-400 text-xs leading-none">Secure Environment Manager</span>
-            </div>
-          </Link>
-
-          {/* Hero text */}
-          <div className="mt-auto mb-16">
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1, duration: 0.6 }}
-              className="text-4xl font-bold text-white leading-tight mb-3"
-            >
-              Your environment variables,
-              <br />
-              <span className="text-violet-400">secured.</span>
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.6 }}
-              className="text-zinc-400 text-base mb-10"
-            >
-              One place to store, manage, and share secrets across all your environments.
-            </motion.p>
-
-            <motion.ul
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3, duration: 0.6 }}
-              className="space-y-5"
-            >
-              {FEATURES.map((f, i) => (
-                <motion.li
-                  key={f.title}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 + i * 0.1 }}
-                  className="flex items-start gap-3"
-                >
-                  <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-violet-500/20 bg-violet-500/10">
-                    {f.icon}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-white">{f.title}</p>
-                    <p className="text-xs text-zinc-500 mt-0.5">{f.desc}</p>
-                  </div>
-                </motion.li>
-              ))}
-            </motion.ul>
-          </div>
-
-          {/* Footer links */}
-          <div className="flex items-center gap-5 text-xs text-zinc-600">
-            {[
-              { icon: <Terminal className="w-3.5 h-3.5" />, label: "GitHub" },
-              { icon: <BookOpen className="w-3.5 h-3.5" />, label: "Docs" },
-              { icon: <Terminal className="w-3.5 h-3.5" />, label: "CLI" },
-              { icon: <Package className="w-3.5 h-3.5" />, label: "SDK" },
-            ].map((item) => (
-              <button
-                key={item.label}
-                className="flex items-center gap-1.5 hover:text-zinc-400 transition-colors"
-              >
-                {item.icon}
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </div>
+    <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-[#07090e]">
+      {/* Full Background Mountain Vista + Server Environment Asset */}
+      <div className="absolute inset-0 z-0">
+        <Image
+          src="/login_background.png"
+          alt="Secure Environment Infrastructure"
+          fill
+          priority
+          className="object-cover object-center filter brightness-[0.7] contrast-[1.05]"
+        />
+        {/* Cinematic Darkness & Ambient Glow */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[#07090e]/95 via-[#07090e]/60 to-[#07090e]/90" />
+        <div className="absolute inset-0 bg-radial from-transparent via-[#07090e]/40 to-[#07090e]" />
       </div>
 
-      {/* Right panel */}
-      <div className="flex w-full lg:w-1/2 items-center justify-center px-6 py-12">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-md"
-        >
-          {/* Mobile logo */}
-          <div className="flex items-center gap-3 mb-8 lg:hidden">
-            <Image src="/logo.png" width={36} height={36} alt="SEM" className="rounded-xl ring-1 ring-white/10" unoptimized />
-            <span className="text-white font-bold">Secure Environment Manager</span>
-          </div>
+      {/* Main Container */}
+      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 py-10 min-h-screen flex flex-col justify-between">
+        {/* Header / Brand */}
+        <div className="flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="relative h-10 w-10 shrink-0 rounded-xl p-0.5 bg-gradient-to-br from-blue-500/30 to-purple-500/20 border border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.3)]">
+              <Image src="/logo.png" alt="SEM" fill className="object-contain" priority />
+            </div>
+            <div>
+              <span className="text-base font-bold text-white tracking-tight group-hover:text-blue-400 transition-colors">
+                SEM
+              </span>
+              <p className="text-[10px] uppercase tracking-wider font-semibold text-zinc-400 leading-none">
+                Secure Environment Manager
+              </p>
+            </div>
+          </Link>
+        </div>
 
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-white">
-              {hasExistingSession && !token ? "Session Expired" : "Sign in to SEM"}
-            </h2>
-            <p className="text-sm text-zinc-500 mt-1">
-              {hasExistingSession && !token
-                ? "Restore your previous session or sign in again."
-                : "Access your environments and secrets securely."}
-            </p>
-          </div>
+        {/* Center Grid: Left Value Props, Right Auth Card */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center py-8">
+          {/* Left Column (Reference Design) */}
+          <div className="lg:col-span-6 xl:col-span-7 space-y-8">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/[0.08] bg-white/[0.03] backdrop-blur-md">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-400 shadow-[0_0_8px_#60a5fa]" />
+              <span className="text-[11px] font-mono tracking-widest uppercase text-zinc-400">
+                CONTROL • SECURE • DEPLOY
+              </span>
+            </div>
 
-          <div className="rounded-2xl border border-white/8 bg-[#0d0f18] p-7 shadow-2xl">
-            {hasExistingSession && !token ? (
-              <div className="space-y-5">
-                <div className="rounded-xl border border-violet-500/20 bg-violet-500/8 p-4 text-center">
-                  <RefreshCw className="h-8 w-8 mx-auto mb-2 text-violet-400" />
-                  <p className="text-sm text-zinc-300">Previous session found. Restore it?</p>
-                </div>
-                {error && (
-                  <div className="rounded-xl border border-red-500/20 bg-red-500/8 p-3 text-sm text-red-400">
-                    {error}
+            <div className="space-y-4 max-w-xl">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.08]">
+                Your environment <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-white">
+                  variables, secured.
+                </span>
+              </h1>
+              <p className="text-base text-zinc-300 leading-relaxed max-w-lg">
+                A self-hosted platform to securely manage, version, and sync your environment variables
+                across projects and teams with zero cloud lock-in.
+              </p>
+            </div>
+
+            {/* 3 Value Cards */}
+            <div className="space-y-3.5 max-w-md pt-2">
+              {VALUE_PROPS.map((v, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-4 p-3.5 rounded-2xl border border-white/[0.07] bg-[#0c101a]/60 backdrop-blur-md shadow-sm"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/[0.06] border border-white/[0.08] shrink-0 shadow-inner">
+                    {v.icon}
                   </div>
-                )}
-                <div className="flex gap-3">
-                  <Button
-                    onClick={handleRefreshToken}
-                    disabled={isRefreshing}
-                    className="flex-1 h-11 rounded-xl bg-violet-600 font-medium text-white hover:bg-violet-500 transition-all"
-                  >
-                    {isRefreshing ? "Restoring..." : "Restore Session"}
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      localStorage.removeItem("sem_access_token");
-                      localStorage.removeItem("sem_refresh_token");
-                      localStorage.removeItem("sem_device_id");
-                      localStorage.removeItem("sem_api_token");
-                      window.location.reload();
-                    }}
-                    className="h-11 px-4 rounded-xl border border-white/10 bg-white/5 font-medium text-zinc-300 hover:bg-white/10 transition-all"
-                  >
-                    Sign In Again
-                  </Button>
+                  <div>
+                    <h3 className="text-sm font-semibold text-zinc-100">{v.title}</h3>
+                    <p className="text-xs text-zinc-400 mt-0.5">{v.desc}</p>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-5">
-                {/* Mode tabs */}
-                <div className="flex rounded-xl border border-white/8 bg-black/30 p-1 gap-1">
-                  {MODES.map((m) => (
+              ))}
+            </div>
+          </div>
+
+          {/* Right Column: Handcrafted Glass Auth Card */}
+          <div className="lg:col-span-6 xl:col-span-5 flex justify-center lg:justify-end">
+            <div className="w-full max-w-md rounded-3xl border border-white/[0.1] bg-[#0c101a]/85 backdrop-blur-2xl p-7 md:p-9 shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
+              {/* 3 Modes Switcher Tabs */}
+              <div className="grid grid-cols-3 gap-1.5 p-1 rounded-2xl border border-white/[0.08] bg-[#07090e]/70 mb-7">
+                {MODES.map((m) => {
+                  const active = mode === m.id;
+                  return (
                     <button
                       key={m.id}
                       type="button"
-                      onClick={() => { setMode(m.id); setError(null); }}
-                      className={`flex flex-1 items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-medium transition-all ${
-                        mode === m.id
-                          ? "bg-violet-600 text-white shadow-sm"
-                          : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+                      onClick={() => {
+                        setMode(m.id);
+                        setError(null);
+                      }}
+                      className={`relative flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-medium transition-all ${
+                        active
+                          ? "text-white bg-blue-600/30 border border-blue-500/40 shadow-sm"
+                          : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03]"
                       }`}
                     >
                       {m.icon}
-                      <span>{m.label}</span>
+                      <span className="truncate">{m.label}</span>
                     </button>
-                  ))}
-                </div>
+                  );
+                })}
+              </div>
 
-                {/* Username (user mode only) */}
-                <AnimatePresence>
-                  {mode === "user" && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="relative group overflow-hidden"
-                    >
-                      <User className="absolute left-3 top-3.5 h-4.5 w-4.5 text-zinc-500 group-focus-within:text-violet-400 transition-colors" />
+              {/* Form Heading */}
+              <div className="space-y-1.5 mb-6">
+                <h2 className="text-2xl font-bold tracking-tight text-white">Sign in to SEM</h2>
+                <p className="text-xs text-zinc-400 leading-normal">
+                  {mode === "admin" && "Enter your dashboard password or master token to access your workspace."}
+                  {mode === "apikey" && "Enter a valid API key with appropriate workspace scopes."}
+                  {mode === "user" && "Enter your team credentials to access your assigned namespaces."}
+                </p>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {mode === "user" && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-zinc-300">Username</label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
+                        <User className="h-4 w-4" />
+                      </div>
                       <Input
                         type="text"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
-                        placeholder="Username"
-                        className="h-11 border-white/8 bg-black/40 pl-10 text-zinc-100 placeholder:text-zinc-600 focus:border-violet-500/50 focus:ring-violet-500/20 rounded-xl"
+                        placeholder="e.g. niranjan"
+                        className="pl-10 h-11 bg-black/40 border-white/[0.1] text-zinc-100 placeholder:text-zinc-600 rounded-xl focus:border-blue-500/50"
+                        autoFocus
                         required
-                        autoComplete="username"
                       />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                    </div>
+                  </div>
+                )}
 
-                {/* Password / token */}
-                <div className="relative group">
-                  <Lock className="absolute left-3 top-3.5 h-4.5 w-4.5 text-zinc-500 group-focus-within:text-violet-400 transition-colors" />
-                  <Input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder={
-                      mode === "admin"  ? "Dashboard password or master token" :
-                      mode === "apikey" ? "Enter your API key" :
-                                          "Password"
-                    }
-                    className="h-11 border-white/8 bg-black/40 pl-10 pr-10 text-zinc-100 placeholder:text-zinc-600 focus:border-violet-500/50 focus:ring-violet-500/20 rounded-xl"
-                    required
-                    autoFocus={mode !== "user"}
-                    autoComplete={mode === "user" ? "current-password" : "off"}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((s) => !s)}
-                    className="absolute right-3 top-3.5 text-zinc-500 hover:text-zinc-300 transition-colors focus:outline-none"
-                    aria-label={showPassword ? "Hide" : "Show"}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-zinc-300">
+                    {mode === "admin" && "Dashboard Password or Master Token"}
+                    {mode === "apikey" && "API Key Token"}
+                    {mode === "user" && "Password"}
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
+                      <Lock className="h-4 w-4" />
+                    </div>
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder={
+                        mode === "admin"
+                          ? "Enter your password or master token"
+                          : mode === "apikey"
+                          ? "sem_live_..."
+                          : "••••••••"
+                      }
+                      className="pl-10 pr-10 h-11 bg-black/40 border-white/[0.1] text-zinc-100 placeholder:text-zinc-600 rounded-xl focus:border-blue-500/50"
+                      autoFocus={mode !== "user"}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((p) => !p)}
+                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-500 hover:text-zinc-300 transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
 
+                {/* Remember & Forgot Row */}
+                <div className="flex items-center justify-between text-xs pt-1">
+                  <label className="flex items-center gap-2 cursor-pointer text-zinc-400 hover:text-zinc-300 select-none">
+                    <input
+                      type="checkbox"
+                      checked={remember}
+                      onChange={(e) => setRemember(e.target.checked)}
+                      className="rounded border-white/20 bg-black/40 text-blue-600 focus:ring-0 focus:ring-offset-0"
+                    />
+                    <span>Remember this device</span>
+                  </label>
+                  <a
+                    href="https://github.com/niranjansah87/Secure-Enviornment-Manager#troubleshooting"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-blue-400 hover:text-blue-300 transition-colors"
+                  >
+                    Forgot password?
+                  </a>
+                </div>
+
+                {/* Error Banner */}
                 {error && (
                   <motion.div
                     initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="rounded-xl border border-red-500/20 bg-red-500/8 p-3 text-sm text-red-400"
+                    className="p-3 rounded-xl border border-red-500/30 bg-red-500/10 text-xs text-red-300 leading-relaxed"
                   >
                     {error}
                   </motion.div>
                 )}
 
+                {/* Submit Button */}
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="h-11 w-full rounded-xl bg-violet-600 font-semibold text-white hover:bg-violet-500 transition-all shadow-lg shadow-violet-500/20"
+                  className="w-full h-11 bg-white hover:bg-zinc-200 text-zinc-950 font-semibold rounded-xl text-sm transition-all shadow-[0_0_20px_rgba(255,255,255,0.15)] flex items-center justify-center gap-2 mt-2"
                 >
-                  {loading ? "Authenticating..." : "Unlock Workspace"}
-                  {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
+                  {loading ? (
+                    "Authenticating..."
+                  ) : (
+                    <>
+                      <span>Unlock Workspace</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
                 </Button>
-              </form>
-            )}
-          </div>
 
-          {/* Security badges */}
-          <div className="mt-5 flex justify-center gap-5">
-            {[
-              { icon: <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />, label: "AES-256" },
-              { icon: <Zap className="h-3.5 w-3.5 text-emerald-400" />, label: "Rate Limited" },
-              { icon: <Server className="h-3.5 w-3.5 text-emerald-400" />, label: "Secure Session" },
-            ].map((b) => (
-              <div key={b.label} className="flex items-center gap-1.5 text-xs text-zinc-600">
-                {b.icon}
-                {b.label}
-              </div>
-            ))}
+                {/* Divider */}
+                <div className="relative py-2">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-white/[0.08]" />
+                  </div>
+                  <div className="relative flex justify-center text-[10px] uppercase font-semibold text-zinc-500">
+                    <span className="bg-[#0c101a] px-3">OR</span>
+                  </div>
+                </div>
+
+                {/* Continue with Existing Session */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleRefreshToken}
+                  disabled={isRefreshing}
+                  className="w-full h-10 border-white/[0.1] bg-white/[0.03] hover:bg-white/[0.06] text-zinc-300 text-xs font-medium rounded-xl flex items-center justify-center gap-2"
+                >
+                  <LayoutGrid className="w-4 h-4 text-zinc-400" />
+                  <span>{isRefreshing ? "Restoring session..." : "Continue with existing session"}</span>
+                </Button>
+
+                {/* Security Note Callout */}
+                <div className="flex items-start gap-2.5 p-3 rounded-xl border border-white/[0.06] bg-black/30 text-[11px] text-zinc-400 leading-normal mt-3">
+                  <Info className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />
+                  <span>
+                    Your credentials are never stored in the browser. All authentication is performed
+                    securely with your self-hosted server.
+                  </span>
+                </div>
+              </form>
+            </div>
           </div>
-        </motion.div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-white/[0.06] text-xs text-zinc-500">
+          <div className="flex items-center gap-6">
+            <Link
+              href="https://github.com/niranjansah87/Secure-Enviornment-Manager"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 hover:text-zinc-300 transition-colors"
+            >
+              <GithubIcon className="h-4 w-4" />
+              <span>GitHub</span>
+            </Link>
+            <Link
+              href="https://github.com/niranjansah87/Secure-Enviornment-Manager#documentation"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 hover:text-zinc-300 transition-colors"
+            >
+              <BookOpen className="h-4 w-4" />
+              <span>Docs</span>
+            </Link>
+            <Link
+              href="https://github.com/niranjansah87/Secure-Enviornment-Manager#cli-usage"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 hover:text-zinc-300 transition-colors"
+            >
+              <Terminal className="h-4 w-4" />
+              <span>CLI</span>
+            </Link>
+            <Link
+              href="https://github.com/niranjansah87/Secure-Enviornment-Manager#sdks"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 hover:text-zinc-300 transition-colors"
+            >
+              <Code2 className="h-4 w-4" />
+              <span>SDK</span>
+            </Link>
+          </div>
+          <div>Made by Niranjan Sah</div>
+        </div>
       </div>
     </div>
   );

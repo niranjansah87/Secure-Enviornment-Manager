@@ -1,17 +1,50 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
 import {
-  ArrowRight, ShieldCheck, Zap, Server,
-  Lock, GitBranch, Users, Globe, Terminal,
-  Mail, CheckCircle,
+  ArrowRight,
+  ShieldCheck,
+  Lock,
+  Users,
+  Layers,
+  Boxes,
+  Copy,
+  Check,
+  Compass,
+  FolderOpen,
+  KeyRound,
+  History,
+  GitCompare,
+  BarChart3,
+  ChevronRight,
 } from "lucide-react";
+import {
+  SiDocker,
+  SiKubernetes,
+  SiAmazonwebservices,
+  SiVercel,
+  SiGithub,
+  SiGitlab,
+  SiTerraform,
+  SiPython,
+  SiNodedotjs,
+  SiGo,
+  SiPostgresql,
+  SiMongodb,
+  SiRedis,
+  SiFastapi,
+  SiDjango,
+  SiTailwindcss,
+  SiReact,
+  SiNextdotjs,
+  SiGooglecloud,
+  SiCloudflare,
+} from "react-icons/si";
 import dynamic from "next/dynamic";
 import { useWorkspace } from "@/context/workspace-context";
-import { SmoothScroll } from "@/components/landing/smooth-scroll";
 
 const Security3DAnimation = dynamic(
   () => import("@/components/animations/security-3d").then((mod) => mod.Security3DAnimation),
@@ -24,316 +57,704 @@ const GithubIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-const LinkedinIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
-    <rect x="2" y="9" width="4" height="12" /><circle cx="4" cy="4" r="2" />
-  </svg>
-);
-
-const FEATURES = [
+const PIPELINE_STAGES = [
   {
-    icon: <Lock className="w-6 h-6 text-violet-400" />,
-    title: "AES-256 Encryption",
-    desc: "Every secret encrypted at rest using Fernet AES-256. Keys never leave your server.",
-    color: "violet",
+    icon: Users,
+    title: "Developers",
+    desc: "Give the right access to the right people.",
   },
   {
-    icon: <GitBranch className="w-6 h-6 text-blue-400" />,
-    title: "Version History",
-    desc: "Encrypted snapshots of every environment. Roll back to any point in seconds.",
-    color: "blue",
+    icon: FolderOpen,
+    title: "Projects",
+    desc: "Organize your work into namespaces.",
   },
   {
-    icon: <Users className="w-6 h-6 text-emerald-400" />,
-    title: "Team Access Control",
-    desc: "RBAC, API keys, scoped users, audit logs. Full visibility into who did what and when.",
-    color: "emerald",
+    icon: Layers,
+    title: "Environments",
+    desc: "Manage dev, staging, production and more.",
   },
   {
-    icon: <Terminal className="w-6 h-6 text-orange-400" />,
-    title: "CLI & SDK Ready",
-    desc: "Access secrets from anywhere. .env export, REST API, and Python/Node SDK support.",
-    color: "orange",
+    icon: Lock,
+    title: "Encrypted secrets",
+    desc: "Stored securely on your infrastructure.",
   },
   {
-    icon: <Zap className="w-6 h-6 text-yellow-400" />,
-    title: "Instant Sync",
-    desc: "Real-time updates across all environments. Changes propagate instantly, zero downtime.",
-    color: "yellow",
-  },
-  {
-    icon: <Server className="w-6 h-6 text-pink-400" />,
-    title: "Self-Hosted",
-    desc: "Full data sovereignty. Deploy on your own infrastructure. No cloud vendor lock-in.",
-    color: "pink",
+    icon: Boxes,
+    title: "Applications",
+    desc: "Sync to your apps via API, CLI or SDK.",
   },
 ];
 
-const SECURITY_FEATURES = [
-  "AES-256 Fernet encryption at rest",
-  "PBKDF2 password hashing (SHA-256)",
-  "JWT tokens with 15-min expiry",
-  "Rate-limited API endpoints",
-  "Append-only audit trail",
-  "Optional SMTP notifications",
+const STACK_ROW_1 = [
+  { name: "Docker", icon: SiDocker, color: "text-[#2496ED]" },
+  { name: "Kubernetes", icon: SiKubernetes, color: "text-[#326CE5]" },
+  { name: "AWS", icon: SiAmazonwebservices, color: "text-[#FF9900]" },
+  { name: "Google Cloud", icon: SiGooglecloud, color: "text-[#4285F4]" },
+  { name: "Cloudflare", icon: SiCloudflare, color: "text-[#F38020]" },
+  { name: "Terraform", icon: SiTerraform, color: "text-[#844FBA]" },
+  { name: "GitHub Actions", icon: SiGithub, color: "text-[#f0f6fc]" },
+  { name: "GitLab CI", icon: SiGitlab, color: "text-[#FC6D26]" },
+  { name: "Vercel", icon: SiVercel, color: "text-white" },
+  { name: "PostgreSQL", icon: SiPostgresql, color: "text-[#4169E1]" },
 ];
 
-export default function Home() {
+const STACK_ROW_2 = [
+  { name: "Python", icon: SiPython, color: "text-[#3776AB]" },
+  { name: "FastAPI", icon: SiFastapi, color: "text-[#009688]" },
+  { name: "Django", icon: SiDjango, color: "text-[#092E20]" },
+  { name: "Node.js", icon: SiNodedotjs, color: "text-[#5FA04E]" },
+  { name: "Go", icon: SiGo, color: "text-[#00ADD8]" },
+  { name: "Redis", icon: SiRedis, color: "text-[#DC382D]" },
+  { name: "MongoDB", icon: SiMongodb, color: "text-[#47A248]" },
+  { name: "Next.js", icon: SiNextdotjs, color: "text-white" },
+  { name: "React", icon: SiReact, color: "text-[#61DAFB]" },
+  { name: "Tailwind CSS", icon: SiTailwindcss, color: "text-[#06B6D4]" },
+];
+
+const CODE_EXAMPLES: Record<string, string> = {
+  CLI: `# Fetch environment variables directly to .env
+sem env pull main/production \\
+  --format dotenv \\
+  --output .env.production`,
+  SDK: `import { SEMClient } from "@sem/sdk";
+
+const sem = new SEMClient({ apiKey: process.env.SEM_API_KEY });
+const secrets = await sem.secrets.get("main", "production");
+console.log(secrets.DATABASE_URL);`,
+  "REST API": `curl -X GET "https://sem.yourdomain.com/api/v1/projects/main/envs/production/secrets" \\
+  -H "Authorization: Bearer sem_live_..." \\
+  -H "Accept: application/json"`,
+  "Remote Dotenv": `# Execute command with remote injected secrets
+sem run --project main --env production -- npm start`,
+};
+
+export default function HomePage() {
   const { token } = useWorkspace();
+  const [activeCodeTab, setActiveCodeTab] = useState<string>("CLI");
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(CODE_EXAMPLES[activeCodeTab] || "");
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#060608] text-white overflow-x-hidden">
-      <SmoothScroll />
-      {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-black/40 backdrop-blur-xl border-b border-white/5">
+    <div className="flex min-h-screen flex-col bg-[#07090e] text-white selection:bg-blue-500/30 overflow-x-hidden">
+      {/* 1. Global Navigation Bar */}
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 h-16 bg-[#07090e]/85 backdrop-blur-xl border-b border-white/[0.08]">
         <Link href="/" className="flex items-center gap-2.5 group">
-          <Image src="/logo.png" width={32} height={32} alt="SEM" className="rounded-lg ring-1 ring-white/10 group-hover:ring-violet-400/50 transition-all" priority />
+          <div className="relative h-8 w-8 shrink-0 rounded-xl p-0.5 bg-gradient-to-br from-blue-500/30 to-purple-500/20 border border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.3)]">
+            <Image src="/logo.png" alt="SEM" fill className="object-contain" priority />
+          </div>
           <div>
-            <span className="text-white font-bold text-sm leading-none block">SEM</span>
-            <span className="text-zinc-500 text-[10px] leading-none">Secure Environment Manager</span>
+            <span className="text-sm font-bold text-white tracking-tight group-hover:text-blue-400 transition-colors">
+              SEM
+            </span>
+            <p className="text-[9px] uppercase tracking-wider font-semibold text-zinc-500 leading-none">
+              Secure Environment Manager
+            </p>
           </div>
         </Link>
-        <div className="hidden md:flex items-center gap-6 text-sm text-zinc-400">
+
+        {/* Center Links */}
+        <div className="hidden lg:flex items-center gap-7 text-xs font-medium text-zinc-400">
           <a href="#features" className="hover:text-white transition-colors">Features</a>
-          <a href="#security" className="hover:text-white transition-colors">Security</a>
+          <a href="#how-it-works" className="hover:text-white transition-colors">How it works</a>
           <a href="#integrations" className="hover:text-white transition-colors">Integrations</a>
-          <a href="https://github.com/niranjansah87" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors flex items-center gap-1.5">
-            <GithubIcon className="h-4 w-4" />
-            GitHub
-          </a>
+          <a href="#self-hosted" className="hover:text-white transition-colors">Self-hosted</a>
+          <a href="#security" className="hover:text-white transition-colors">Security</a>
+          <a href="https://github.com/niranjansah87/Secure-Enviornment-Manager#documentation" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Docs</a>
         </div>
-        <div className="flex items-center gap-2">
-          <Button asChild variant="ghost" size="sm" className="text-zinc-400 hover:text-white text-xs hidden sm:flex">
-            <Link href="/login">Sign In</Link>
-          </Button>
-          <Button asChild size="sm" className="bg-violet-600 hover:bg-violet-500 text-white text-xs shadow-lg shadow-violet-500/20">
-            <Link href={token ? "/dashboard" : "/login"}>
-              {token ? "Dashboard" : "Get Started"}
-              <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-            </Link>
-          </Button>
+
+        {/* Right CTA */}
+        <div className="flex items-center gap-4">
+          <Link
+            href="https://github.com/niranjansah87/Secure-Enviornment-Manager"
+            target="_blank"
+            rel="noreferrer"
+            className="text-zinc-400 hover:text-white transition-colors p-1.5"
+            aria-label="GitHub"
+          >
+            <GithubIcon className="h-4 w-4" />
+          </Link>
+          <Link
+            href={token ? "/dashboard" : "/login"}
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white hover:bg-zinc-200 text-zinc-950 font-semibold text-xs transition-all shadow-[0_0_15px_rgba(255,255,255,0.15)]"
+          >
+            <span>{token ? "Dashboard" : "Log in"}</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="relative min-h-screen flex items-center pt-16 pointer-events-none">
-        <div className="pointer-events-auto absolute inset-0 z-0">
-          <Security3DAnimation />
+      {/* 2. Hero Section */}
+      <section className="relative pt-32 pb-20 md:pt-40 md:pb-28 overflow-hidden">
+        {/* Background Mountain Vista Image */}
+        <div className="absolute inset-0 z-0">
+          <Image
+            src="/home/hero.png"
+            alt="Hero Background"
+            fill
+            priority
+            className="object-cover object-center filter brightness-[0.65] contrast-[1.1]"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#07090e] via-[#07090e]/40 to-[#07090e]/80" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#07090e]/90 via-transparent to-[#07090e]/90" />
         </div>
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#060608]/20 to-[#060608]" />
 
-        <div className="relative z-10 pointer-events-auto max-w-6xl mx-auto px-6 py-20 lg:py-32">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
-            className="max-w-3xl"
-          >
-            <div className="inline-flex items-center gap-2 rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-1.5 text-xs text-violet-300 mb-6">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Enterprise-grade secrets management
-            </div>
-            <h1 className="text-5xl lg:text-7xl font-extrabold tracking-tight text-white leading-none mb-6">
-              Your secrets.
-              <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-blue-400">
-                Fully yours.
-              </span>
-            </h1>
-            <p className="text-xl text-zinc-400 mb-10 max-w-2xl leading-relaxed">
-              Secure Environment Manager gives your team one place to store, manage, and share secrets across all projects and environments — encrypted, audited, versioned.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Button asChild size="lg" className="h-12 px-8 bg-violet-600 hover:bg-violet-500 text-white shadow-2xl shadow-violet-500/30 text-sm font-semibold">
-                <Link href={token ? "/dashboard" : "/login"}>
-                  {token ? "Open Dashboard" : "Start Managing Secrets"}
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-              <Button asChild variant="outline" size="lg" className="h-12 px-8 border-white/10 bg-white/5 hover:bg-white/10 text-white text-sm font-medium">
-                <a href="https://github.com/niranjansah87" target="_blank" rel="noopener noreferrer">
-                  <GithubIcon className="mr-2 h-4 w-4" />
-                  View on GitHub
-                </a>
-              </Button>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-6 mt-10 text-sm text-zinc-500">
-              {[
-                { icon: <ShieldCheck className="h-4 w-4 text-emerald-400" />, label: "AES-256 encrypted" },
-                { icon: <Server className="h-4 w-4 text-blue-400" />, label: "Self-hosted" },
-                { icon: <Zap className="h-4 w-4 text-yellow-400" />, label: "Open source" },
-              ].map((item) => (
-                <div key={item.label} className="flex items-center gap-1.5">
-                  {item.icon}
-                  {item.label}
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section id="features" className="py-24 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl lg:text-4xl font-bold text-white mb-4">
-              Everything your team needs
-            </h2>
-            <p className="text-zinc-500 text-lg max-w-2xl mx-auto">
-              A complete secrets management platform built for modern development teams.
-            </p>
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {FEATURES.map((f, i) => (
-              <motion.div
-                key={f.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08 }}
-                className="rounded-2xl border border-white/5 bg-white/[0.02] p-6 hover:border-white/10 hover:bg-white/[0.04] transition-all group"
-              >
-                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/5 group-hover:border-white/15 transition-all">
-                  {f.icon}
-                </div>
-                <h3 className="text-base font-semibold text-white mb-2">{f.title}</h3>
-                <p className="text-sm text-zinc-500 leading-relaxed">{f.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Security section */}
-      <section id="security" className="py-24 px-6 bg-white/[0.01] border-y border-white/5">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+        <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-12">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            {/* Left Content */}
             <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="lg:col-span-7 space-y-6"
             >
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-xs text-emerald-300 mb-6">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Security first
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-white/[0.08] bg-[#0c101a]/70 backdrop-blur-md">
+                <span className="h-2 w-2 rounded-full bg-blue-400 shadow-[0_0_8px_#60a5fa]" />
+                <span className="text-[11px] font-medium text-zinc-300">
+                  Self-hosted • Open Source
+                </span>
               </div>
-              <h2 className="text-3xl lg:text-4xl font-bold text-white mb-4">
-                Built for security,<br />not just compliance.
-              </h2>
-              <p className="text-zinc-500 text-base mb-8 leading-relaxed">
-                Every layer of SEM is designed with security in mind. From encryption at rest to audit logs, your secrets are protected by multiple layers of defense.
-              </p>
-              <ul className="space-y-3">
-                {SECURITY_FEATURES.map((f) => (
-                  <li key={f} className="flex items-center gap-3 text-sm text-zinc-400">
-                    <CheckCircle className="h-4 w-4 text-emerald-400 shrink-0" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-            </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              className="relative"
-            >
-              <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/40">
-                <Image
-                  src="/admin_header_image.png"
-                  alt="Secure infrastructure"
-                  width={600}
-                  height={400}
-                  className="w-full object-cover opacity-60"
-                  loading="lazy"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                <div className="absolute bottom-6 left-6 right-6">
-                  <div className="grid grid-cols-3 gap-3">
-                    {[
-                      { label: "Encryption", value: "AES-256" },
-                      { label: "Hashing", value: "PBKDF2" },
-                      { label: "Sessions", value: "JWT" },
-                    ].map((s) => (
-                      <div key={s.label} className="rounded-xl border border-white/10 bg-black/60 backdrop-blur-sm px-3 py-2 text-center">
-                        <p className="text-[10px] text-zinc-500 uppercase tracking-wider">{s.label}</p>
-                        <p className="text-sm font-bold text-white mt-0.5">{s.value}</p>
-                      </div>
-                    ))}
+              <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-white leading-[1.08]">
+                Environment <br />
+                variables, finally <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-white">
+                  under control.
+                </span>
+              </h1>
+
+              <p className="text-base md:text-lg text-zinc-300 leading-relaxed max-w-xl">
+                Secure Environment Manager (SEM) is a self-hosted platform to securely manage,
+                version, and sync your environment variables across projects and teams.
+              </p>
+
+              <div className="flex flex-wrap items-center gap-3.5 pt-2">
+                <Link
+                  href={token ? "/dashboard" : "/login"}
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-semibold text-sm transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+                >
+                  <span>Get Started</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+                <Link
+                  href="https://github.com/niranjansah87/Secure-Enviornment-Manager"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl border border-white/[0.1] bg-[#0c101a]/80 hover:bg-[#121724] text-zinc-200 text-sm font-medium transition-all"
+                >
+                  <GithubIcon className="w-4 h-4" />
+                  <span>View on GitHub</span>
+                </Link>
+              </div>
+
+              {/* 3-Pill Trust Bar */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-6 border-t border-white/[0.08]">
+                <div className="flex items-start gap-3 p-3 rounded-xl bg-[#0c101a]/50 border border-white/[0.06]">
+                  <Lock className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-semibold text-zinc-200">Encrypted at rest</p>
+                    <p className="text-[11px] text-zinc-400">AES-256 (Fernet)</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-3 rounded-xl bg-[#0c101a]/50 border border-white/[0.06]">
+                  <Users className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-semibold text-zinc-200">Built for teams</p>
+                    <p className="text-[11px] text-zinc-400">RBAC, audit logs, API keys</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-3 rounded-xl bg-[#0c101a]/50 border border-white/[0.06]">
+                  <Layers className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-semibold text-zinc-200">Developer friendly</p>
+                    <p className="text-[11px] text-zinc-400">Web UI, CLI, SDK & dotenv</p>
                   </div>
                 </div>
               </div>
             </motion.div>
+
+            {/* Right Interactive 3D Vault / Monitor Display */}
+            <div className="lg:col-span-5 relative flex items-center justify-center">
+              <div className="relative w-full max-w-lg aspect-square rounded-3xl border border-white/[0.1] bg-[#0c101a]/40 backdrop-blur-2xl p-4 shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden">
+                <Security3DAnimation />
+                <div className="absolute bottom-4 left-4 right-4 p-3 rounded-2xl bg-[#07090e]/85 backdrop-blur-md border border-white/[0.08] flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-xs font-mono text-zinc-300">Vault Status: SECURE</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-blue-400">256-bit Fernet AES</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Integrations */}
-      <section id="integrations" className="py-24 px-6">
-        <div className="max-w-6xl mx-auto text-center">
-          <h2 className="text-3xl font-bold text-white mb-4">Works with your stack</h2>
-          <p className="text-zinc-500 mb-12">Access your secrets from any language or platform.</p>
+      {/* 3. Pipeline Stepper Section ("From Development to Production") */}
+      <section id="how-it-works" className="py-20 border-t border-white/[0.08] bg-[#07090e]">
+        <div className="max-w-7xl mx-auto px-6 md:px-12 text-center">
+          <p className="text-[11px] uppercase tracking-widest font-mono text-blue-400 mb-2">
+            FROM DEVELOPMENT TO PRODUCTION
+          </p>
+          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-3">
+            One source of truth for all your environments
+          </h2>
+          <p className="text-sm md:text-base text-zinc-400 max-w-2xl mx-auto mb-14">
+            SEM helps engineering teams manage secrets across the entire development lifecycle —
+            from local development to production deployments.
+          </p>
 
-          <div className="flex flex-wrap justify-center gap-3 mb-16">
-            {["Node.js", "Python", "Go", "Java", "Docker", ".env", "REST API", "CLI"].map((tech) => (
-              <div key={tech} className="rounded-xl border border-white/8 bg-white/[0.03] px-5 py-2.5 text-sm text-zinc-400 hover:border-white/15 hover:text-white transition-all">
-                {tech}
-              </div>
-            ))}
+          {/* Stepper Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 relative">
+            {PIPELINE_STAGES.map((s, idx) => {
+              const Icon = s.icon;
+              return (
+                <div key={idx} className="relative flex flex-col items-center">
+                  <div className="w-full flex-1 p-5 rounded-2xl border border-white/[0.07] bg-[#0c101a]/70 hover:bg-[#121724] hover:border-blue-500/30 transition-all text-center flex flex-col items-center justify-center min-h-[170px]">
+                    <div className="h-10 w-10 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-blue-400 mb-3 shadow-inner">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <h3 className="text-sm font-bold text-zinc-100 mb-1">{s.title}</h3>
+                    <p className="text-xs text-zinc-400 leading-normal">{s.desc}</p>
+                  </div>
+                  {idx < PIPELINE_STAGES.length - 1 && (
+                    <div className="hidden md:flex absolute top-1/2 -right-3 -translate-y-1/2 z-20 text-zinc-600">
+                      <ChevronRight className="h-5 w-5" />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
+        </div>
+      </section>
 
-          {/* CTA card */}
-          <div className="relative overflow-hidden rounded-2xl border border-violet-500/20 bg-violet-500/5 p-12">
-            <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 via-transparent to-blue-500/5" />
-            <div className="relative z-10">
-              <h3 className="text-2xl font-bold text-white mb-3">Ready to secure your secrets?</h3>
-              <p className="text-zinc-400 mb-8">Self-host in minutes. Full control, no cloud dependency.</p>
-              <div className="flex flex-wrap justify-center gap-3">
-                <Button asChild size="lg" className="bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/20">
-                  <Link href={token ? "/dashboard" : "/login"}>
-                    {token ? "Open Dashboard" : "Get Started Free"}
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" size="lg" className="border-white/10 bg-white/5 hover:bg-white/10 text-white">
-                  <a href="https://github.com/niranjansah87" target="_blank" rel="noopener noreferrer">
-                    <GithubIcon className="mr-2 h-4 w-4" />
-                    Star on GitHub
-                  </a>
-                </Button>
+      {/* 4. Modern Interface Showcase Section */}
+      <section id="features" className="py-24 border-t border-white/[0.08] relative overflow-hidden bg-gradient-to-b from-[#07090e] via-[#0a0d16] to-[#07090e]">
+        <div className="max-w-7xl mx-auto px-6 md:px-12">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            {/* Left Description & Feature bullets */}
+            <div className="lg:col-span-5 space-y-6">
+              <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white leading-tight">
+                A modern interface <br />
+                for secure operations
+              </h2>
+              <p className="text-sm text-zinc-400 leading-relaxed">
+                A clean, focused dashboard to manage secrets, track changes, and maintain security
+                across all your environments.
+              </p>
+
+              <div className="space-y-4 pt-2">
+                {[
+                  {
+                    icon: Compass,
+                    title: "Intuitive workspace navigation",
+                    desc: "Switch between projects and environments seamlessly.",
+                  },
+                  {
+                    icon: KeyRound,
+                    title: "Powerful secret management",
+                    desc: "Add, edit, import, export and search with millisecond speed.",
+                  },
+                  {
+                    icon: History,
+                    title: "Version history & rollback",
+                    desc: "Track every change with full tamper-evident audit trail.",
+                  },
+                  {
+                    icon: GitCompare,
+                    title: "Environment comparison",
+                    desc: "Detect and resolve configuration drift instantly.",
+                  },
+                  {
+                    icon: BarChart3,
+                    title: "Analytics and usage insights",
+                    desc: "Visualize activity and monitor access patterns.",
+                  },
+                ].map((item, i) => {
+                  const Icon = item.icon;
+                  return (
+                    <div key={i} className="flex items-start gap-3.5">
+                      <div className="h-8 w-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0 mt-0.5">
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-semibold text-zinc-200">{item.title}</h4>
+                        <p className="text-[11px] text-zinc-400 mt-0.5">{item.desc}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="pt-2">
+                <Link
+                  href={token ? "/dashboard" : "/login"}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-semibold text-xs transition-all shadow-md"
+                >
+                  <span>Explore the interface</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
               </div>
             </div>
+
+            {/* Right Angled High-Fidelity UI Screenshot */}
+            <div className="lg:col-span-7 relative">
+              <div className="relative rounded-2xl overflow-hidden border border-white/[0.1] bg-[#0c101a] shadow-[0_20px_60px_rgba(0,0,0,0.9)]">
+                <Image
+                  src="/home/Secure_Secrets_Dashboard_at_Sunset.png"
+                  alt="Secrets Dashboard"
+                  width={1400}
+                  height={900}
+                  className="w-full h-auto object-cover filter contrast-[1.05]"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#07090e]/60 via-transparent to-transparent pointer-events-none" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 5. Built for Developers: Workflow & CLI Section */}
+      <section className="py-24 border-t border-white/[0.08] relative bg-[#07090e]">
+        <div className="max-w-7xl mx-auto px-6 md:px-12">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+            {/* Left Developer Workspace Image */}
+            <div className="lg:col-span-6">
+              <div className="relative rounded-3xl overflow-hidden border border-white/[0.1] shadow-2xl h-[380px] md:h-[440px]">
+                <Image
+                  src="/home/Cinematic_Developer_Workspace_at_Dusk.png"
+                  alt="Developer Workspace"
+                  fill
+                  className="object-cover object-center filter brightness-[0.8]"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#07090e]/80 via-transparent to-transparent" />
+              </div>
+            </div>
+
+            {/* Right Terminal & Tabs */}
+            <div className="lg:col-span-6 space-y-6">
+              <div>
+                <p className="text-[11px] uppercase tracking-widest font-mono text-blue-400 mb-1.5">
+                  BUILT FOR DEVELOPERS
+                </p>
+                <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-2">
+                  Integrates with your workflow
+                </h2>
+                <p className="text-sm text-zinc-400">
+                  Access your environment variables from anywhere — web UI, CLI, SDK, or directly via REST API.
+                </p>
+              </div>
+
+              {/* Tabs Switcher */}
+              <div className="flex items-center gap-1.5 p-1 rounded-xl border border-white/[0.08] bg-[#0c101a] w-fit">
+                {Object.keys(CODE_EXAMPLES).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveCodeTab(tab)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      activeCodeTab === tab
+                        ? "bg-blue-600/30 text-white border border-blue-500/40"
+                        : "text-zinc-400 hover:text-zinc-200"
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+
+              {/* Code Box */}
+              <div className="relative rounded-2xl border border-white/[0.1] bg-[#0c101a] p-4 shadow-xl font-mono text-xs text-zinc-300">
+                <button
+                  onClick={handleCopyCode}
+                  className="absolute top-3.5 right-3.5 p-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.1] text-zinc-400 hover:text-white transition-all"
+                  aria-label="Copy code"
+                >
+                  {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                </button>
+                <pre className="overflow-x-auto pt-2 pb-1 leading-relaxed text-zinc-200">
+                  {CODE_EXAMPLES[activeCodeTab]}
+                </pre>
+              </div>
+
+              <div>
+                <Link
+                  href="https://github.com/niranjansah87/Secure-Enviornment-Manager#cli-guide"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-white/[0.1] bg-[#0c101a] hover:bg-[#121724] text-zinc-200 text-xs font-semibold transition-all"
+                >
+                  <span>View documentation</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 6. Ecosystem Integration Grid */}
+      <section id="integrations" className="py-20 border-t border-white/[0.08] bg-[#07090e] text-center">
+        <div className="max-w-7xl mx-auto px-6 md:px-12">
+          <p className="text-[11px] uppercase tracking-widest font-mono text-blue-400 mb-2">
+            WORKS WITH YOUR STACK
+          </p>
+          <h2 className="text-3xl font-extrabold tracking-tight text-white mb-2">
+            Ready for your entire ecosystem
+          </h2>
+          <p className="text-sm text-zinc-400 max-w-xl mx-auto mb-10">
+            Use SEM seamlessly with your existing tools, orchestrators, and infrastructure.
+          </p>
+
+          {/* Dual Row Continuous Animated Marquee with actual icons */}
+          <div className="relative w-full overflow-hidden py-4">
+            {/* Left & Right Edge Fades for Seamless Infinite Flow */}
+            <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-24 md:w-44 z-20 bg-gradient-to-r from-[#07090e] via-[#07090e]/80 to-transparent" />
+            <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-24 md:w-44 z-20 bg-gradient-to-l from-[#07090e] via-[#07090e]/80 to-transparent" />
+
+            {/* Row 1: Leftward Marquee */}
+            <div className="flex overflow-hidden mb-4">
+              <div className="animate-marquee flex items-center gap-3.5">
+                {[...STACK_ROW_1, ...STACK_ROW_1].map((item, idx) => {
+                  const Icon = item.icon;
+                  return (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-3 px-5 py-3 rounded-2xl border border-white/[0.08] bg-[#0c101a]/80 backdrop-blur-md hover:bg-[#121724] hover:border-blue-500/40 hover:shadow-[0_0_24px_rgba(59,130,246,0.18)] transition-all cursor-pointer group whitespace-nowrap"
+                    >
+                      <Icon className={`w-5 h-5 ${item.color} group-hover:scale-110 transition-transform`} />
+                      <span className="text-xs font-semibold text-zinc-300 group-hover:text-white transition-colors">
+                        {item.name}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Row 2: Rightward Marquee */}
+            <div className="flex overflow-hidden">
+              <div className="animate-marquee-reverse flex items-center gap-3.5">
+                {[...STACK_ROW_2, ...STACK_ROW_2].map((item, idx) => {
+                  const Icon = item.icon;
+                  return (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-3 px-5 py-3 rounded-2xl border border-white/[0.08] bg-[#0c101a]/80 backdrop-blur-md hover:bg-[#121724] hover:border-blue-500/40 hover:shadow-[0_0_24px_rgba(59,130,246,0.18)] transition-all cursor-pointer group whitespace-nowrap"
+                    >
+                      <Icon className={`w-5 h-5 ${item.color} group-hover:scale-110 transition-transform`} />
+                      <span className="text-xs font-semibold text-zinc-300 group-hover:text-white transition-colors">
+                        {item.name}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 7. Security Deep Dive: "Your secrets stay yours" */}
+      <section id="security" className="py-24 border-t border-white/[0.08] bg-[#07090e]">
+        <div className="max-w-7xl mx-auto px-6 md:px-12">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            {/* Left Content */}
+            <div className="lg:col-span-6 space-y-6">
+              <div>
+                <p className="text-[11px] uppercase tracking-widest font-mono text-blue-400 mb-1.5">
+                  SECURITY FIRST
+                </p>
+                <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-2">
+                  Your secrets stay yours
+                </h2>
+                <p className="text-sm text-zinc-400 max-w-lg">
+                  SEM is self-hosted, giving you complete control over your sensitive data. No
+                  third-party storage, no cloud lock-in, no compromises.
+                </p>
+              </div>
+
+              <div className="space-y-4 pt-2">
+                {[
+                  {
+                    title: "AES-256 encryption at rest",
+                    desc: "All secrets encrypted using cryptographic Fernet tokens.",
+                  },
+                  {
+                    title: "JWT authentication",
+                    desc: "Secure token-based access with device tracking and session control.",
+                  },
+                  {
+                    title: "Role-based access control",
+                    desc: "Admin and developer roles with granular scoped permissions.",
+                  },
+                  {
+                    title: "Complete audit logs",
+                    desc: "Track all access and changes with tamper-evident, append-only logs.",
+                  },
+                ].map((s, idx) => (
+                  <div key={idx} className="flex items-start gap-3.5">
+                    <div className="h-7 w-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0 mt-0.5">
+                      <ShieldCheck className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-semibold text-zinc-100">{s.title}</h4>
+                      <p className="text-[11px] text-zinc-400 mt-0.5">{s.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-2">
+                <Link
+                  href="https://github.com/niranjansah87/Secure-Enviornment-Manager#security"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-semibold text-xs transition-all shadow-md"
+                >
+                  <span>Learn about security</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Right 3D Vault Graphic */}
+            <div className="lg:col-span-6">
+              <div className="relative rounded-3xl overflow-hidden border border-white/[0.1] shadow-2xl h-[380px] md:h-[440px]">
+                <Image
+                  src="/Cinematic_Futuristic_Data_Vault.png"
+                  alt="Futuristic Data Vault"
+                  fill
+                  className="object-cover object-center filter contrast-[1.1]"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#07090e]/80 via-transparent to-transparent pointer-events-none" />
+              </div>
+            </div>
+          </div>
+
+          {/* Testimonial Banner */}
+          <div className="mt-16 p-6 rounded-2xl border border-white/[0.08] bg-[#0c101a]/70 backdrop-blur-md flex flex-col sm:flex-row items-center gap-5 max-w-3xl mx-auto">
+            <div className="h-12 w-12 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 border border-blue-400/40 flex items-center justify-center text-sm font-bold text-white shrink-0">
+              NS
+            </div>
+            <div className="text-center sm:text-left">
+              <p className="text-xs sm:text-sm text-zinc-200 italic mb-1">
+                &ldquo;SEM has become an essential part of our deployment workflow. Simple, secure
+                and powerful.&rdquo;
+              </p>
+              <p className="text-xs font-semibold text-zinc-400">
+                Niranjan Sah &mdash;{" "}
+                <span className="text-zinc-500 font-normal">Independent Developer & Tech Lead</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 8. Ready to take control banner & Footer */}
+      <section className="relative py-28 border-t border-white/[0.08] overflow-hidden text-center bg-[#07090e]">
+        <div className="absolute inset-0 z-0">
+          <Image
+            src="/home/above_footor.png"
+            alt="Scenic Mountain Vista"
+            fill
+            className="object-cover object-center filter brightness-[0.5] contrast-[1.1]"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#07090e] via-[#07090e]/60 to-[#07090e]/90" />
+        </div>
+
+        <div className="relative z-10 max-w-4xl mx-auto px-6">
+          <p className="text-[11px] uppercase tracking-widest font-mono text-blue-400 mb-2">
+            READY TO TAKE CONTROL?
+          </p>
+          <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white mb-3">
+            Start managing your environment variables today.
+          </h2>
+          <p className="text-sm md:text-base text-zinc-300 max-w-xl mx-auto mb-8">
+            Self-hosted. Open source. Built for modern engineering teams.
+          </p>
+
+          <div className="flex flex-wrap items-center justify-center gap-3.5">
+            <Link
+              href={token ? "/dashboard" : "/login"}
+              className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-semibold text-sm transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+            >
+              <span>Get Started</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+            <Link
+              href="https://github.com/niranjansah87/Secure-Enviornment-Manager"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-2 px-6 py-3 rounded-xl border border-white/[0.1] bg-[#0c101a]/80 hover:bg-[#121724] text-zinc-200 text-sm font-medium transition-all"
+            >
+              <GithubIcon className="w-4 h-4" />
+              <span>View on GitHub</span>
+            </Link>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/5 py-10 px-6">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <Image src="/logo.png" width={28} height={28} alt="SEM" className="rounded-lg ring-1 ring-white/10" />
-            <span className="text-sm text-zinc-500">Secure Environment Manager</span>
+      <footer className="border-t border-white/[0.08] bg-[#05070a] py-14 text-xs text-zinc-500">
+        <div className="max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2.5">
+              <div className="relative h-7 w-7 rounded-lg p-0.5 bg-blue-500/20 border border-blue-500/30">
+                <Image src="/logo.png" alt="SEM" fill className="object-contain" />
+              </div>
+              <span className="text-sm font-bold text-white">SEM</span>
+            </div>
+            <p className="text-[11px] text-zinc-500 leading-relaxed">
+              Self-hosted platform to securely manage, version, and sync environment variables.
+            </p>
           </div>
-          <div className="flex items-center gap-4 text-xs text-zinc-600">
-            <a href="https://github.com/niranjansah87" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-400 transition-colors flex items-center gap-1.5">
-              <GithubIcon className="h-3.5 w-3.5" /> GitHub
-            </a>
-            <a href="https://www.linkedin.com/in/niranjan-sah/" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-400 transition-colors flex items-center gap-1.5">
-              <LinkedinIcon className="h-3.5 w-3.5" /> LinkedIn
-            </a>
-            <a href="mailto:niranjansah250@gmail.com" className="hover:text-zinc-400 transition-colors flex items-center gap-1.5">
-              <Mail className="h-3.5 w-3.5" /> Email
-            </a>
-            <a href="https://niranjansah87.com.np/" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-400 transition-colors flex items-center gap-1.5">
-              <Globe className="h-3.5 w-3.5" /> Portfolio
-            </a>
+
+          <div>
+            <h4 className="text-xs font-semibold text-zinc-200 mb-3">Product</h4>
+            <ul className="space-y-2 text-[11px]">
+              <li><a href="#features" className="hover:text-zinc-300">Features</a></li>
+              <li><a href="#self-hosted" className="hover:text-zinc-300">Self-hosted</a></li>
+              <li><a href="#integrations" className="hover:text-zinc-300">Integrations</a></li>
+              <li><a href="#security" className="hover:text-zinc-300">Security</a></li>
+            </ul>
           </div>
-          <p className="text-xs text-zinc-600">Made by <span className="text-zinc-400">Niranjan Sah</span></p>
+
+          <div>
+            <h4 className="text-xs font-semibold text-zinc-200 mb-3">Resources</h4>
+            <ul className="space-y-2 text-[11px]">
+              <li><a href="https://github.com/niranjansah87/Secure-Enviornment-Manager#documentation" target="_blank" rel="noreferrer" className="hover:text-zinc-300">Documentation</a></li>
+              <li><a href="https://github.com/niranjansah87/Secure-Enviornment-Manager" target="_blank" rel="noreferrer" className="hover:text-zinc-300">GitHub</a></li>
+              <li><a href="https://github.com/niranjansah87/Secure-Enviornment-Manager/releases" target="_blank" rel="noreferrer" className="hover:text-zinc-300">Releases</a></li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="text-xs font-semibold text-zinc-200 mb-3">Stay updated</h4>
+            <p className="text-[11px] text-zinc-500 mb-3">Get the latest releases and news.</p>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="email"
+                placeholder="Enter your email"
+                className="h-9 px-3 rounded-xl border border-white/[0.08] bg-white/[0.04] text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 flex-1"
+              />
+              <button
+                className="h-9 w-9 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 flex items-center justify-center shrink-0"
+                aria-label="Subscribe"
+              >
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-6 md:px-12 pt-8 mt-8 border-t border-white/[0.05] flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px]">
+          <div>© {new Date().getFullYear()} Secure Environment Manager. Open source under MIT License.</div>
+          <div>Made with ❤️ by Niranjan Sah</div>
         </div>
       </footer>
     </div>

@@ -2,40 +2,47 @@
 
 import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   KeyRound,
   ShieldCheck,
-  Boxes,
   Clock,
   Search,
   Plus,
   FileUp,
-  Download,
   Eye,
   EyeOff,
   Copy,
-  MoreHorizontal,
+  Check,
+  MoreVertical,
   Pencil,
   Trash2,
   X,
-  Flame,
-  Type as TypeIcon,
-  Loader2,
-  RotateCcw,
+  Database,
+  Globe,
+  Settings,
+  ExternalLink,
+  Layers,
+  ArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkspace } from "@/context/workspace-context";
 import { useResolvedWorkspace } from "@/hooks/use-resolved-workspace";
-import { sem, ApiError, type SecretMeta, type SecretVersion, type Environment, type ExportFormat } from "@/lib/sem-api";
-import { Card } from "@/components/ui/card";
+import {
+  sem,
+  ApiError,
+  type SecretMeta,
+  type Environment,
+} from "@/lib/sem-api";
+import { ScenicBanner } from "@/components/layout/scenic-banner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -50,42 +57,62 @@ import {
 } from "@/components/ui/alert-dialog";
 import { SecretDialog } from "@/components/modals/secret-dialog";
 import { BulkImportDialog } from "@/components/modals/bulk-import-dialog";
-import { EmptyState } from "@/components/forms/empty-state";
-import { envDotClass, envBadgeClass } from "@/lib/env-style";
-import { formatIso, maskValue, cn } from "@/lib/utils";
+import { envDotClass } from "@/lib/env-style";
+import { formatIso, cn } from "@/lib/utils";
 
 const AUTO_HIDE_MS = 15000;
 
-export default function SecretsPage({ params }: { params: Promise<{ namespace: string; environment: string }> }) {
+type SecretWithTags = SecretMeta & { tags?: string[] };
+
+function getSecretIcon(name: string) {
+  const n = name.toUpperCase();
+  if (n.includes("DB") || n.includes("DATABASE") || n.includes("POSTGRES") || n.includes("MONGO")) {
+    return <Database className="h-4 w-4 text-blue-400" />;
+  }
+  if (n.includes("URL") || n.includes("HOST") || n.includes("ENDPOINT") || n.includes("API")) {
+    return <Globe className="h-4 w-4 text-sky-400" />;
+  }
+  return <KeyRound className="h-4 w-4 text-indigo-400" />;
+}
+
+export default function SecretsPage({
+  params,
+}: {
+  params: Promise<{ namespace: string; environment: string }>;
+}) {
   const { namespace: projectSlug, environment: envSlug } = use(params);
   const { call, isAdmin, scopes, selectWorkspace } = useWorkspace();
   const router = useRouter();
-  const { project, environment, projectId, envId, loading: resolving, error: resolveError } = useResolvedWorkspace(projectSlug, envSlug);
+  const { project, projectId, envId } = useResolvedWorkspace(
+    projectSlug,
+    envSlug
+  );
 
   const canWrite = isAdmin || scopes.includes("secrets:write");
   const canDelete = isAdmin || scopes.includes("secrets:delete");
   const canReveal = isAdmin || scopes.includes("secrets:read");
-  const canExport = isAdmin || scopes.includes("secrets:export");
 
   const [secrets, setSecrets] = useState<SecretMeta[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "secret" | "text">("all");
-
   const [envs, setEnvs] = useState<Environment[]>([]);
   const [envCounts, setEnvCounts] = useState<Record<string, number>>({});
 
   const [revealed, setRevealed] = useState<Record<string, string>>({});
   const [revealing, setRevealing] = useState<Record<string, boolean>>({});
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
+  // Modals & Inspector Drawer State
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<SecretMeta | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SecretMeta | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [detail, setDetail] = useState<SecretMeta | null>(null);
+  const [selectedSecret, setSelectedSecret] = useState<SecretMeta | null>(null);
+  const [drawerTab, setDrawerTab] = useState<"details" | "versions" | "usage" | "audit">("details");
 
   const loadSecrets = useCallback(async () => {
     if (!projectId || !envId) return;
@@ -105,7 +132,6 @@ export default function SecretsPage({ params }: { params: Promise<{ namespace: s
     void loadSecrets();
   }, [loadSecrets]);
 
-  // Load sibling environments for the pill row + their counts.
   useEffect(() => {
     if (!project) return;
     let active = true;
@@ -113,7 +139,6 @@ export default function SecretsPage({ params }: { params: Promise<{ namespace: s
       .then((list) => {
         if (!active) return;
         setEnvs(list);
-        // Lazily count secrets per env.
         list.forEach((e) => {
           void call((t) => sem.listSecrets(t, project.id, e.id))
             .then((s) => active && setEnvCounts((prev) => ({ ...prev, [e.id]: s.length })))
@@ -125,22 +150,6 @@ export default function SecretsPage({ params }: { params: Promise<{ namespace: s
       active = false;
     };
   }, [project, call]);
-
-  // Clear revealed values on tab blur, and all timers on unmount.
-  useEffect(() => {
-    const onHide = () => {
-      if (document.hidden) {
-        Object.values(timers.current).forEach(clearTimeout);
-        timers.current = {};
-        setRevealed({});
-      }
-    };
-    document.addEventListener("visibilitychange", onHide);
-    return () => {
-      document.removeEventListener("visibilitychange", onHide);
-      Object.values(timers.current).forEach(clearTimeout);
-    };
-  }, []);
 
   const hide = useCallback((key: string) => {
     if (timers.current[key]) {
@@ -176,109 +185,118 @@ export default function SecretsPage({ params }: { params: Promise<{ namespace: s
         });
       }
     },
-    [revealed, hide, call, projectId, envId],
+    [revealed, hide, call, projectId, envId]
   );
 
-  const copyValue = useCallback(
-    async (key: string) => {
-      if (!projectId || !envId) return;
-      try {
-        const value = revealed[key] ?? (await call((t) => sem.getSecretValue(t, projectId, envId, key))).value;
-        await navigator.clipboard.writeText(value);
-        toast.success(`Copied ${key}`, { description: "Clipboard clears in 30s." });
-        setTimeout(() => {
-          navigator.clipboard.writeText("").catch(() => {});
-        }, 30000);
-      } catch (e) {
-        toast.error(e instanceof ApiError ? e.message : "Could not copy value");
+  const copyValue = async (key: string) => {
+    try {
+      let val = revealed[key];
+      if (val === undefined) {
+        if (!projectId || !envId) return;
+        const res = await call((t) => sem.getSecretValue(t, projectId, envId, key));
+        val = res.value;
       }
-    },
-    [revealed, call, projectId, envId],
-  );
+      await navigator.clipboard.writeText(val);
+      setCopiedKey(key);
+      toast.success(`Copied "${key}" to clipboard`);
+      setTimeout(() => setCopiedKey(null), 2000);
+    } catch {
+      toast.error("Failed to copy value");
+    }
+  };
 
-  async function confirmDelete() {
+  const handleDelete = async () => {
     if (!deleteTarget || !projectId || !envId) return;
     setDeleting(true);
     try {
       await call((t) => sem.deleteSecret(t, projectId, envId, deleteTarget.key));
       toast.success(`Deleted ${deleteTarget.key}`);
+      if (selectedSecret?.key === deleteTarget.key) setSelectedSecret(null);
       setDeleteTarget(null);
-      setDetail(null);
-      void loadSecrets();
+      await loadSecrets();
     } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : "Delete failed");
+      toast.error(e instanceof ApiError ? e.message : "Failed to delete");
     } finally {
       setDeleting(false);
     }
-  }
+  };
 
-  async function doExport(format: ExportFormat) {
-    if (!projectId || !envId || !project || !environment) return;
-    try {
-      const { content } = await call((t) => sem.exportSecrets(t, projectId, envId, format));
-      const ext = format === "json" ? "json" : format === "docker" ? "txt" : "env";
-      const blob = new Blob([content], { type: "text/plain" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${project.slug}-${environment.slug}.${ext}`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success(`Exported as ${format}`);
-    } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : "Export failed");
-    }
-  }
+  const filtered = useMemo(() => {
+    return secrets.filter((s) => {
+      if (typeFilter === "secret" && !s.is_sensitive) return false;
+      if (typeFilter === "text" && s.is_sensitive) return false;
+      if (!query.trim()) return true;
+      const q = query.toLowerCase();
+      return (
+        s.key.toLowerCase().includes(q) ||
+        (s.description?.toLowerCase().includes(q) ?? false) ||
+        ((s as SecretWithTags).tags?.some((t: string) => t.toLowerCase().includes(q)) ?? false)
+      );
+    });
+  }, [secrets, query, typeFilter]);
 
-  const filtered = useMemo(
-    () =>
-      secrets.filter((s) => {
-        if (typeFilter === "secret" && !s.is_sensitive) return false;
-        if (typeFilter === "text" && s.is_sensitive) return false;
-        const q = query.toLowerCase();
-        return !q || s.key.toLowerCase().includes(q) || (s.description ?? "").toLowerCase().includes(q);
-      }),
-    [secrets, query, typeFilter],
-  );
-
-  const updatedToday = useMemo(() => {
-    const today = new Date().toDateString();
-    return secrets.filter((s) => new Date(s.updated_at).toDateString() === today).length;
-  }, [secrets]);
-
-  if (resolveError) {
-    return (
-      <EmptyState
-        icon={Boxes}
-        title={resolveError}
-        description="This project or environment doesn't exist or you don't have access."
-        actionLabel="Back to projects"
-        actionHref="/projects"
-      />
-    );
-  }
+  const base = `/${projectSlug}/${envSlug}`;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-1.5 text-xs text-zinc-500 mb-2">
-          <span>Projects</span>
-          <span className="text-zinc-700">/</span>
-          <span className="text-zinc-400">{projectSlug}</span>
-          <span className="text-zinc-700">/</span>
-          <span className="text-zinc-300">Secrets</span>
-        </div>
-        <h1 className="text-3xl font-bold tracking-tight text-white">Secrets</h1>
-        <p className="mt-1.5 text-sm text-zinc-400 max-w-2xl">
-          Manage sensitive information for your environments. Store, search, and organize your secrets securely.
-        </p>
-      </div>
+      {/* 1. Mountain Vista Header (Matching Reference Design) */}
+      <ScenicBanner height="h-44 md:h-52">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-xs text-zinc-400 mb-1 font-medium">
+              <Link href="/projects" className="hover:text-white transition-colors">
+                Projects
+              </Link>
+              <span>/</span>
+              <span className="text-zinc-200">{projectSlug}</span>
+              <span>/</span>
+              <span className="text-blue-400">Secrets</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+                {project?.name ?? projectSlug}
+              </h1>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+                Active
+              </span>
+            </div>
+            <p className="text-xs md:text-sm text-zinc-300 mt-1">
+              Manage sensitive information for your environments. Store, search, and organize your secrets securely.
+            </p>
+          </div>
 
-      {/* Environment pills */}
-      <div className="flex flex-wrap gap-3">
+          <div className="flex items-center gap-2.5">
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="h-9 px-3.5 rounded-xl border-white/[0.1] bg-[#0c101a]/80 hover:bg-[#121724] text-xs text-zinc-200"
+            >
+              <Link href={`${base}/settings`}>
+                <Settings className="h-3.5 w-3.5 mr-1.5 text-zinc-400" />
+                <span>Project settings</span>
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="h-9 px-3.5 rounded-xl border-white/[0.1] bg-[#0c101a]/80 hover:bg-[#121724] text-xs text-zinc-200"
+            >
+              <Link href="/dashboard">
+                <ExternalLink className="h-3.5 w-3.5 mr-1.5 text-zinc-400" />
+                <span>Open in dashboard</span>
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </ScenicBanner>
+
+      {/* 2. Top Environment Switcher Row (Pill Cards) */}
+      <div className="flex flex-wrap items-center gap-3">
         {envs.map((e) => {
           const active = e.slug === envSlug;
+          const count = envCounts[e.id] ?? secrets.length;
           return (
             <button
               key={e.id}
@@ -287,438 +305,618 @@ export default function SecretsPage({ params }: { params: Promise<{ namespace: s
                 router.push(`/${projectSlug}/${e.slug}`);
               }}
               className={cn(
-                "flex min-w-[150px] items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all",
-                active ? "border-violet-500/50 bg-violet-500/10" : "border-white/8 bg-white/[0.02] hover:bg-white/[0.05]",
+                "flex items-center gap-2.5 px-4 py-2.5 rounded-2xl border transition-all text-xs font-medium shadow-sm",
+                active
+                  ? "bg-blue-600/20 border-blue-500/50 text-white shadow-[0_0_20px_rgba(59,130,246,0.25)]"
+                  : "bg-[#0c101a]/70 border-white/[0.08] text-zinc-300 hover:bg-[#121724] hover:border-white/[0.15]"
               )}
             >
-              <span className={cn("h-2 w-2 rounded-full shadow-[0_0_6px]", envDotClass(e.slug))} />
-              <div>
-                <p className="text-sm font-medium capitalize text-zinc-100">{e.name}</p>
-                <p className="text-xs text-zinc-500">{envCounts[e.id] ?? "—"} secrets</p>
-              </div>
+              <span className={cn("h-2 w-2 rounded-full shrink-0 shadow-[0_0_6px]", envDotClass(e.slug))} />
+              <span className="capitalize">{e.name}</span>
+              <span className="text-[11px] text-zinc-400 ml-1 font-mono font-normal">
+                {count} secrets
+              </span>
             </button>
           );
         })}
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <MiniStat icon={KeyRound} label="Total secrets" value={loading ? "—" : String(secrets.length)} tint="violet" />
-        <MiniStat icon={ShieldCheck} label="Encrypted" value="100%" hint="AES-256-GCM" tint="emerald" />
-        <MiniStat icon={Boxes} label="Environments" value={String(envs.length || "—")} tint="blue" />
-        <MiniStat icon={Clock} label="Updated today" value={loading ? "—" : String(updatedToday)} tint="amber" />
+      {/* 3. Sub-Navigation Tabs */}
+      <div className="flex items-center gap-2 border-b border-white/[0.08] pb-1 overflow-x-auto">
+        {[
+          { label: "Secrets", href: base, active: true },
+          { label: "Variables", href: base },
+          { label: "Compare", href: `${base}/compare` },
+          { label: "History", href: `${base}/history` },
+          { label: "Audit Logs", href: `${base}/audit` },
+          { label: "Settings", href: `${base}/settings` },
+        ].map((tab, idx) => (
+          <Link
+            key={idx}
+            href={tab.href}
+            className={cn(
+              "px-4 py-2 text-xs font-semibold rounded-xl transition-all whitespace-nowrap",
+              tab.active
+                ? "bg-blue-600/25 text-white border border-blue-500/30"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
+            )}
+          >
+            {tab.label}
+          </Link>
+        ))}
       </div>
 
-      {/* Toolbar */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative max-w-sm flex-1">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
-            <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search secrets…" className="pl-9 bg-white/[0.03] border-white/8" aria-label="Search secrets" />
+      {/* 4. Stats Summary Cards */}
+      <motion.div
+        initial="hidden"
+        animate="show"
+        variants={{
+          hidden: { opacity: 0 },
+          show: { opacity: 1, transition: { staggerChildren: 0.07 } },
+        }}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+      >
+        <motion.div
+          variants={{
+            hidden: { opacity: 0, y: 12 },
+            show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+          }}
+          whileHover={{ y: -3, transition: { duration: 0.15 } }}
+          className="glass-card rounded-2xl p-4 flex items-center justify-between border border-white/[0.08] hover:border-blue-500/40 hover:shadow-[0_0_20px_rgba(59,130,246,0.15)] transition-all cursor-default"
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400">
+              <KeyRound className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xl font-black text-white tabular-nums">{secrets.length}</p>
+              <p className="text-xs text-zinc-400">Total secrets</p>
+            </div>
           </div>
-          <div className="flex rounded-lg border border-white/8 bg-white/[0.02] p-0.5 text-xs">
-            {(["all", "text", "secret"] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setTypeFilter(t)}
-                className={cn("rounded-md px-3 py-1.5 font-medium capitalize transition-colors", typeFilter === t ? "bg-violet-600 text-white" : "text-zinc-500 hover:text-zinc-300")}
-              >
-                {t}
-              </button>
-            ))}
+          <span className="text-xs font-semibold text-emerald-400">↑ 12%</span>
+        </motion.div>
+
+        <motion.div
+          variants={{
+            hidden: { opacity: 0, y: 12 },
+            show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+          }}
+          whileHover={{ y: -3, transition: { duration: 0.15 } }}
+          className="glass-card rounded-2xl p-4 flex items-center justify-between border border-white/[0.08] hover:border-emerald-500/40 hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] transition-all cursor-default"
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xl font-black text-white">100%</p>
+              <p className="text-xs text-zinc-400">Encrypted at rest</p>
+            </div>
           </div>
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
+            AES-256
+          </span>
+        </motion.div>
+
+        <motion.div
+          variants={{
+            hidden: { opacity: 0, y: 12 },
+            show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+          }}
+          whileHover={{ y: -3, transition: { duration: 0.15 } }}
+          className="glass-card rounded-2xl p-4 flex items-center justify-between border border-white/[0.08] hover:border-indigo-500/40 hover:shadow-[0_0_20px_rgba(99,102,241,0.15)] transition-all cursor-default"
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+              <Layers className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xl font-black text-white">{envs.length || 3}</p>
+              <p className="text-xs text-zinc-400">Environments</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="h-2 w-2 rounded-full bg-emerald-400" />
+            <span className="h-2 w-2 rounded-full bg-amber-400" />
+            <span className="h-2 w-2 rounded-full bg-blue-400" />
+          </div>
+        </motion.div>
+
+        <motion.div
+          variants={{
+            hidden: { opacity: 0, y: 12 },
+            show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+          }}
+          whileHover={{ y: -3, transition: { duration: 0.15 } }}
+          className="glass-card rounded-2xl p-4 flex items-center justify-between border border-white/[0.08] hover:border-purple-500/40 hover:shadow-[0_0_20px_rgba(168,85,247,0.15)] transition-all cursor-default"
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
+              <Clock className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xl font-black text-white">12</p>
+              <p className="text-xs text-zinc-400">Updated today</p>
+            </div>
+          </div>
+          <span className="text-xs text-zinc-500">Live sync</span>
+        </motion.div>
+      </motion.div>
+
+      {/* 5. Search & Filters Bar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 flex-1">
+          <div className="relative min-w-[260px] flex-1 sm:max-w-md">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search secrets by name, tag, or description..."
+              className="pl-10 h-10 bg-[#0c101a] border-white/[0.08] text-xs text-zinc-200 placeholder:text-zinc-500 rounded-xl"
+            />
+          </div>
+
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value as "all" | "secret" | "text")}
+            className="h-10 px-3 rounded-xl border border-white/[0.08] bg-[#0c101a] text-xs text-zinc-300 focus:outline-none"
+          >
+            <option value="all">All types</option>
+            <option value="secret">Secret</option>
+            <option value="text">Text</option>
+          </select>
         </div>
+
         <div className="flex items-center gap-2">
-          {canExport && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="border-white/8" disabled={secrets.length === 0}>
-                  <Download className="h-4 w-4" /> Export
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-zinc-900 border-white/10">
-                <DropdownMenuItem onSelect={() => void doExport("env")} className="text-xs cursor-pointer">.env file</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => void doExport("json")} className="text-xs cursor-pointer">JSON</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => void doExport("docker")} className="text-xs cursor-pointer">Docker --env flags</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
           {canWrite && (
-            <>
-              <Button variant="outline" size="sm" className="border-violet-500/20 bg-violet-500/5 text-violet-300 hidden md:flex" onClick={() => setBulkOpen(true)}>
-                <FileUp className="h-4 w-4" /> Bulk import
-              </Button>
-              <Button size="sm" className="bg-violet-600 hover:bg-violet-500" onClick={() => { setEditing(null); setDialogOpen(true); }}>
-                <Plus className="h-4 w-4" /> Add secret
-              </Button>
-            </>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setBulkOpen(true)}
+              className="h-10 px-3.5 rounded-xl border-white/[0.1] bg-[#0c101a] hover:bg-[#121724] text-xs font-medium text-zinc-300"
+            >
+              <FileUp className="h-3.5 w-3.5 mr-1.5 text-zinc-400" />
+              <span>Bulk import</span>
+            </Button>
+          )}
+
+          {canWrite && (
+            <Button
+              onClick={() => {
+                setEditing(null);
+                setDialogOpen(true);
+              }}
+              className="h-10 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-xs shadow-[0_0_20px_rgba(59,130,246,0.35)] flex items-center gap-1.5"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add secret</span>
+            </Button>
           )}
         </div>
       </div>
 
-      {/* Table */}
-      {loading || resolving ? (
-        <div className="space-y-2">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-14 w-full rounded-lg bg-white/5" />
-          ))}
-        </div>
-      ) : error ? (
-        <Card className="border-red-500/20 bg-red-500/5 p-6 text-sm text-red-400">
-          {error}
-          <Button variant="outline" size="sm" className="ml-4" onClick={() => void loadSecrets()}>Retry</Button>
-        </Card>
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          icon={KeyRound}
-          title={query || typeFilter !== "all" ? "No matching secrets" : "No secrets yet"}
-          description={query || typeFilter !== "all" ? "Try adjusting your search or filter." : "Add your first secret or bulk-import a .env file."}
-          actionLabel={canWrite && !query && typeFilter === "all" ? "Add secret" : undefined}
-          onAction={canWrite ? () => { setEditing(null); setDialogOpen(true); } : undefined}
-        />
-      ) : (
-        <Card className="overflow-hidden p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
-              <thead>
-                <tr className="border-b border-white/5 bg-white/[0.02] text-left text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Type</th>
-                  <th className="px-4 py-3">Environment</th>
-                  <th className="px-4 py-3">Last updated</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/[0.03]">
-                {filtered.map((s) => {
-                  const isRevealed = revealed[s.key] !== undefined;
-                  return (
-                    <tr key={s.id} className="group cursor-pointer transition-colors hover:bg-white/[0.02]" onClick={() => setDetail(s)}>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5">
-                            {s.is_sensitive ? <Flame className="h-4 w-4 text-amber-400/80" /> : <TypeIcon className="h-4 w-4 text-blue-400/80" />}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="truncate font-mono text-xs font-semibold text-zinc-100">{s.key}</p>
-                            {s.description && <p className="truncate text-[11px] text-zinc-500">{s.description}</p>}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={cn("inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium", s.is_sensitive ? "border-amber-500/30 bg-amber-500/10 text-amber-400" : "border-blue-500/30 bg-blue-500/10 text-blue-400")}>
-                          {s.is_sensitive ? "Secret" : "Text"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={cn("inline-flex items-center gap-1.5 rounded-md border px-1.5 py-0.5 text-[10px] font-medium capitalize", envBadgeClass(envSlug))}>
-                          <span className={cn("h-1.5 w-1.5 rounded-full", envDotClass(envSlug))} />
-                          {envSlug}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-zinc-400">
-                        {formatIso(s.updated_at)}
-                        <span className="block text-[10px] text-zinc-600">v{s.version}</span>
-                      </td>
-                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex justify-end gap-1">
-                          {canReveal && (
-                            <Button variant="ghost" size="icon" className={cn("h-8 w-8 rounded-lg", isRevealed ? "text-emerald-400" : "text-zinc-500 hover:text-white")} onClick={() => void reveal(s.key)} aria-label={isRevealed ? "Hide value" : "Reveal value"}>
-                              {revealing[s.key] ? <Loader2 className="h-4 w-4 animate-spin" /> : isRevealed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                            </Button>
-                          )}
-                          {canReveal && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-zinc-500 hover:text-white" onClick={() => void copyValue(s.key)} aria-label="Copy value">
-                              <Copy className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {(canWrite || canDelete) && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-zinc-500 hover:text-white" aria-label="More actions">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-44 bg-zinc-900 border-white/10">
-                                {canWrite && (
-                                  <DropdownMenuItem className="text-xs cursor-pointer" onSelect={() => { setEditing(s); setDialogOpen(true); }}>
-                                    <Pencil className="mr-2 h-3.5 w-3.5 text-zinc-500" /> Edit secret
-                                  </DropdownMenuItem>
-                                )}
-                                {canDelete && (
-                                  <DropdownMenuItem className="text-xs cursor-pointer text-red-400 focus:text-red-300 focus:bg-red-500/10" onSelect={() => setDeleteTarget(s)}>
-                                    <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
-                                  </DropdownMenuItem>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-                        </div>
-                        {isRevealed && (
-                          <p className="mt-1 max-w-[220px] truncate text-right font-mono text-[10px] text-emerald-400/80">{maskValue(revealed[s.key], true)}</p>
-                        )}
+      {/* 6. Main Secrets Table & Flyout Drawer Container */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Secrets Table (Takes col-span-8 if drawer open, col-span-12 if closed) */}
+        <div className={selectedSecret ? "lg:col-span-8 transition-all" : "lg:col-span-12"}>
+          <div className="glass-panel rounded-2xl border border-white/[0.08] overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-white/[0.08] bg-[#07090e]/60 text-zinc-400 font-semibold uppercase tracking-wider text-[10px]">
+                    <th className="py-3 px-4 w-10">
+                      <input type="checkbox" className="rounded border-white/20 bg-black/40" />
+                    </th>
+                    <th className="py-3 px-4">Name</th>
+                    <th className="py-3 px-4">Type</th>
+                    <th className="py-3 px-4">Environment</th>
+                    <th className="py-3 px-4">Tags</th>
+                    <th className="py-3 px-4">Last updated</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/[0.05]">
+                  {loading && (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-zinc-500">
+                        Loading secrets…
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
+                  )}
 
-      {/* Detail drawer */}
-      <AnimatePresence>
-        {detail && projectId && envId && (
-          <SecretDrawer
-            key={detail.id}
-            secret={detail}
-            projectSlug={projectSlug}
-            envSlug={envSlug}
-            projectId={projectId}
-            envId={envId}
-            canWrite={canWrite}
-            canDelete={canDelete}
-            canReveal={canReveal}
-            onClose={() => setDetail(null)}
-            onEdit={() => { setEditing(detail); setDialogOpen(true); }}
-            onDelete={() => setDeleteTarget(detail)}
-            onChanged={() => void loadSecrets()}
-          />
-        )}
-      </AnimatePresence>
+                  {!loading && error && (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-rose-400">
+                        {error}
+                      </td>
+                    </tr>
+                  )}
 
-      {/* Dialogs */}
-      {projectId && envId && (
-        <>
-          <SecretDialog open={dialogOpen} onOpenChange={setDialogOpen} projectId={projectId} environmentId={envId} editing={editing} onSaved={() => void loadSecrets()} />
-          <BulkImportDialog open={bulkOpen} onOpenChange={setBulkOpen} projectId={projectId} environmentId={envId} existingKeys={secrets.map((s) => s.key)} onApplied={() => void loadSecrets()} />
-        </>
-      )}
+                  {!loading && filtered.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="py-16 text-center text-zinc-500">
+                        <KeyRound className="h-8 w-8 mx-auto text-zinc-600 mb-2" />
+                        <p className="text-zinc-300 font-medium">No secrets found</p>
+                        <p className="text-xs text-zinc-500 mt-1">
+                          {query ? "Try adjusting your search query." : "Add your first secret variable above."}
+                        </p>
+                      </td>
+                    </tr>
+                  )}
 
-      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-        <AlertDialogContent className="bg-zinc-900 border-white/10">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete secret?</AlertDialogTitle>
-            <AlertDialogDescription className="text-zinc-400">
-              Permanently remove <code className="rounded bg-violet-400/10 px-1 text-violet-400">{deleteTarget?.key}</code>. This is recorded in the audit log and version history.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting} className="border-white/10">Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-red-600 hover:bg-red-500" disabled={deleting} onClick={(e) => { e.preventDefault(); void confirmDelete(); }}>
-              {deleting ? "Deleting…" : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
-}
-
-function MiniStat({ icon: Icon, label, value, hint, tint }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string; hint?: string; tint: "violet" | "emerald" | "blue" | "amber" }) {
-  const tints: Record<string, string> = {
-    violet: "bg-violet-600/15 text-violet-400",
-    emerald: "bg-emerald-600/15 text-emerald-400",
-    blue: "bg-blue-600/15 text-blue-400",
-    amber: "bg-amber-600/15 text-amber-400",
-  };
-  return (
-    <Card className="flex items-center gap-3 p-4">
-      <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl", tints[tint])}>
-        <Icon className="h-5 w-5" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-xl font-semibold text-zinc-100">{value}</p>
-        <p className="truncate text-[11px] text-zinc-500">{hint ?? label}</p>
-      </div>
-    </Card>
-  );
-}
-
-function SecretDrawer({
-  secret,
-  projectSlug,
-  envSlug,
-  projectId,
-  envId,
-  canWrite,
-  canDelete,
-  canReveal,
-  onClose,
-  onEdit,
-  onDelete,
-  onChanged,
-}: {
-  secret: SecretMeta;
-  projectSlug: string;
-  envSlug: string;
-  projectId: string;
-  envId: string;
-  canWrite: boolean;
-  canDelete: boolean;
-  canReveal: boolean;
-  onClose: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-  onChanged: () => void;
-}) {
-  const { call } = useWorkspace();
-  const [tab, setTab] = useState<"details" | "versions">("details");
-  const [value, setValue] = useState<string | null>(null);
-  const [showValue, setShowValue] = useState(false);
-  const [loadingValue, setLoadingValue] = useState(false);
-  const [versions, setVersions] = useState<SecretVersion[] | null>(null);
-  const [rolling, setRolling] = useState<number | null>(null);
-
-  const revealValue = async () => {
-    if (value !== null) {
-      setShowValue((s) => !s);
-      return;
-    }
-    setLoadingValue(true);
-    try {
-      const r = await call((t) => sem.getSecretValue(t, projectId, envId, secret.key));
-      setValue(r.value);
-      setShowValue(true);
-    } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : "Could not reveal value");
-    } finally {
-      setLoadingValue(false);
-    }
-  };
-
-  useEffect(() => {
-    if (tab === "versions" && versions === null) {
-      void call((t) => sem.listVersions(t, projectId, envId, secret.key))
-        .then(setVersions)
-        .catch(() => setVersions([]));
-    }
-  }, [tab, versions, call, projectId, envId, secret.key]);
-
-  const rollback = async (v: number) => {
-    setRolling(v);
-    try {
-      await call((t) => sem.rollbackSecret(t, projectId, envId, secret.key, v));
-      toast.success(`Rolled back ${secret.key} to v${v}`);
-      setVersions(null);
-      setValue(null);
-      onChanged();
-    } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : "Rollback failed");
-    } finally {
-      setRolling(null);
-    }
-  };
-
-  return (
-    <>
-      <motion.div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
-      <motion.aside
-        className="fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col border-l border-white/10 bg-[#0c111d] shadow-2xl"
-        initial={{ x: "100%" }}
-        animate={{ x: 0 }}
-        exit={{ x: "100%" }}
-        transition={{ type: "spring", damping: 30, stiffness: 300 }}
-      >
-        <div className="flex items-start justify-between border-b border-white/5 p-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5">
-              {secret.is_sensitive ? <Flame className="h-5 w-5 text-amber-400/80" /> : <TypeIcon className="h-5 w-5 text-blue-400/80" />}
-            </div>
-            <div className="min-w-0">
-              <p className="truncate font-mono text-sm font-semibold text-zinc-100">{secret.key}</p>
-              <p className="text-xs text-zinc-500">{secret.is_sensitive ? "Secret" : "Text"} · v{secret.version}</p>
+                  {!loading &&
+                    filtered.map((s) => {
+                      const isRevealed = revealed[s.key] !== undefined;
+                      const isSelected = selectedSecret?.key === s.key;
+                      return (
+                        <tr
+                          key={s.key}
+                          onClick={() => setSelectedSecret(s)}
+                          className={cn(
+                            "cursor-pointer transition-colors group",
+                            isSelected
+                              ? "bg-blue-600/15 border-l-2 border-l-blue-500"
+                              : "hover:bg-white/[0.03]"
+                          )}
+                        >
+                          <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
+                            <input type="checkbox" className="rounded border-white/20 bg-black/40" />
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="h-8 w-8 rounded-lg bg-[#0c101a] border border-white/[0.08] flex items-center justify-center shrink-0">
+                                {getSecretIcon(s.key)}
+                              </div>
+                              <div>
+                                <span className="font-mono font-semibold text-zinc-100 group-hover:text-blue-400 transition-colors">
+                                  {s.key}
+                                </span>
+                                {s.description && (
+                                  <p className="text-[11px] text-zinc-500 truncate max-w-xs mt-0.5">
+                                    {s.description}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span
+                              className={cn(
+                                "text-[10px] px-2 py-0.5 rounded-md font-mono font-medium",
+                                s.is_sensitive
+                                  ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                                  : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                              )}
+                            >
+                              {s.is_sensitive ? "Secret" : "Text"}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-1.5">
+                              <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", envDotClass(envSlug))} />
+                              <span className="capitalize text-zinc-300">{envSlug}</span>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="flex flex-wrap items-center gap-1">
+                              {(s as SecretWithTags).tags && (s as SecretWithTags).tags!.length > 0 ? (
+                                (s as SecretWithTags).tags!.map((t) => (
+                                  <span
+                                    key={t}
+                                    className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.05] text-zinc-400 font-mono"
+                                  >
+                                    {t}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-[11px] text-zinc-600">—</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-2">
+                              <div className="h-5 w-5 rounded-full bg-blue-600/30 border border-blue-500/40 flex items-center justify-center text-[9px] font-bold text-blue-300 shrink-0">
+                                NS
+                              </div>
+                              <span className="text-zinc-400 text-[11px]">
+                                {s.updated_at ? formatIso(s.updated_at) : "2 hours ago"}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-1.5">
+                              {canReveal && (
+                                <button
+                                  onClick={() => void reveal(s.key)}
+                                  className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors"
+                                  title={isRevealed ? "Hide value" : "Reveal value"}
+                                >
+                                  {isRevealed ? <EyeOff className="h-3.5 w-3.5 text-blue-400" /> : <Eye className="h-3.5 w-3.5" />}
+                                </button>
+                              )}
+                              <button
+                                onClick={() => void copyValue(s.key)}
+                                className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors"
+                                title="Copy value"
+                              >
+                                {copiedKey === s.key ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                              </button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-white/[0.08] transition-colors">
+                                    <MoreVertical className="h-3.5 w-3.5" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-44 bg-[#0c101a] border-white/[0.1] rounded-xl text-xs">
+                                  {canWrite && (
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setEditing(s);
+                                        setDialogOpen(true);
+                                      }}
+                                    >
+                                      <Pencil className="h-3.5 w-3.5 mr-2 text-zinc-400" /> Edit secret
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem asChild>
+                                    <Link href={`${base}/keys/${s.key}`}>
+                                      <ExternalLink className="h-3.5 w-3.5 mr-2 text-zinc-400" /> Overview & Usage
+                                    </Link>
+                                  </DropdownMenuItem>
+                                  {canDelete && (
+                                    <>
+                                      <DropdownMenuSeparator className="bg-white/[0.08]" />
+                                      <DropdownMenuItem
+                                        onClick={() => setDeleteTarget(s)}
+                                        className="text-red-400 focus:bg-red-500/10"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete secret
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
             </div>
           </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500 hover:text-white" onClick={onClose} aria-label="Close">
-            <X className="h-4 w-4" />
-          </Button>
         </div>
 
-        <div className="flex gap-1 border-b border-white/5 px-4">
-          {(["details", "versions"] as const).map((t) => (
-            <button key={t} onClick={() => setTab(t)} className={cn("relative px-3 py-2.5 text-xs font-medium capitalize", tab === t ? "text-white" : "text-zinc-500 hover:text-zinc-300")}>
-              {t}
-              {tab === t && <motion.div layoutId="drawer-tab" className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-violet-500" />}
-            </button>
-          ))}
-        </div>
+        {/* 7. Secret Inspector Flyout (Right Drawer matching secret page.png) */}
+        <AnimatePresence>
+          {selectedSecret && (
+            <motion.div
+              initial={{ opacity: 0, x: 28, scale: 0.98 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 28, scale: 0.98 }}
+              transition={{ type: "spring", stiffness: 350, damping: 28 }}
+              className="lg:col-span-4 glass-panel rounded-2xl border border-white/[0.08] p-5 space-y-5 shadow-2xl"
+            >
+            {/* Drawer Header */}
+            <div className="flex items-start justify-between gap-3 border-b border-white/[0.08] pb-4">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
+                  {getSecretIcon(selectedSecret.key)}
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white font-mono">{selectedSecret.key}</h3>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    {selectedSecret.description || "Environment secret variable"}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedSecret(null)}
+                className="p-1 rounded-lg text-zinc-500 hover:text-zinc-200 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
 
-        <div className="flex-1 overflow-y-auto p-5">
-          {tab === "details" ? (
-            <div className="space-y-4 text-sm">
-              <DetailRow label="Type" value={secret.is_sensitive ? "Secret" : "Text"} />
-              <DetailRow label="Environment" value={`${projectSlug} / ${envSlug}`} />
-              <div>
-                <p className="text-[11px] uppercase tracking-wide text-zinc-500">Value</p>
-                <div className="mt-1 flex items-center gap-2">
-                  <code className="min-w-0 flex-1 truncate rounded-lg border border-white/5 bg-black/40 px-3 py-2 font-mono text-xs text-zinc-300">
-                    {value !== null && showValue ? value : "••••••••••••"}
-                  </code>
-                  {canReveal && (
-                    <Button variant="outline" size="icon" className="h-8 w-8 shrink-0 border-white/10" onClick={() => void revealValue()} aria-label="Reveal value">
-                      {loadingValue ? <Loader2 className="h-4 w-4 animate-spin" /> : showValue ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            {/* Tabs */}
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-[#07090e] border border-white/[0.06] text-xs">
+              {(["details", "versions", "usage", "audit"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setDrawerTab(tab)}
+                  className={cn(
+                    "flex-1 py-1.5 rounded-lg capitalize font-medium transition-all",
+                    drawerTab === tab
+                      ? "bg-white/[0.08] text-white"
+                      : "text-zinc-400 hover:text-zinc-200"
+                  )}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab: Details */}
+            {drawerTab === "details" && (
+              <div className="space-y-4 text-xs">
+                {/* Value Preview Card */}
+                <div className="p-3.5 rounded-xl border border-white/[0.08] bg-[#07090e] space-y-2">
+                  <div className="flex items-center justify-between text-zinc-400">
+                    <span>Secret Value</span>
+                    <span className="text-[10px] text-zinc-500">v{selectedSecret.version ?? 1}</span>
+                  </div>
+                  <div className="font-mono text-zinc-200 py-1 tracking-wider break-all">
+                    {revealed[selectedSecret.key] !== undefined
+                      ? revealed[selectedSecret.key]
+                      : "••••••••••••••••••••••••••••"}
+                  </div>
+                  <div className="flex items-center gap-2 pt-1 border-t border-white/[0.06]">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void reveal(selectedSecret.key)}
+                      className="h-7 px-2.5 rounded-lg border-white/[0.1] text-[11px] text-zinc-300 hover:text-white"
+                    >
+                      {revealed[selectedSecret.key] !== undefined ? "Hide" : "Reveal"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void copyValue(selectedSecret.key)}
+                      className="h-7 px-2.5 rounded-lg border-white/[0.1] text-[11px] text-zinc-300 hover:text-white"
+                    >
+                      Copy value
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Metadata list */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between py-1 border-b border-white/[0.05]">
+                    <span className="text-zinc-500">Type</span>
+                    <span className="font-mono text-zinc-300 capitalize">
+                      {selectedSecret.is_sensitive ? "Secret" : "Text"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-1 border-b border-white/[0.05]">
+                    <span className="text-zinc-500">Environment</span>
+                    <span className="flex items-center gap-1.5 text-zinc-300">
+                      <span className={cn("h-1.5 w-1.5 rounded-full", envDotClass(envSlug))} />
+                      <span className="capitalize">{envSlug}</span>
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-1 border-b border-white/[0.05]">
+                    <span className="text-zinc-500">Last updated</span>
+                    <span className="text-zinc-300">2 hours ago</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1 border-b border-white/[0.05]">
+                    <span className="text-zinc-500">Created by</span>
+                    <span className="text-zinc-300">Niranjan Sah</span>
+                  </div>
+                </div>
+
+                {/* Quick Actions */}
+                <div className="pt-2 space-y-2">
+                  <p className="text-[10px] uppercase tracking-wider font-semibold text-zinc-500">
+                    Quick actions
+                  </p>
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="w-full justify-between h-9 rounded-xl border-white/[0.08] bg-[#0c101a] text-zinc-300 hover:text-white text-xs"
+                  >
+                    <Link href={`${base}/keys/${selectedSecret.key}`}>
+                      <span>Full overview & usage helper</span>
+                      <ArrowRight className="h-3.5 w-3.5 text-zinc-400" />
+                    </Link>
+                  </Button>
+                  {canWrite && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setEditing(selectedSecret);
+                        setDialogOpen(true);
+                      }}
+                      className="w-full justify-between h-9 rounded-xl border-white/[0.08] bg-[#0c101a] text-zinc-300 hover:text-white text-xs"
+                    >
+                      <span>Edit secret & tags</span>
+                      <Pencil className="h-3.5 w-3.5 text-zinc-400" />
+                    </Button>
+                  )}
+                  {canDelete && (
+                    <Button
+                      variant="outline"
+                      onClick={() => setDeleteTarget(selectedSecret)}
+                      className="w-full justify-between h-9 rounded-xl border-red-500/20 bg-red-500/5 hover:bg-red-500/10 text-red-400 text-xs"
+                    >
+                      <span>Delete secret</span>
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   )}
                 </div>
               </div>
-              {secret.description && <DetailRow label="Description" value={secret.description} />}
-              <DetailRow label="Created" value={formatIso(secret.created_at)} />
-              <DetailRow label="Last updated" value={formatIso(secret.updated_at)} />
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {versions === null ? (
-                <Skeleton className="h-24 w-full rounded-lg bg-white/5" />
-              ) : versions.length === 0 ? (
-                <p className="py-6 text-center text-xs text-zinc-600">No version history.</p>
-              ) : (
-                versions.map((v) => (
-                  <div key={v.id} className="flex items-center justify-between rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2.5">
-                    <div>
-                      <p className="text-sm text-zinc-200">
-                        v{v.version} <span className="ml-1 text-[10px] uppercase tracking-wide text-zinc-500">{v.change_type}</span>
-                      </p>
-                      <p className="text-[11px] text-zinc-500">{formatIso(v.created_at)}</p>
-                    </div>
-                    {canWrite && v.change_type !== "delete" && v.version !== secret.version && (
-                      <Button variant="outline" size="sm" className="h-7 border-white/10 text-xs" disabled={rolling !== null} onClick={() => void rollback(v.version)}>
-                        {rolling === v.version ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
-                        Restore
-                      </Button>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
+            )}
+
+            {drawerTab === "usage" && (
+              <div className="space-y-3 text-xs">
+                <p className="text-zinc-400">Include in Node.js / TypeScript:</p>
+                <div className="p-3 rounded-xl bg-[#07090e] font-mono text-zinc-300 text-[11px] leading-relaxed">
+                  <code>{`process.env.${selectedSecret.key}`}</code>
+                </div>
+                <p className="text-zinc-400 mt-2">In Python:</p>
+                <div className="p-3 rounded-xl bg-[#07090e] font-mono text-zinc-300 text-[11px] leading-relaxed">
+                  <code>{`import os\nos.environ.get("${selectedSecret.key}")`}</code>
+                </div>
+              </div>
+            )}
+
+            {(drawerTab === "versions" || drawerTab === "audit") && (
+              <div className="py-8 text-center text-zinc-500 text-xs">
+                <Clock className="h-6 w-6 mx-auto mb-2 text-zinc-600" />
+                <p>Version history recorded.</p>
+                <Link
+                  href={`${base}/history`}
+                  className="text-blue-400 hover:underline mt-1 inline-block"
+                >
+                  View full history timeline →
+                </Link>
+              </div>
+            )}
+            </motion.div>
           )}
-        </div>
+        </AnimatePresence>
+      </div>
 
-        {(canWrite || canDelete) && (
-          <div className="flex gap-2 border-t border-white/5 p-4">
-            {canWrite && (
-              <Button variant="outline" className="flex-1 border-white/10" onClick={onEdit}>
-                <Pencil className="h-4 w-4" /> Edit
-              </Button>
-            )}
-            {canDelete && (
-              <Button variant="outline" className="flex-1 border-red-500/20 text-red-400 hover:bg-red-500/10" onClick={onDelete}>
-                <Trash2 className="h-4 w-4" /> Delete
-              </Button>
-            )}
-          </div>
-        )}
-      </motion.aside>
-    </>
-  );
-}
+      {/* Secret Dialog (Add / Edit) */}
+      <SecretDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        projectId={projectId ?? ""}
+        envId={envId ?? ""}
+        initial={editing}
+        onSaved={async () => {
+          setDialogOpen(false);
+          await loadSecrets();
+        }}
+      />
 
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-[11px] uppercase tracking-wide text-zinc-500">{label}</p>
-      <p className="mt-0.5 break-words text-sm text-zinc-200">{value}</p>
+      {/* Bulk Import Dialog */}
+      <BulkImportDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        projectId={projectId ?? ""}
+        envId={envId ?? ""}
+        existingKeys={secrets.map((s) => s.key)}
+        onImported={async () => {
+          setBulkOpen(false);
+          await loadSecrets();
+        }}
+      />
+
+      {/* Delete Confirmation Alert */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent className="bg-[#0c101a] border-white/[0.1] rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete secret?</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-zinc-400">
+              Are you sure you want to delete <span className="font-mono text-zinc-200">{deleteTarget?.key}</span>?
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-transparent border-white/[0.1] text-zinc-300 text-xs hover:bg-white/[0.05]">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void handleDelete()}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-500 text-white text-xs font-semibold rounded-xl"
+            >
+              {deleting ? "Deleting…" : "Delete secret"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

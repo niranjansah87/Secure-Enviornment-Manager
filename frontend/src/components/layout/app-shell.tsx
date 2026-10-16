@@ -29,12 +29,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (!isMounted) return null;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-black selection:bg-violet-500/30">
+    <div className="flex h-screen overflow-hidden bg-[#07090e] selection:bg-blue-500/30">
       {mustChangePassword && <ForceChangePassword />}
       <AppSidebar />
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#050505]">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#07090e]">
         <AppHeader />
-        <main className="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto px-6 py-6 lg:px-8 lg:py-6">
           <PageMotion>{children}</PageMotion>
         </main>
       </div>

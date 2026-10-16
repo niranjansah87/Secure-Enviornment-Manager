@@ -25,13 +25,17 @@ type Props = {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   projectId: string;
-  environmentId: string;
+  environmentId?: string;
+  envId?: string;
   /** When set, the dialog edits an existing secret (key locked, value fetched). */
   editing?: SecretMeta | null;
+  initial?: SecretMeta | null;
   onSaved: () => void;
 };
 
-export function SecretDialog({ open, onOpenChange, projectId, environmentId, editing, onSaved }: Props) {
+export function SecretDialog({ open, onOpenChange, projectId, environmentId, envId, editing, initial, onSaved }: Props) {
+  const effectiveEnvId = environmentId || envId || "";
+  const effectiveEditing = editing !== undefined ? editing : initial;
   const { call } = useWorkspace();
   const [key, setKey] = useState("");
   const [value, setValue] = useState("");
@@ -46,14 +50,14 @@ export function SecretDialog({ open, onOpenChange, projectId, environmentId, edi
     if (!open) return;
     setKeyError(null);
     setShowValue(false);
-    if (editing) {
-      setKey(editing.key);
-      setDescription(editing.description ?? "");
-      setIsSensitive(editing.is_sensitive);
+    if (effectiveEditing) {
+      setKey(effectiveEditing.key);
+      setDescription(effectiveEditing.description ?? "");
+      setIsSensitive(effectiveEditing.is_sensitive);
       setValue("");
       // Fetch the current value so an edit doesn't blank it out.
       setLoadingValue(true);
-      call((t) => sem.getSecretValue(t, projectId, environmentId, editing.key))
+      call((t) => sem.getSecretValue(t, projectId, effectiveEnvId, effectiveEditing.key))
         .then((r) => setValue(r.value))
         .catch(() => toast.error("Could not load the current value."))
         .finally(() => setLoadingValue(false));
@@ -63,7 +67,7 @@ export function SecretDialog({ open, onOpenChange, projectId, environmentId, edi
       setDescription("");
       setIsSensitive(true);
     }
-  }, [open, editing, call, projectId, environmentId]);
+  }, [open, effectiveEditing, call, projectId, effectiveEnvId]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -85,13 +89,13 @@ export function SecretDialog({ open, onOpenChange, projectId, environmentId, edi
     setLoading(true);
     try {
       await call((t) =>
-        sem.upsertSecret(t, projectId, environmentId, k, {
+        sem.upsertSecret(t, projectId, effectiveEnvId, k, {
           value,
           description: description.trim() || undefined,
           is_sensitive: isSensitive,
         }),
       );
-      toast.success(editing ? `Updated ${k}` : `Added ${k}`);
+      toast.success(effectiveEditing ? `Updated ${k}` : `Added ${k}`);
       onOpenChange(false);
       onSaved();
     } catch (err) {
@@ -163,16 +167,16 @@ export function SecretDialog({ open, onOpenChange, projectId, environmentId, edi
               type="checkbox"
               checked={isSensitive}
               onChange={(e) => setIsSensitive(e.target.checked)}
-              className="h-4 w-4 rounded border-white/20 bg-black/40 accent-violet-600"
+              className="h-4 w-4 rounded border-white/20 bg-black/40 accent-blue-600 focus:ring-blue-500/20"
             />
             Mark as sensitive (masked by default)
           </label>
 
-          <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={loading} className="text-zinc-400">
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={loading} className="text-zinc-400 hover:text-white hover:bg-white/5">
               Cancel
             </Button>
-            <Button type="submit" disabled={loading || loadingValue} className="bg-violet-600 hover:bg-violet-500">
+            <Button type="submit" disabled={loading || loadingValue} className="bg-blue-600 hover:bg-blue-500 text-white font-medium shadow-lg shadow-blue-600/20">
               {loading ? "Saving…" : editing ? "Save changes" : "Create secret"}
             </Button>
           </DialogFooter>
