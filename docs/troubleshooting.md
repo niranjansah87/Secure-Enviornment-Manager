@@ -1,63 +1,76 @@
-# Troubleshooting
+# Troubleshooting (SEM V2)
 
-If you encounter issues while setting up or using Secure Environment Manager (SEM), this guide provides solutions to the most common problems.
-
-## 🔴 Server Connection Errors
-
-### "Network Error: Could not connect to the API"
--   **Cause**: The frontend cannot reach the backend server.
--   **Solution**:
-    1.  Verify the backend is running (`python app.py` or check Docker status).
-    2.  Check the `NEXT_PUBLIC_API_URL` variable in your `frontend/.env.local`. It should match your backend's host and port.
-    3.  Verify your browser's console for CORS errors. Ensure `CORS_ORIGINS` in your backend `.env` includes your frontend URL.
-
-## 🟠 Authentication Issues
-
-### "Invalid Credentials" or "401 Unauthorized"
--   **Cause**: Incorrect password or expired session.
--   **Solution**:
-    1.  Check the `DASHBOARD_PASSWORD` in your backend `.env`.
-    2.  If using the CLI, verify your `API_TOKEN` exists and has access to the namespace.
-    3.  Clear your browser's cookies and try logging in again.
-
-### "Too Many Attempts: Locked Out"
--   **Cause**: 5 or more failed login attempts from your IP address.
--   **Solution**:
-    1.  Wait for 15 minutes (default `LOCKOUT_MINUTES`).
-    2.  If you have SSH access to the server, you can restart the backend to clear the in-memory lockout map.
-
-## 🟡 Data Integrity Issues
-
-### "Decryption Failed: Invalid Token"
--   **Cause**: The `ENCRYPTION_KEY` used to read the file does not match the key used to write it.
--   **Solution**:
-    1.  Check your backend `.env` file and ensure the `ENCRYPTION_KEY` is correct.
-    2.  If you have rotated your keys without migrating the data, your secrets are unrecoverable. Use the **History** feature or a backup if available.
-
-### "JSON Decode Error"
--   **Cause**: The encrypted file has been manually edited or corrupted.
--   **Solution**:
-    1.  Decrypting a manually modified file will result in a checksum failure (HMAC). Use a previous version from the `History` tab to restore the environment.
-
-## 🟢 Monitoring & Logs
-
-If problems persist, check the logs for detailed error messages:
-
--   **Backend Logs**: `app.log` (if configured) or the terminal output.
--   **Audit Logs**: Check the `audit_logs/` directory for a JSON-formatted trail of actions.
--   **Frontend Logs**: Run the frontend with `npm run dev` to see real-time console messages.
-
-## 🕵️ Debug Mode
-
-For a more verbose output, enable debug mode in your `.env`:
-```bash
-FLASK_DEBUG=true
-LOG_LEVEL=DEBUG
-```
-
-> [!WARNING]
-> **Security Risk**: Never enable `FLASK_DEBUG=true` in a production environment accessible from the public internet.
+If you encounter issues while setting up or operating Secure Environment Manager V2, use this guide for quick diagnosis and resolution.
 
 ---
 
-Next: [FAQ](faq.md)
+## 🔴 Server & Connection Issues
+
+### 1. "Cannot connect to backend" or Network Error
+- **Cause**: Backend API is offline or running on a different port.
+- **Solution**:
+  1. Verify the backend is running:
+     ```bash
+     curl http://localhost:3001/healthz
+     ```
+  2. If offline, start it from repository root:
+     ```bash
+     pnpm dev:backend
+     ```
+  3. Verify `CORS_ORIGINS` in `.env` includes `http://localhost:3000`.
+
+### 2. Readiness Probe Degraded (`503 Service Unavailable` on `/readyz`)
+- **Cause**: PostgreSQL is not reachable or Redis was enabled (`REDIS_ENABLED=true`) but offline.
+- **Solution**:
+  1. Inspect the `/readyz` response:
+     ```bash
+     curl http://localhost:3001/readyz
+     ```
+  2. If `database: fail`: Check `DATABASE_URL` in `.env` and verify PostgreSQL service is active (`5432`).
+  3. If `redis: fail`: Either start Redis on port `6379`, or set `REDIS_ENABLED=false` in `.env` to run in standalone database mode.
+
+---
+
+## 🟠 Authentication & Session Issues
+
+### 1. "Invalid credentials" (401 Unauthorized)
+- **Master Token**: Ensure `SEM_MASTER_TOKEN` matches the value configured in `.env`.
+- **Developer Login**: Ensure the user exists in `users` table (`pnpm db:bootstrap` to create defaults).
+- **Password Reset**: Admin can reset user credentials via:
+  ```bash
+  POST /api/v1/admin/users/:id/reset-password
+  ```
+
+### 2. "Token expired" or "Session is no longer active"
+- SEM V2 uses 15-minute ES256 access tokens and 30-day refresh tokens.
+- Frontend automatically rotates tokens on 401 via `refreshAccessToken()`. If the session was revoked or expired, sign in again.
+
+### 3. "Too many login attempts. Try again later." (Account Lockout)
+- Sliding window rate limiting triggers after repeated failed logins.
+- Wait 15 minutes (`RATE_LOGIN_WINDOW=900`) for the cooldown, or restart the server if running in local in-memory fallback mode.
+
+---
+
+## 🟡 Encryption & Decryption Issues
+
+### 1. "Ciphertext MAC check failed" or Decryption Errors
+- **Cause**: Envelope key mismatch. Secrets are encrypted using an Environment Data Encryption Key (DEK) wrapped by a Project Key Encryption Key (KEK), wrapped by `SEM_MASTER_KEY`.
+- **Solution**:
+  1. Ensure `SEM_MASTER_KEY` in `.env` matches the key used when encrypting the rows.
+  2. Never change or overwrite `SEM_MASTER_KEY` once projects and secrets have been created in PostgreSQL.
+
+---
+
+## 🟢 Logs & Observability
+
+- **API Logs**: Pino structured JSON logs printed to stdout. Set `LOG_LEVEL=debug` for detailed request tracing.
+- **Prometheus Metrics**:
+  ```bash
+  curl http://localhost:3001/metrics
+  ```
+- **Audit Logs**:
+  Query append-only database logs in real time via:
+  ```bash
+  curl http://localhost:3001/api/v1/audit \
+    -H "Authorization: Bearer <access_token>"
+  ```

@@ -1,118 +1,138 @@
-# Setup Instructions
+# Setup Instructions (SEM V2)
 
-## Quick Start
+Secure Environment Manager V2 is a high-performance, multi-tenant secrets management platform built on NestJS Fastify, PostgreSQL with Drizzle ORM, AES-256-GCM envelope encryption, and Next.js 15.
 
-1. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+---
 
-2. **Create `.env` file with these required variables:**
-   ```env
-   FLASK_SECRET_KEY=your-secret-key-here
-   ENCRYPTION_KEY=your-encryption-key-here
-   DASHBOARD_PASSWORD=your-password-here
-   SESSION_COOKIE_SECURE=false
-   BEHIND_PROXY=false
+## Quick Start (Local Development)
 
-   # Optional - Admin Identity
-   ADMIN_USERNAME=admin
-   ADMIN_EMAIL=admin@example.com
+### 1. Prerequisites
+- **Node.js**: >= 22.0.0
+- **pnpm**: >= 9.0.0
+- **PostgreSQL**: 16 (Local or via Docker)
+- **Redis**: 7 (Optional for standalone dev; required for BullMQ queues)
 
-   # Optional - Email (SMTP)
-   EMAIL_SMTP_HOST=smtp.example.com
-   EMAIL_SMTP_PORT=587
-   EMAIL_SMTP_USER=your-email@example.com
-   EMAIL_SMTP_PASSWORD=your-smtp-password
-   EMAIL_FROM=noreply@your-domain.com
-   ```
-
-3. **Generate encryption key:**
-   ```bash
-   python generate_keys.py
-   ```
-   Copy the output to your `.env` file as `ENCRYPTION_KEY`.
-
-4. **Run the server:**
-   ```bash
-   python app.py
-   ```
-
-## Important: Session Cookie Settings
-
-**For Local Development (HTTP):**
-- Set `SESSION_COOKIE_SECURE=false` in your `.env` file
-- This allows session cookies to work over HTTP (localhost)
-
-**For Production (HTTPS):**
-- Set `SESSION_COOKIE_SECURE=true` in your `.env` file
-- Set `BEHIND_PROXY=true` if using a reverse proxy (Caddy/Nginx)
-
-## URL Format
-
-Access your environment variables using:
-```
-http://localhost:8070/<namespace>/<environment>
+### 2. Install Dependencies
+```bash
+pnpm install
 ```
 
-**Examples:**
-- `http://localhost:8070/production/main`
-- `http://localhost:8070/staging/dev`
-- `http://localhost:8070/myapp/prod`
+### 3. Configure Environment Variables
+Copy `.env.example` to `.env`:
+```bash
+cp .env.example .env
+```
+Generate cryptographic keys and secrets automatically:
+```bash
+pnpm keys:generate
+```
+This populates:
+- `JWT_PRIVATE_KEY` / `JWT_PUBLIC_KEY` (ES256 ECDSA P-256 key pair)
+- `SEM_MASTER_KEY` (32-byte AES-256 base64 key)
+- `SEM_TOKEN_HMAC_KEY` (32-byte HMAC key)
+- `SEM_MASTER_TOKEN` (high-entropy master administrative token)
 
-**NOT:** `/Dashboard/login` - This won't work correctly. Use the format above.
+### 4. Database Setup & Seeding
+Ensure PostgreSQL is running and matches your `DATABASE_URL` in `.env` (e.g. `postgresql://postgres:12345@localhost:5432/sem`):
+```bash
+# Push schema migrations
+pnpm db:migrate
 
-## Troubleshooting Login Redirect Issue
+# Seed default organization and master administrative user
+pnpm db:bootstrap
+```
 
-If login redirects back to login page:
+### 5. Start the Monorepo (Turborepo)
+To start both the NestJS API (port 3001) and Next.js Frontend (port 3000) simultaneously:
+```bash
+pnpm dev
+```
 
-1. **Check `.env` file** - Make sure `SESSION_COOKIE_SECURE=false` for local development
-2. **Check browser console** - Look for cookie errors
-3. **Check server logs** - Look for authentication messages
-4. **Clear browser cookies** - Old session data might interfere
-5. **User login issues**: Verify the user exists in `data/users.json` and status is "active". Check that the username is spelled correctly (case-insensitive match).
+Or run individual components:
+```bash
+pnpm dev:backend   # NestJS API server (@sem/api) on port 3001
+pnpm dev:frontend  # Next.js 15 UI on port 3000
+pnpm dev:worker    # BullMQ worker (@sem/worker)
+```
 
-## API Usage
+---
 
-Create `api_keys.json`:
+## Health Checks & Diagnostics
+
+- **Liveness probe**:
+  ```bash
+  curl http://localhost:3001/healthz
+  # Response: {"status":"ok","uptime":...}
+  ```
+- **Readiness probe** (checks DB and Redis connectivity):
+  ```bash
+  curl http://localhost:3001/readyz
+  ```
+- **Prometheus Metrics**:
+  ```bash
+  curl http://localhost:3001/metrics
+  ```
+
+---
+
+## Authentication & API Usage
+
+SEM V2 uses standard ES256 Bearer tokens and JSON envelopes `{ success: true, data: ... }`.
+
+### 1. Admin Login (with Master Token)
+```bash
+curl -X POST http://localhost:3001/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"master_token": "<SEM_MASTER_TOKEN>"}'
+```
+Response:
 ```json
 {
-  "namespace1": "your-api-token-here",
-  "namespace2": "another-token-here"
+  "success": true,
+  "data": {
+    "access_token": "<jwt>",
+    "refresh_token": "<token>",
+    "token_type": "Bearer",
+    "expires_in": 900,
+    "must_change_password": false
+  }
 }
 ```
 
-Then use:
+### 2. User Login (Username + Password)
 ```bash
-curl -H "Authorization: Bearer your-api-token-here" \
-  http://localhost:8070/api/v1/namespace1/environment1
+curl -X POST http://localhost:3001/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"organization": "default", "username": "niranjan", "password": "<password>"}'
 ```
 
-## User Management
-
-Create user accounts for team members:
-
+### 3. List Projects
 ```bash
-# Login as admin first
-curl -X POST http://localhost:8070/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"password": "your-dashboard-password", "namespace": "global", "environment": "main"}'
-
-# Create a new user (use the JWT from login response)
-curl -X POST http://localhost:8070/api/v1/admin/users \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <admin-jwt>" \
-  -d '{"username": "developer1", "role": "developer", "email": "dev@example.com", "scopes": ["production/main"]}'
-
-# User logs in and sets new password
-curl -X POST http://localhost:8070/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username": "developer1", "password": "<temp-password>", "namespace": "production", "environment": "main"}'
-
-# Response includes must_change_password: true — user must call:
-curl -X POST http://localhost:8070/api/v1/user/change-password \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <user-jwt>" \
-  -d '{"new_password": "my-secure-password"}'
+curl http://localhost:3001/api/v1/projects \
+  -H "Authorization: Bearer <access_token>"
 ```
 
+### 4. Fetch Decrypted Secret Value
+```bash
+curl http://localhost:3001/api/v1/projects/<projectId>/environments/<envId>/secrets/<KEY>/value \
+  -H "Authorization: Bearer <access_token>"
+```
+
+---
+
+## Data Migration from V1 (Legacy)
+
+Legacy Fernet files and `.history.jsonl` from `backend_v1/data` can be migrated using the CLI tool:
+```bash
+# Dry run
+pnpm --filter @sem/migrate migrate:dry --data-dir backend_v1/data
+
+# Execute migration into PostgreSQL
+pnpm --filter @sem/migrate migrate --execute --data-dir backend_v1/data
+```
+This migrates:
+- Organizations and users
+- Projects and environments
+- Secrets envelope-encrypted with AES-256-GCM
+- Historical encrypted snapshots
+- Audit events into `audit_events`

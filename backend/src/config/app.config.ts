@@ -12,6 +12,7 @@ export const appConfig = registerAs('app', () => ({
   },
 
   redis: {
+    enabled: process.env['REDIS_ENABLED']?.toLowerCase() === 'true',
     url: process.env['REDIS_URL'] ?? 'redis://localhost:6379',
     password: process.env['REDIS_PASSWORD'],
   },

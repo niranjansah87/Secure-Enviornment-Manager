@@ -27,7 +27,7 @@ export class HealthController {
   @Get('readyz')
   @Public()
   async readiness() {
-    const checks: Record<string, 'ok' | 'fail'> = {};
+    const checks: Record<string, 'ok' | 'fail' | 'disabled'> = {};
 
     try {
       await this.db.execute(sql`SELECT 1`);
@@ -36,14 +36,21 @@ export class HealthController {
       checks['database'] = 'fail';
     }
 
-    try {
-      await this.redis.ping();
-      checks['redis'] = 'ok';
-    } catch {
-      checks['redis'] = 'fail';
+    const isRedisEnabled = this.config.get<boolean>('app.redis.enabled', false);
+    if (isRedisEnabled) {
+      try {
+        await this.redis.ping();
+        checks['redis'] = 'ok';
+      } catch {
+        checks['redis'] = 'fail';
+      }
+    } else {
+      checks['redis'] = 'disabled';
     }
 
-    const healthy = Object.values(checks).every((v) => v === 'ok');
+    const criticalChecks = ['database'];
+    if (isRedisEnabled) criticalChecks.push('redis');
+    const healthy = criticalChecks.every((k) => checks[k] === 'ok');
     const result = {
       status: healthy ? 'ok' : 'degraded',
       checks,

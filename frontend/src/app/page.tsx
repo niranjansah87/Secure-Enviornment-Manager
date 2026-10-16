@@ -129,6 +129,16 @@ export default function HomePage() {
   const [copied, setCopied] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
+  // Robust typewriter effect for hero headline
+  const line1 = "Environment";
+  const line2 = "variables, finally";
+  const line3 = "under control.";
+
+  const [text1, setText1] = useState("");
+  const [text2, setText2] = useState("");
+  const [text3, setText3] = useState("");
+  const [phase, setPhase] = useState<1 | 2 | 3 | 4>(1);
+
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
@@ -136,6 +146,36 @@ export default function HomePage() {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => {
+    let timeout: NodeJS.Timeout;
+    if (phase === 1) {
+      if (text1.length < line1.length) {
+        timeout = setTimeout(() => {
+          setText1(line1.slice(0, text1.length + 1));
+        }, 55);
+      } else {
+        timeout = setTimeout(() => setPhase(2), 150);
+      }
+    } else if (phase === 2) {
+      if (text2.length < line2.length) {
+        timeout = setTimeout(() => {
+          setText2(line2.slice(0, text2.length + 1));
+        }, 50);
+      } else {
+        timeout = setTimeout(() => setPhase(3), 150);
+      }
+    } else if (phase === 3) {
+      if (text3.length < line3.length) {
+        timeout = setTimeout(() => {
+          setText3(line3.slice(0, text3.length + 1));
+        }, 50);
+      } else {
+        setPhase(4);
+      }
+    }
+    return () => clearTimeout(timeout);
+  }, [phase, text1, text2, text3]);
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(CODE_EXAMPLES[activeCodeTab] || "");
@@ -168,21 +208,13 @@ export default function HomePage() {
             </div>
           </Link>
 
-          {/* Center Links matching reference design */}
+          {/* Center Links pointing to dedicated standalone pages */}
           <nav className="hidden lg:flex items-center gap-8 text-xs font-medium text-zinc-300">
-            <a href="#features" className="hover:text-white transition-colors">Features</a>
-            <a href="#how-it-works" className="hover:text-white transition-colors">How it works</a>
-            <a href="#integrations" className="hover:text-white transition-colors">Integrations</a>
-            <a href="#self-hosted" className="hover:text-white transition-colors">Self-hosted</a>
-            <a href="#security" className="hover:text-white transition-colors">Security</a>
-            <a
-              href="https://github.com/niranjansah87/Secure-Enviornment-Manager#documentation"
-              target="_blank"
-              rel="noreferrer"
-              className="hover:text-white transition-colors"
-            >
-              Docs
-            </a>
+            <Link href="/features" className="hover:text-white transition-colors">Features</Link>
+            <Link href="/workflow" className="hover:text-white transition-colors">Workflow</Link>
+            <Link href="/integrations" className="hover:text-white transition-colors">Integrations</Link>
+            <Link href="/security" className="hover:text-white transition-colors">Security</Link>
+            <Link href="/docs" className="hover:text-white transition-colors">Docs</Link>
           </nav>
 
           {/* Right CTA Area matching reference design */}
@@ -207,97 +239,125 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* 2. Hero Section (Matching Reference Design: Full-Width Cinematic Vista) */}
-      <section className="relative min-h-[640px] lg:min-h-[720px] pt-32 pb-20 md:pt-40 md:pb-28 overflow-hidden flex items-center">
-        {/* Full Width Cinematic Mountain Vista Background Image */}
+      {/* 2. Hero Section (Full-Width Cinematic Artwork Background matching Reference Design) */}
+      <section className="relative min-h-[720px] lg:min-h-[820px] xl:min-h-[880px] flex flex-col justify-between pt-36 sm:pt-40 md:pt-44 pb-14 md:pb-16 overflow-hidden">
+        {/* Full-width Background Artwork Image */}
         <div className="absolute inset-0 z-0">
           <Image
             src="/home/hero.png"
-            alt="Hero Background"
+            alt="Secure Environment Manager Workspace"
             fill
             priority
-            className="object-cover object-right md:object-center filter brightness-[0.8] contrast-[1.05]"
+            className="object-cover object-[75%_center] lg:object-right-top select-none pointer-events-none"
           />
-          {/* Subtle directional gradient overlay matching reference design */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#07090e] via-[#07090e]/30 to-[#07090e]/60" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#07090e] via-[#07090e]/75 to-transparent max-w-4xl" />
+          {/* Left-side soft shade ensuring sharp text contrast while right-side monitor & window stay crystal clear */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#07090e]/95 via-[#07090e]/70 to-transparent sm:w-[75%] lg:w-[58%] pointer-events-none" />
+          {/* Top header subtle shade for navbar clarity */}
+          <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-[#07090e]/70 to-transparent pointer-events-none" />
+          {/* Smooth bottom fade into next section (#07090e) */}
+          <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#07090e] via-[#07090e]/75 to-transparent pointer-events-none" />
         </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-12 w-full">
-          <div className="max-w-2xl space-y-6">
-            <motion.div
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              className="space-y-6"
-            >
-              {/* Clean Single-Color Pill without multiple rainbow accents */}
-              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-white/[0.1] bg-[#0c101a]/80 backdrop-blur-md">
-                <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-                <span className="text-xs font-medium text-zinc-300">
-                  Self-hosted &bull; Open Source
-                </span>
-              </div>
+        <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-12 w-full flex-1 flex flex-col justify-between">
+          {/* Hero Content Area (Left-aligned matching reference design) */}
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="max-w-xl lg:max-w-2xl space-y-6 pt-4"
+          >
+            {/* Typing Animated Headline with glowing terminal cursor */}
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-[68px] font-extrabold tracking-tight text-white leading-[1.06] min-h-[140px] sm:min-h-[170px] lg:min-h-[220px]">
+              <span className="block">
+                {text1 || (phase === 1 ? "" : line1)}
+                {phase === 1 && (
+                  <span className="inline-block w-[3px] h-[0.82em] bg-blue-500 ml-1.5 translate-y-[2px] animate-pulse shadow-[0_0_10px_#3b82f6]" />
+                )}
+              </span>
+              <span className="block">
+                {text2 || (phase >= 2 ? text2 : "")}
+                {phase === 2 && (
+                  <span className="inline-block w-[3px] h-[0.82em] bg-blue-500 ml-1.5 translate-y-[2px] animate-pulse shadow-[0_0_10px_#3b82f6]" />
+                )}
+              </span>
+              <span className="block">
+                {text3 || (phase >= 3 ? text3 : "")}
+                {(phase === 3 || phase === 4) && (
+                  <span className="inline-block w-[3px] h-[0.82em] bg-blue-400 ml-1.5 translate-y-[2px] animate-[pulse_1s_infinite] shadow-[0_0_12px_#38bdf8]" />
+                )}
+              </span>
+            </h1>
 
-              {/* Clean Typography matching reference design */}
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white leading-[1.08]">
-                Environment <br />
-                variables, finally <br />
-                under control.
-              </h1>
+            <p className="text-sm md:text-base text-zinc-300 leading-relaxed max-w-lg">
+              Secure Environment Manager (SEM) is a self-hosted platform to securely manage,
+              version, and sync your environment variables across projects and teams.
+            </p>
 
-              <p className="text-sm md:text-base text-zinc-300 leading-relaxed max-w-xl">
-                Secure Environment Manager (SEM) is a self-hosted platform to securely manage,
-                version, and sync your environment variables across projects and teams.
-              </p>
+            <div className="flex flex-wrap items-center gap-3.5 pt-2">
+              <Link
+                href={token ? "/dashboard" : "/login"}
+                className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-semibold text-xs sm:text-sm transition-all shadow-[0_0_20px_rgba(255,255,255,0.18)]"
+              >
+                <span>Get Started</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+              <Link
+                href="https://github.com/niranjansah87/Secure-Enviornment-Manager"
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-2 px-6 py-3 rounded-xl border border-white/[0.12] bg-[#0c101a]/70 hover:bg-[#121724] text-zinc-200 text-xs sm:text-sm font-semibold transition-all backdrop-blur-md"
+              >
+                <GithubIcon className="w-3.5 h-3.5" />
+                <span>View on GitHub</span>
+              </Link>
+            </div>
+          </motion.div>
 
-              <div className="flex flex-wrap items-center gap-3.5 pt-2">
-                <Link
-                  href={token ? "/dashboard" : "/login"}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-semibold text-xs transition-all shadow-[0_0_20px_rgba(255,255,255,0.15)]"
-                >
-                  <span>Get Started</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-                <Link
-                  href="https://github.com/niranjansah87/Secure-Enviornment-Manager"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl border border-white/[0.12] bg-[#0c101a]/70 hover:bg-[#121724] text-zinc-200 text-xs font-semibold transition-all backdrop-blur-md"
-                >
-                  <GithubIcon className="w-3.5 h-3.5" />
-                  <span>View on GitHub</span>
-                </Link>
-              </div>
-
-              {/* 3-Pill Trust Bar with Unified Cohesive Palette */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-8 border-t border-white/[0.08]">
-                <div className="flex items-start gap-3 p-3 rounded-xl bg-[#0c101a]/60 border border-white/[0.08] backdrop-blur-md">
-                  <Lock className="w-4 h-4 text-zinc-300 shrink-0 mt-0.5" />
+          {/* 3 Value Pillars along bottom row matching reference design */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
+            className="grid grid-cols-1 sm:grid-cols-3 gap-6 lg:gap-8 pt-16 sm:pt-20 md:pt-24"
+          >
+            {[
+              {
+                icon: Lock,
+                title: "Encrypted at rest",
+                desc: "AES-256 (Fernet)",
+              },
+              {
+                icon: Users,
+                title: "Built for teams",
+                desc: "RBAC, audit logs, API keys",
+              },
+              {
+                icon: Layers,
+                title: "Developer friendly",
+                desc: "Web UI, CLI, SDK and remote dotenv",
+              },
+            ].map((card, idx) => {
+              const Icon = card.icon;
+              return (
+                <div key={idx} className="flex items-center gap-3.5">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.1] bg-[#0c101a]/80 text-zinc-300 backdrop-blur-md">
+                    <Icon className="h-5 w-5" />
+                  </div>
                   <div>
-                    <p className="text-xs font-semibold text-zinc-200">Encrypted at rest</p>
-                    <p className="text-[11px] text-zinc-400">AES-256 (Fernet)</p>
+                    <p className="text-xs sm:text-sm font-semibold text-zinc-100">
+                      {card.title}
+                    </p>
+                    <p className="text-[11px] sm:text-xs text-zinc-400 mt-0.5">
+                      {card.desc}
+                    </p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 p-3 rounded-xl bg-[#0c101a]/60 border border-white/[0.08] backdrop-blur-md">
-                  <Users className="w-4 h-4 text-zinc-300 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-xs font-semibold text-zinc-200">Built for teams</p>
-                    <p className="text-[11px] text-zinc-400">RBAC, audit logs, API keys</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 p-3 rounded-xl bg-[#0c101a]/60 border border-white/[0.08] backdrop-blur-md">
-                  <Layers className="w-4 h-4 text-zinc-300 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-xs font-semibold text-zinc-200">Developer friendly</p>
-                    <p className="text-[11px] text-zinc-400">Web UI, CLI, SDK & dotenv</p>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
+              );
+            })}
+          </motion.div>
         </div>
       </section>
+
 
       {/* 3. Pipeline Stepper Section ("From Development to Production") */}
       <section id="how-it-works" className="py-20 border-t border-white/[0.08] bg-[#07090e]">
@@ -727,197 +787,87 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Redesigned Footer (Matching Reference Design exactly: 5 Columns + Social Links) */}
-      <footer className="border-t border-white/[0.08] bg-[#05070a] pt-16 pb-12 text-xs text-zinc-400">
-        <div className="max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-10">
-          {/* Col 1: Brand & Bio */}
-          <div className="space-y-4 md:col-span-1">
-            <Link href="/" className="flex items-center gap-2.5">
-              <div className="relative h-8 w-8 rounded-xl p-1 bg-blue-500/10 border border-blue-500/20">
+      {/* Ultra-Compact Clean Footer */}
+      <footer className="border-t border-white/[0.08] bg-[#05070a] py-8 text-xs text-zinc-400">
+        <div className="max-w-7xl mx-auto px-6 md:px-12 flex flex-col md:flex-row items-center justify-between gap-6">
+          {/* Left: Brand Identity & Tagline */}
+          <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-2.5 group">
+              <div className="relative h-7 w-7 rounded-lg p-0.5 bg-blue-500/10 border border-blue-500/20 group-hover:border-blue-500/40 transition-colors">
                 <Image src="/logo.png" alt="SEM" fill className="object-contain" />
               </div>
-              <div>
-                <span className="text-sm font-bold text-white tracking-tight">SEM</span>
-                <p className="text-[9px] uppercase tracking-wider font-medium text-zinc-500 leading-none">
-                  Secure Environment Manager
-                </p>
-              </div>
+              <span className="text-sm font-bold text-white tracking-tight group-hover:text-blue-400 transition-colors">
+                SEM
+              </span>
             </Link>
-            <p className="text-[11px] text-zinc-400 leading-relaxed">
-              Self-hosted platform to securely manage, version, and sync environment variables across projects and teams.
-            </p>
+            <span className="text-zinc-600 hidden sm:inline">&bull;</span>
+            <span className="text-[11px] text-zinc-500 hidden sm:inline">
+              Secure Environment Manager
+            </span>
           </div>
 
-          {/* Col 2: Product */}
-          <div>
-            <h4 className="text-xs font-semibold text-zinc-200 mb-3.5">Product</h4>
-            <ul className="space-y-2.5 text-[11px]">
-              <li><a href="#features" className="hover:text-white transition-colors">Features</a></li>
-              <li><a href="#how-it-works" className="hover:text-white transition-colors">How it works</a></li>
-              <li><a href="#self-hosted" className="hover:text-white transition-colors">Self-hosted</a></li>
-              <li><a href="#integrations" className="hover:text-white transition-colors">Integrations</a></li>
-              <li><a href="#security" className="hover:text-white transition-colors">Security</a></li>
-            </ul>
-          </div>
+          {/* Center: Dedicated Route Nav Links */}
+          <nav className="flex items-center gap-6 text-[11px] text-zinc-400 font-medium">
+            <Link href="/features" className="hover:text-white transition-colors">Features</Link>
+            <Link href="/workflow" className="hover:text-white transition-colors">Workflow</Link>
+            <Link href="/integrations" className="hover:text-white transition-colors">Integrations</Link>
+            <Link href="/security" className="hover:text-white transition-colors">Security</Link>
+            <Link href="/docs" className="hover:text-white transition-colors">Docs</Link>
+          </nav>
 
-          {/* Col 3: Resources */}
-          <div>
-            <h4 className="text-xs font-semibold text-zinc-200 mb-3.5">Resources</h4>
-            <ul className="space-y-2.5 text-[11px]">
-              <li>
-                <a
-                  href="https://github.com/niranjansah87/Secure-Enviornment-Manager#documentation"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:text-white transition-colors"
-                >
-                  Documentation
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://github.com/niranjansah87/Secure-Enviornment-Manager"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:text-white transition-colors"
-                >
-                  GitHub
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://github.com/niranjansah87/Secure-Enviornment-Manager/releases"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:text-white transition-colors"
-                >
-                  Releases
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://github.com/niranjansah87/Secure-Enviornment-Manager/issues"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:text-white transition-colors"
-                >
-                  Support
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          {/* Col 4: Community */}
-          <div>
-            <h4 className="text-xs font-semibold text-zinc-200 mb-3.5">Community</h4>
-            <ul className="space-y-2.5 text-[11px]">
-              <li>
-                <a
-                  href="https://github.com/niranjansah87/Secure-Enviornment-Manager/discussions"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:text-white transition-colors"
-                >
-                  Discussions
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://github.com/niranjansah87/Secure-Enviornment-Manager/blob/main/CONTRIBUTING.md"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:text-white transition-colors"
-                >
-                  Contributing
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://github.com/niranjansah87/Secure-Enviornment-Manager/blob/main/CODE_OF_CONDUCT.md"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:text-white transition-colors"
-                >
-                  Code of Conduct
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://github.com/niranjansah87/Secure-Enviornment-Manager/blob/main/LICENSE"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:text-white transition-colors"
-                >
-                  License
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          {/* Col 5: Stay Updated & Social Icons Row */}
-          <div>
-            <h4 className="text-xs font-semibold text-zinc-200 mb-3.5">Stay updated</h4>
-            <p className="text-[11px] text-zinc-400 mb-3 leading-relaxed">
-              Get the latest releases, security advisories, and architecture notes.
-            </p>
-            <div className="flex items-center gap-1.5 mb-5">
-              <input
-                type="email"
-                placeholder="Enter your email"
-                className="h-9 px-3 rounded-xl border border-white/[0.08] bg-[#0c101a] text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-blue-500/50 flex-1"
-              />
-              <button
-                className="h-9 w-9 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 flex items-center justify-center shrink-0 transition-colors shadow-sm"
-                aria-label="Subscribe"
-              >
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Social Icons matching reference */}
-            <div className="flex items-center gap-3 text-zinc-400 pt-1">
-              <a
-                href="https://github.com/niranjansah87/Secure-Enviornment-Manager"
-                target="_blank"
-                rel="noreferrer"
-                className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.06] hover:text-white hover:bg-white/[0.08] hover:border-white/[0.15] transition-all"
-                aria-label="GitHub"
-              >
-                <FaGithub className="h-3.5 w-3.5" />
-              </a>
-              <a
-                href="https://linkedin.com/in/niranjansah87"
-                target="_blank"
-                rel="noreferrer"
-                className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.06] hover:text-white hover:bg-white/[0.08] hover:border-white/[0.15] transition-all"
-                aria-label="LinkedIn"
-              >
-                <FaLinkedinIn className="h-3.5 w-3.5" />
-              </a>
-              <a
-                href="https://x.com/niranjansah87"
-                target="_blank"
-                rel="noreferrer"
-                className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.06] hover:text-white hover:bg-white/[0.08] hover:border-white/[0.15] transition-all"
-                aria-label="X (Twitter)"
-              >
-                <FaXTwitter className="h-3.5 w-3.5" />
-              </a>
-              <a
-                href="mailto:contact@niranjansah87.com.np"
-                className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.06] hover:text-white hover:bg-white/[0.08] hover:border-white/[0.15] transition-all"
-                aria-label="Email"
-              >
-                <FiMail className="h-3.5 w-3.5" />
-              </a>
-            </div>
+          {/* Right: Exact Personal Social Links */}
+          <div className="flex items-center gap-2.5">
+            <a
+              href="https://github.com/niranjansah87"
+              target="_blank"
+              rel="noreferrer"
+              className="p-2 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] hover:border-white/[0.18] text-zinc-400 hover:text-white transition-all"
+              aria-label="GitHub Profile"
+            >
+              <FaGithub className="h-3.5 w-3.5" />
+            </a>
+            <a
+              href="https://www.linkedin.com/in/niranjan-sah/"
+              target="_blank"
+              rel="noreferrer"
+              className="p-2 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] hover:border-white/[0.18] text-zinc-400 hover:text-white transition-all"
+              aria-label="LinkedIn Profile"
+            >
+              <FaLinkedinIn className="h-3.5 w-3.5" />
+            </a>
+            <a
+              href="https://x.com/niranjan8790"
+              target="_blank"
+              rel="noreferrer"
+              className="p-2 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] hover:border-white/[0.18] text-zinc-400 hover:text-white transition-all"
+              aria-label="X Profile"
+            >
+              <FaXTwitter className="h-3.5 w-3.5" />
+            </a>
+            <a
+              href="mailto:niranjansah250@gmail.com"
+              className="p-2 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] hover:border-white/[0.18] text-zinc-400 hover:text-white transition-all"
+              aria-label="Email Niranjan Sah"
+            >
+              <FiMail className="h-3.5 w-3.5" />
+            </a>
           </div>
         </div>
 
-        {/* Bottom Copyright & Attribution Bar */}
-        <div className="max-w-7xl mx-auto px-6 md:px-12 pt-8 mt-12 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-zinc-500">
+        {/* Bottom Attribution Line */}
+        <div className="max-w-7xl mx-auto px-6 md:px-12 pt-6 mt-6 border-t border-white/[0.04] flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-zinc-500">
           <div>&copy; {new Date().getFullYear()} Secure Environment Manager. Open source under MIT License.</div>
-          <div>Made with ❤️ by Niranjan Sah</div>
+          <div>
+            Made with ❤️ by{" "}
+            <a
+              href="https://niranjansah87.com.np/"
+              target="_blank"
+              rel="noreferrer"
+              className="text-zinc-300 hover:text-white font-medium underline underline-offset-4 decoration-zinc-700 hover:decoration-blue-400 transition-colors"
+            >
+              Niranjan Sah
+            </a>
+          </div>
         </div>
       </footer>
     </div>

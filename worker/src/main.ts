@@ -24,6 +24,12 @@ if (workspaceEnv) process.loadEnvFile(workspaceEnv);
 const logger = pino({ level: process.env['LOG_LEVEL'] ?? 'info' });
 
 async function main() {
+  const isRedisEnabled = process.env['REDIS_ENABLED']?.toLowerCase() === 'true';
+  if (!isRedisEnabled) {
+    logger.info('REDIS_ENABLED is false; background worker is disabled.');
+    return;
+  }
+
   logger.info('SEM Worker starting');
 
   const db = createPool();

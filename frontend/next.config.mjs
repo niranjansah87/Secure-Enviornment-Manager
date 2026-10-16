@@ -7,6 +7,9 @@ const __dirname = path.dirname(__filename);
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   outputFileTracingRoot: __dirname,
+  images: {
+    qualities: [75, 95],
+  },
   async redirects() {
     return [
       {

@@ -11,7 +11,7 @@ Secrets management API — envelope-encrypted at rest, multi-tenant, audit-logge
 | Queue | BullMQ + Redis 7 |
 | Encryption | AES-256-GCM (envelope: master key → KEK → DEK) |
 | Auth | ES256 JWT + Argon2id + refresh-token rotation |
-| Frontend | Next.js 14 |
+| Frontend | Next.js 15 (React 19) |
 
 ## Repository layout
 
@@ -68,7 +68,7 @@ docker compose -f docker-compose.v2.yml up --build
 
 Services: `postgres` (5432), `redis` (6379), `api` (3001), `worker`.
 
-Health check: `curl http://localhost:3001/api/v1/health`
+Health check: `curl http://localhost:3001/healthz`
 
 ## Environment variables
 
@@ -79,9 +79,10 @@ See `.env.example` for the full list. Required at minimum:
 | `DATABASE_URL` | PostgreSQL connection string |
 | `REDIS_URL` | Redis connection string |
 | `SEM_MASTER_KEY` | 32-byte base64 master encryption key |
-| `SEM_JWT_PRIVATE_KEY` | ES256 (ECDSA P-256) private key PEM |
-| `SEM_JWT_PUBLIC_KEY` | ES256 public key PEM |
+| `JWT_PRIVATE_KEY` | ES256 (ECDSA P-256) private key PEM |
+| `JWT_PUBLIC_KEY` | ES256 public key PEM |
 | `SEM_TOKEN_HMAC_KEY` | 32-byte base64 HMAC key for refresh token lookup |
+| `SEM_MASTER_TOKEN` | Master admin token for direct admin authentication |
 
 ## Tests
 

@@ -28,21 +28,24 @@ export { SOCKET_SERVER } from './websocket.constants';
           transports: ['websocket', 'polling'],
         });
 
-        try {
-          const pubClient = new Redis(redisUrl, {
-            password,
-            lazyConnect: true,
-            maxRetriesPerRequest: 1,
-            retryStrategy: () => null,
-          });
-          pubClient.on('error', () => {});
-          await pubClient.connect();
-          const subClient = pubClient.duplicate();
-          subClient.on('error', () => {});
-          await subClient.connect();
-          io.adapter(createAdapter(pubClient, subClient));
-        } catch {
-          // Fall back to in-memory Socket.io adapter when Redis is offline
+        const isRedisEnabled = config.get<boolean>('app.redis.enabled', false);
+        if (isRedisEnabled) {
+          try {
+            const pubClient = new Redis(redisUrl, {
+              password,
+              lazyConnect: true,
+              maxRetriesPerRequest: 1,
+              retryStrategy: () => null,
+            });
+            pubClient.on('error', () => {});
+            await pubClient.connect();
+            const subClient = pubClient.duplicate();
+            subClient.on('error', () => {});
+            await subClient.connect();
+            io.adapter(createAdapter(pubClient, subClient));
+          } catch {
+            // Fall back to in-memory Socket.io adapter when Redis is offline
+          }
         }
 
         return io;
