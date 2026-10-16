@@ -11,13 +11,14 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "test": "vitest run",
-    "test:unit": "vitest run --testPathPattern='src/'",
-    "test:integration": "vitest run --testPathPattern='test/integration'",
-    "test:e2e": "vitest run --testPathPattern='test/e2e'",
-    "db:migrate": "drizzle-kit migrate",
+    "test:unit": "vitest run",
+    "test:integration": "vitest run test/integration",
+    "test:e2e": "vitest run test/e2e",
+    "db:migrate": "tsx src/scripts/migrate.ts",
+    "db:bootstrap": "tsx src/scripts/bootstrap.ts",
     "db:generate": "drizzle-kit generate",
     "db:studio": "drizzle-kit studio",
-    "keys:generate": "ts-node -e \"require('./src/scripts/generate-keys')\"",
+    "keys:generate": "tsx src/scripts/generate-keys.ts",
     "clean": "rm -rf dist"
   },
   "dependencies": {
@@ -69,6 +70,7 @@
     "drizzle-kit": "^0.30.0",
     "supertest": "^7.0.0",
     "testcontainers": "^10.14.0",
+    "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "vitest": "^2.1.8"
   }

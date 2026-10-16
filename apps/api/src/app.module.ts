@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -21,13 +22,18 @@ import { AnalyticsModule } from './domains/analytics/analytics.module';
 import { HealthModule } from './domains/health/health.module';
 import { RemoteConfigModule } from './domains/remote-config/remote-config.module';
 import { appConfig } from './config/app.config';
+import { TemplatesModule } from './domains/templates/templates.module';
+import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { MustChangePasswordGuard } from './common/guards/must-change-password.guard';
+import { PermissionsGuard } from './common/guards/permissions.guard';
+import { ThrottlerGuard } from '@nestjs/throttler';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       load: [appConfig],
-      envFilePath: ['.env.local', '.env'],
+      envFilePath: ['../../.env.local', '../../.env', '.env.local', '.env'],
     }),
     ThrottlerModule.forRoot([
       {
@@ -65,6 +71,13 @@ import { appConfig } from './config/app.config';
     AnalyticsModule,
     HealthModule,
     RemoteConfigModule,
+    TemplatesModule,
+  ],
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: MustChangePasswordGuard },
+    { provide: APP_GUARD, useClass: PermissionsGuard },
   ],
 })
 export class AppModule {}

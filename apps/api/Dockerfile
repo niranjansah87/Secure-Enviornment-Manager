@@ -45,6 +45,6 @@ COPY --from=builder --chown=sem:sem /app/packages/crypto/dist ./node_modules/@se
 USER sem
 EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD wget -qO- http://localhost:3001/api/v1/health || exit 1
+  CMD wget -qO- http://localhost:3001/healthz || exit 1
 
 CMD ["node", "dist/main.js"]

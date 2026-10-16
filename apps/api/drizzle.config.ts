@@ -1,8 +1,8 @@
 import { defineConfig } from 'drizzle-kit';
 import { config } from 'dotenv';
 
-config({ path: '.env' });
-config({ path: '.env.local', override: true });
+config({ path: '../../.env' });
+config({ path: '../../.env.local', override: true });
 
 const url = process.env['DATABASE_URL'];
 if (!url) throw new Error('DATABASE_URL not set');

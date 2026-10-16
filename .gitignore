@@ -24,7 +24,7 @@ service_account.json
 *.crt
 *.p12
 *.pfx
-secrets/
+/secrets/
 
 # Data and logs
 data/
@@ -87,7 +87,6 @@ packages/*/dist/
 apps/*/dist/
 tools/*/dist/
 infra/docker/secrets/
-pnpm-lock.yaml
 
 # Coverage and turbo cache
 coverage/
@@ -106,4 +105,4 @@ sem_mobile/android/app/google-services.json
 /.agents
 /.codex
 /graphify-out
-/frontend
+/frontend/graphify-out
