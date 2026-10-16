@@ -8,6 +8,7 @@ const __dirname = path.dirname(__filename);
 const nextConfig = {
   outputFileTracingRoot: __dirname,
   images: {
+    unoptimized: true,
     qualities: [75, 95],
   },
   async redirects() {

@@ -21,7 +21,8 @@
     "db:bootstrap": "pnpm --filter @sem/api run db:bootstrap",
     "db:generate": "turbo run db:generate --filter=@sem/api",
     "keys:generate": "pnpm --filter @sem/api run keys:generate",
-    "clean": "turbo run clean && rm -rf node_modules"
+    "clean": "turbo run clean && rm -rf node_modules",
+    "preinstall": "npx only-allow pnpm"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

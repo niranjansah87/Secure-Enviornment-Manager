@@ -8,6 +8,7 @@ import { DB_TOKEN } from '../../infra/database/database.module';
 import { REDIS_CLIENT } from '../../infra/redis/redis.module';
 import * as schema from '../../infra/database/schema';
 import { MetricsService } from '../../infra/observability/metrics.service';
+import { renderHomePage } from './home.template';
 
 @Controller()
 export class HealthController {
@@ -17,6 +18,22 @@ export class HealthController {
     private readonly config: ConfigService,
     private readonly metrics: MetricsService,
   ) {}
+
+  @Get()
+  @Public()
+  @Header('Content-Type', 'text/html; charset=utf-8')
+  home() {
+    const isRedisEnabled = this.config.get<boolean>('app.redis.enabled', false);
+    const port = this.config.get<number>('PORT', 3001);
+    const env = this.config.get<string>('NODE_ENV', 'development');
+    return renderHomePage({
+      uptime: process.uptime(),
+      nodeVersion: process.version,
+      port,
+      env,
+      isRedisEnabled,
+    });
+  }
 
   @Get('healthz')
   @Public()

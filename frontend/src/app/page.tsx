@@ -19,7 +19,6 @@ import {
   History,
   GitCompare,
   BarChart3,
-  ChevronRight,
 } from "lucide-react";
 import {
   SiDocker,
@@ -46,6 +45,10 @@ import { FaAws, FaGithub, FaLinkedinIn, FaXTwitter } from "react-icons/fa6";
 import { FiMail } from "react-icons/fi";
 import { useWorkspace } from "@/context/workspace-context";
 import { useEffect } from "react";
+import Dashboard3DShowcase from "@/components/animations/dashboard-3d-showcase";
+import HeroPillars3D from "@/components/animations/hero-pillars-3d";
+import DeveloperWorkflowTerminal from "@/components/landing/developer-workflow-terminal";
+import Security3DCard from "@/components/animations/security-3d-card";
 const GithubIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
     <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
@@ -239,23 +242,23 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* 2. Hero Section (Full-Width Cinematic Artwork Background matching Reference Design) */}
+      {/* 2. Hero Section */}
       <section className="relative min-h-[720px] lg:min-h-[820px] xl:min-h-[880px] flex flex-col justify-between pt-36 sm:pt-40 md:pt-44 pb-14 md:pb-16 overflow-hidden">
-        {/* Full-width Background Artwork Image */}
-        <div className="absolute inset-0 z-0">
-          <Image
-            src="/home/hero.png"
-            alt="Secure Environment Manager Workspace"
-            fill
-            priority
-            className="object-cover object-[75%_center] lg:object-right-top select-none pointer-events-none"
-          />
-          {/* Left-side soft shade ensuring sharp text contrast while right-side monitor & window stay crystal clear */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#07090e]/95 via-[#07090e]/70 to-transparent sm:w-[75%] lg:w-[58%] pointer-events-none" />
-          {/* Top header subtle shade for navbar clarity */}
-          <div className="absolute top-0 left-0 right-0 h-28 bg-gradient-to-b from-[#07090e]/70 to-transparent pointer-events-none" />
-          {/* Smooth bottom fade into next section (#07090e) */}
-          <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#07090e] via-[#07090e]/75 to-transparent pointer-events-none" />
+        {/* Right-Aligned Native Scale Artwork (Strictly un-stretched, seamlessly blended into dark background) */}
+        <div className="absolute right-0 top-0 bottom-0 w-full max-w-[1050px] xl:max-w-[1200px] z-0 overflow-hidden pointer-events-none">
+          <div className="relative w-full h-full">
+            <Image
+              src="/home/hero.png"
+              alt="Secure Environment Manager Workspace"
+              fill
+              priority
+              className="object-contain object-right-top select-none opacity-80"
+            />
+            {/* Seamless edge blending gradients */}
+            <div className="absolute inset-0 bg-gradient-to-r from-[#07090e] via-[#07090e]/60 to-transparent w-[55%] pointer-events-none" />
+            <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-[#07090e] to-transparent pointer-events-none" />
+            <div className="absolute bottom-0 left-0 right-0 h-44 bg-gradient-to-t from-[#07090e] via-[#07090e]/85 to-transparent pointer-events-none" />
+          </div>
         </div>
 
         <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-12 w-full flex-1 flex flex-col justify-between">
@@ -313,105 +316,95 @@ export default function HomePage() {
             </div>
           </motion.div>
 
-          {/* 3 Value Pillars along bottom row matching reference design */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
-            className="grid grid-cols-1 sm:grid-cols-3 gap-6 lg:gap-8 pt-16 sm:pt-20 md:pt-24"
-          >
-            {[
-              {
-                icon: Lock,
-                title: "Encrypted at rest",
-                desc: "AES-256 (Fernet)",
-              },
-              {
-                icon: Users,
-                title: "Built for teams",
-                desc: "RBAC, audit logs, API keys",
-              },
-              {
-                icon: Layers,
-                title: "Developer friendly",
-                desc: "Web UI, CLI, SDK and remote dotenv",
-              },
-            ].map((card, idx) => {
-              const Icon = card.icon;
-              return (
-                <div key={idx} className="flex items-center gap-3.5">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/[0.1] bg-[#0c101a]/80 text-zinc-300 backdrop-blur-md">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-xs sm:text-sm font-semibold text-zinc-100">
-                      {card.title}
-                    </p>
-                    <p className="text-[11px] sm:text-xs text-zinc-400 mt-0.5">
-                      {card.desc}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </motion.div>
+          {/* 3 Value Pillars with interactive 3D WebGL scenes, spring tilt, and hover animations */}
+          <HeroPillars3D />
         </div>
       </section>
 
 
       {/* 3. Pipeline Stepper Section ("From Development to Production") */}
-      <section id="how-it-works" className="py-20 border-t border-white/[0.08] bg-[#07090e]">
-        <div className="max-w-7xl mx-auto px-6 md:px-12 text-center">
-          <p className="text-[11px] uppercase tracking-widest font-mono text-blue-400 mb-2">
+      <section id="how-it-works" className="py-24 border-t border-white/[0.08] bg-[#07090e] relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 md:px-12 text-center relative z-10">
+          <p className="text-xs uppercase tracking-widest font-mono text-blue-400 mb-3">
             FROM DEVELOPMENT TO PRODUCTION
           </p>
-          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-3">
+          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-4">
             One source of truth for all your environments
           </h2>
-          <p className="text-sm md:text-base text-zinc-400 max-w-2xl mx-auto mb-14">
+          <p className="text-sm md:text-base text-zinc-400 max-w-2xl mx-auto mb-16 leading-relaxed">
             SEM helps engineering teams manage secrets across the entire development lifecycle —
             from local development to production deployments.
           </p>
 
-          {/* Stepper Cards with Scroll Motion & Hover Lift */}
-          <motion.div
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true, margin: "-50px" }}
-            variants={{
-              hidden: { opacity: 0 },
-              show: { opacity: 1, transition: { staggerChildren: 0.1 } },
-            }}
-            className="grid grid-cols-1 md:grid-cols-5 gap-4 relative"
-          >
-            {PIPELINE_STAGES.map((s, idx) => {
-              const Icon = s.icon;
-              return (
+          {/* Minimalist Linear / Vercel Connected Stage Grid */}
+          <div className="relative max-w-6xl mx-auto">
+            {/* Subtle connecting conduit line & smooth light beam across cards */}
+            <div className="hidden lg:block absolute top-[45px] left-[10%] right-[10%] -translate-y-1/2 z-0">
+              <div className="h-[1px] w-full bg-white/[0.08] relative overflow-hidden">
                 <motion.div
-                  key={idx}
-                  variants={{
-                    hidden: { opacity: 0, y: 24 },
-                    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 260, damping: 20 } },
+                  className="absolute top-0 bottom-0 w-36 bg-gradient-to-r from-transparent via-blue-400/90 to-transparent shadow-[0_0_10px_rgba(59,130,246,0.6)]"
+                  animate={{
+                    left: ["-25%", "125%"],
                   }}
-                  whileHover={{ y: -5, transition: { duration: 0.15 } }}
-                  className="relative flex flex-col items-center"
-                >
-                  <div className="w-full flex-1 p-5 rounded-2xl border border-white/[0.08] bg-[#0c101a]/75 hover:bg-[#121724] hover:border-blue-500/40 hover:shadow-[0_0_25px_rgba(59,130,246,0.15)] transition-all text-center flex flex-col items-center justify-center min-h-[175px]">
-                    <div className="h-10 w-10 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-zinc-300 mb-3 shadow-inner group-hover:text-white transition-colors">
-                      <Icon className="h-5 w-5" />
+                  transition={{
+                    duration: 3.2,
+                    repeat: Infinity,
+                    ease: "linear",
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* 5 Restrained Linear/Vercel Cards */}
+            <motion.div
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true, margin: "-50px" }}
+              variants={{
+                hidden: { opacity: 0 },
+                show: { opacity: 1, transition: { staggerChildren: 0.08 } },
+              }}
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 relative z-10"
+            >
+              {PIPELINE_STAGES.map((s, idx) => {
+                const Icon = s.icon;
+                return (
+                  <motion.div
+                    key={idx}
+                    variants={{
+                      hidden: { opacity: 0, y: 14 },
+                      show: {
+                        opacity: 1,
+                        y: 0,
+                        transition: { duration: 0.35, ease: "easeOut" },
+                      },
+                    }}
+                    whileHover={{ y: -3 }}
+                    transition={{ duration: 0.15 }}
+                    className="relative rounded-2xl p-6 border border-white/[0.08] bg-[#0c101a]/80 hover:bg-[#101626] hover:border-blue-500/40 text-left flex flex-col justify-start min-h-[180px] transition-all duration-200 group cursor-pointer overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+                  >
+                    {/* Subtle top edge border-beam highlight */}
+                    <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-transparent to-transparent group-hover:via-blue-400/60 transition-all duration-300" />
+
+                    {/* Icon Container */}
+                    <div className="h-10 w-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-zinc-300 group-hover:text-white group-hover:border-blue-500/40 group-hover:bg-blue-500/10 transition-all duration-200 mb-5 shrink-0 relative z-10 shadow-inner">
+                      <Icon className="h-4.5 w-4.5" />
                     </div>
-                    <h3 className="text-sm font-bold text-zinc-100 mb-1">{s.title}</h3>
-                    <p className="text-xs text-zinc-400 leading-normal">{s.desc}</p>
-                  </div>
-                  {idx < PIPELINE_STAGES.length - 1 && (
-                    <div className="hidden md:flex absolute top-1/2 -right-3 -translate-y-1/2 z-20 text-zinc-600">
-                      <ChevronRight className="h-5 w-5" />
-                    </div>
-                  )}
-                </motion.div>
-              );
-            })}
-          </motion.div>
+
+                    {/* Title */}
+                    <h3 className="text-sm font-semibold text-zinc-100 group-hover:text-white transition-colors mb-2">
+                      {s.title}
+                    </h3>
+
+                    {/* Description */}
+                    <p className="text-xs text-zinc-400 leading-relaxed font-normal group-hover:text-zinc-300 transition-colors">
+                      {s.desc}
+                    </p>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          </div>
         </div>
       </section>
 
@@ -460,13 +453,13 @@ export default function HomePage() {
                 ].map((item, i) => {
                   const Icon = item.icon;
                   return (
-                    <div key={i} className="flex items-start gap-3.5">
-                      <div className="h-8 w-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0 mt-0.5">
-                        <Icon className="h-4 w-4" />
+                    <div key={i} className="flex items-start gap-3.5 group">
+                      <div className="h-8 w-8 rounded-lg bg-white/[0.06] border border-white/[0.12] flex items-center justify-center text-white shrink-0 mt-0.5 shadow-inner group-hover:border-white/30 group-hover:bg-white/[0.1] transition-all">
+                        <Icon className="h-4 w-4 text-white" />
                       </div>
                       <div>
-                        <h4 className="text-xs font-semibold text-zinc-200">{item.title}</h4>
-                        <p className="text-[11px] text-zinc-400 mt-0.5">{item.desc}</p>
+                        <h4 className="text-xs font-semibold text-zinc-100 group-hover:text-white transition-colors">{item.title}</h4>
+                        <p className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">{item.desc}</p>
                       </div>
                     </div>
                   );
@@ -484,106 +477,14 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Right Angled High-Fidelity UI Screenshot with subtle scroll elevation */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 30 }}
-              whileInView={{ opacity: 1, scale: 1, y: 0 }}
-              viewport={{ once: true, margin: "-80px" }}
-              transition={{ duration: 0.6, ease: "easeOut" }}
-              className="lg:col-span-7 relative"
-            >
-              <div className="relative rounded-2xl overflow-hidden border border-white/[0.1] bg-[#0c101a] shadow-[0_20px_60px_rgba(0,0,0,0.9)] hover:border-blue-500/30 transition-all">
-                <Image
-                  src="/home/Secure_Secrets_Dashboard_at_Sunset.png"
-                  alt="Secrets Dashboard"
-                  width={1400}
-                  height={900}
-                  className="w-full h-auto object-cover filter contrast-[1.05]"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#07090e]/60 via-transparent to-transparent pointer-events-none" />
-              </div>
-            </motion.div>
+            {/* Right: 3D interactive showcase with mouse perspective tilt, spring physics, and white glare */}
+            <Dashboard3DShowcase />
           </div>
         </div>
       </section>
 
-      {/* 5. Built for Developers: Workflow & CLI Section */}
-      <section className="py-24 border-t border-white/[0.08] relative bg-[#07090e]">
-        <div className="max-w-7xl mx-auto px-6 md:px-12">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-            {/* Left Developer Workspace Image */}
-            <div className="lg:col-span-6">
-              <div className="relative rounded-3xl overflow-hidden border border-white/[0.1] shadow-2xl h-[380px] md:h-[440px]">
-                <Image
-                  src="/home/Cinematic_Developer_Workspace_at_Dusk.png"
-                  alt="Developer Workspace"
-                  fill
-                  className="object-cover object-center filter brightness-[0.8]"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#07090e]/80 via-transparent to-transparent" />
-              </div>
-            </div>
-
-            {/* Right Terminal & Tabs */}
-            <div className="lg:col-span-6 space-y-6">
-              <div>
-                <p className="text-[11px] uppercase tracking-widest font-mono text-blue-400 mb-1.5">
-                  BUILT FOR DEVELOPERS
-                </p>
-                <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-2">
-                  Integrates with your workflow
-                </h2>
-                <p className="text-sm text-zinc-400">
-                  Access your environment variables from anywhere — web UI, CLI, SDK, or directly via REST API.
-                </p>
-              </div>
-
-              {/* Tabs Switcher */}
-              <div className="flex items-center gap-1.5 p-1 rounded-xl border border-white/[0.08] bg-[#0c101a] w-fit">
-                {Object.keys(CODE_EXAMPLES).map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveCodeTab(tab)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                      activeCodeTab === tab
-                        ? "bg-blue-600/30 text-white border border-blue-500/40"
-                        : "text-zinc-400 hover:text-zinc-200"
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
-
-              {/* Code Box */}
-              <div className="relative rounded-2xl border border-white/[0.1] bg-[#0c101a] p-4 shadow-xl font-mono text-xs text-zinc-300">
-                <button
-                  onClick={handleCopyCode}
-                  className="absolute top-3.5 right-3.5 p-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.1] text-zinc-400 hover:text-white transition-all"
-                  aria-label="Copy code"
-                >
-                  {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                </button>
-                <pre className="overflow-x-auto pt-2 pb-1 leading-relaxed text-zinc-200">
-                  {CODE_EXAMPLES[activeCodeTab]}
-                </pre>
-              </div>
-
-              <div>
-                <Link
-                  href="https://github.com/niranjansah87/Secure-Enviornment-Manager#cli-guide"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-white/[0.1] bg-[#0c101a] hover:bg-[#121724] text-zinc-200 text-xs font-semibold transition-all"
-                >
-                  <span>View documentation</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* 5. Built for Developers: Animated Workflow Terminal Showcase */}
+      <DeveloperWorkflowTerminal />
 
       {/* 6. Ecosystem Integration Grid */}
       <section id="integrations" className="py-20 border-t border-white/[0.08] bg-[#07090e] text-center">
@@ -654,7 +555,7 @@ export default function HomePage() {
             {/* Left Content */}
             <div className="lg:col-span-6 space-y-6">
               <div>
-                <p className="text-[11px] uppercase tracking-widest font-mono text-blue-400 mb-1.5">
+                <p className="text-[11px] uppercase tracking-widest font-mono text-zinc-400 mb-1.5">
                   SECURITY FIRST
                 </p>
                 <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-2">
@@ -669,32 +570,39 @@ export default function HomePage() {
               <div className="space-y-4 pt-2">
                 {[
                   {
+                    icon: Lock,
                     title: "AES-256 encryption at rest",
                     desc: "All secrets encrypted using cryptographic Fernet tokens.",
                   },
                   {
+                    icon: KeyRound,
                     title: "JWT authentication",
                     desc: "Secure token-based access with device tracking and session control.",
                   },
                   {
+                    icon: Users,
                     title: "Role-based access control",
                     desc: "Admin and developer roles with granular scoped permissions.",
                   },
                   {
+                    icon: ShieldCheck,
                     title: "Complete audit logs",
                     desc: "Track all access and changes with tamper-evident, append-only logs.",
                   },
-                ].map((s, idx) => (
-                  <div key={idx} className="flex items-start gap-3.5">
-                    <div className="h-7 w-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0 mt-0.5">
-                      <ShieldCheck className="h-4 w-4" />
+                ].map((s, idx) => {
+                  const Icon = s.icon;
+                  return (
+                    <div key={idx} className="flex items-start gap-3.5 group">
+                      <div className="h-7 w-7 rounded-lg bg-white/[0.06] border border-white/[0.12] flex items-center justify-center text-white shrink-0 mt-0.5 shadow-inner group-hover:border-white/30 group-hover:bg-white/[0.1] transition-all">
+                        <Icon className="h-3.5 w-3.5 text-white" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-semibold text-zinc-100 group-hover:text-white transition-colors">{s.title}</h4>
+                        <p className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">{s.desc}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="text-xs font-semibold text-zinc-100">{s.title}</h4>
-                      <p className="text-[11px] text-zinc-400 mt-0.5">{s.desc}</p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               <div className="pt-2">
@@ -710,23 +618,13 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Right 3D Vault Graphic */}
-            <div className="lg:col-span-6">
-              <div className="relative rounded-3xl overflow-hidden border border-white/[0.1] shadow-2xl h-[380px] md:h-[440px]">
-                <Image
-                  src="/Cinematic_Futuristic_Data_Vault.png"
-                  alt="Futuristic Data Vault"
-                  fill
-                  className="object-cover object-center filter contrast-[1.1]"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#07090e]/80 via-transparent to-transparent pointer-events-none" />
-              </div>
-            </div>
+            {/* Right 3D Vault Graphic with mouse perspective tilt */}
+            <Security3DCard />
           </div>
 
           {/* Testimonial Banner */}
           <div className="mt-16 p-6 rounded-2xl border border-white/[0.08] bg-[#0c101a]/70 backdrop-blur-md flex flex-col sm:flex-row items-center gap-5 max-w-3xl mx-auto">
-            <div className="h-12 w-12 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 border border-blue-400/40 flex items-center justify-center text-sm font-bold text-white shrink-0">
+            <div className="h-12 w-12 rounded-full bg-white/[0.08] border border-white/20 flex items-center justify-center text-sm font-bold text-white shrink-0">
               NS
             </div>
             <div className="text-center sm:text-left">
