@@ -8,7 +8,7 @@ echo "Cleaning up Docker..."
 docker image prune -f
 
 echo "Building and starting services..."
-docker compose build --no-cache && docker compose up -d --remove-orphans
+docker compose -f docker-compose.v2.yml build --no-cache && docker compose -f docker-compose.v2.yml up -d --remove-orphans
 
 echo "Done."
-docker compose ps
+docker compose -f docker-compose.v2.yml ps

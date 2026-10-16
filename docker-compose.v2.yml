@@ -53,6 +53,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     environment:
       NODE_ENV: production
       PORT: 3001
@@ -62,6 +64,7 @@ services:
       JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:?JWT_PUBLIC_KEY is required}
       SEM_MASTER_KEY: ${SEM_MASTER_KEY:?SEM_MASTER_KEY is required}
       SEM_TOKEN_HMAC_KEY: ${SEM_TOKEN_HMAC_KEY:?SEM_TOKEN_HMAC_KEY is required}
+      SEM_MASTER_TOKEN: ${SEM_MASTER_TOKEN:?SEM_MASTER_TOKEN is required}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
       SMTP_HOST: ${SMTP_HOST:-}
@@ -92,6 +95,7 @@ services:
       DATABASE_URL: postgresql://sem:${POSTGRES_PASSWORD}@postgres:5432/sem
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       SEM_MASTER_KEY: ${SEM_MASTER_KEY}
+      SEM_DEK_ROTATION_DAYS: ${SEM_DEK_ROTATION_DAYS:-90}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_SECURE: ${SMTP_SECURE:-false}
@@ -99,6 +103,20 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-noreply@sem.local}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+    networks:
+      - sem_internal
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://sem:${POSTGRES_PASSWORD}@postgres:5432/sem
+    command: ["sh", "-c", "node dist/scripts/migrate.js && node dist/scripts/bootstrap.js"]
     networks:
       - sem_internal
 
