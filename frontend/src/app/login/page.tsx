@@ -16,7 +16,6 @@ import {
   KeyRound,
   Boxes,
   Layers,
-  LayoutGrid,
   Info,
   BookOpen,
   Terminal,
@@ -61,7 +60,7 @@ const GithubIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, refreshAccessToken } = useWorkspace();
+  const { login } = useWorkspace();
 
   const [mode, setMode] = useState<LoginMode>("admin");
   const [password, setPassword] = useState("");
@@ -70,7 +69,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,25 +102,8 @@ export default function LoginPage() {
     }
   };
 
-  const handleRefreshToken = async () => {
-    setIsRefreshing(true);
-    setError(null);
-    try {
-      const success = await refreshAccessToken();
-      if (success) {
-        router.push("/dashboard");
-      } else {
-        setError("No existing session found or session expired. Please sign in.");
-      }
-    } catch {
-      setError("Failed to restore session. Please enter your credentials.");
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden bg-[#07090e]">
+    <div className="relative h-screen max-h-screen w-full flex flex-col justify-between overflow-hidden bg-[#07090e] p-6 lg:px-12 select-none">
       {/* Full Background Mountain Vista + Server Environment Asset */}
       <div className="absolute inset-0 z-0">
         <Image
@@ -137,36 +118,28 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-radial from-transparent via-[#07090e]/40 to-[#07090e]" />
       </div>
 
-      {/* Main Container */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto px-6 py-10 min-h-screen flex flex-col justify-between">
-        {/* Header / Brand */}
-        <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="relative h-10 w-10 shrink-0 rounded-xl p-0.5 bg-gradient-to-br from-blue-500/30 to-purple-500/20 border border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.3)]">
-              <Image src="/logo.png" alt="SEM" fill className="object-contain" priority />
-            </div>
-            <div>
-              <span className="text-base font-bold text-white tracking-tight group-hover:text-blue-400 transition-colors">
-                SEM
-              </span>
-              <p className="text-[10px] uppercase tracking-wider font-semibold text-zinc-400 leading-none">
-                Secure Environment Manager
-              </p>
-            </div>
-          </Link>
-        </div>
+      {/* 1. Header / Brand */}
+      <header className="relative z-10 shrink-0 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="relative h-10 w-10 shrink-0 rounded-xl p-0.5 bg-gradient-to-br from-blue-500/30 to-purple-500/20 border border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.3)]">
+            <Image src="/logo.png" alt="SEM" fill className="object-contain" priority />
+          </div>
+          <div>
+            <span className="text-base font-bold text-white tracking-tight group-hover:text-blue-400 transition-colors">
+              SEM
+            </span>
+            <p className="text-[10px] uppercase tracking-wider font-semibold text-zinc-400 leading-none">
+              Secure Environment Manager
+            </p>
+          </div>
+        </Link>
+      </header>
 
-        {/* Center Grid: Left Value Props, Right Auth Card */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center py-8">
-          {/* Left Column (Reference Design) */}
-          <div className="lg:col-span-6 xl:col-span-7 space-y-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/[0.08] bg-white/[0.03] backdrop-blur-md">
-              <span className="h-1.5 w-1.5 rounded-full bg-blue-400 shadow-[0_0_8px_#60a5fa]" />
-              <span className="text-[11px] font-mono tracking-widest uppercase text-zinc-400">
-                CONTROL • SECURE • DEPLOY
-              </span>
-            </div>
-
+      {/* 2. Center Content Grid */}
+      <main className="relative z-10 flex-1 min-h-0 flex items-center justify-center my-auto w-full max-w-7xl mx-auto py-2">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center w-full">
+          {/* Left Column: Headline & Value Props */}
+          <div className="hidden lg:block lg:col-span-6 xl:col-span-7 space-y-6">
             <div className="space-y-4 max-w-xl">
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.08]">
                 Your environment <br />
@@ -199,11 +172,11 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Right Column: Handcrafted Glass Auth Card */}
-          <div className="lg:col-span-6 xl:col-span-5 flex justify-center lg:justify-end">
-            <div className="w-full max-w-md rounded-3xl border border-white/[0.1] bg-[#0c101a]/85 backdrop-blur-2xl p-7 md:p-9 shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
+          {/* Right Column: Handcrafted Glass Auth Card (Previous Authentic Design) */}
+          <div className="col-span-1 lg:col-span-6 xl:col-span-5 flex justify-center lg:justify-end">
+            <div className="w-full max-w-md rounded-3xl border border-white/[0.1] bg-[#0c101a]/85 backdrop-blur-2xl p-7 md:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
               {/* 3 Modes Switcher Tabs */}
-              <div className="grid grid-cols-3 gap-1.5 p-1 rounded-2xl border border-white/[0.08] bg-[#07090e]/70 mb-7">
+              <div className="grid grid-cols-3 gap-1.5 p-1 rounded-2xl border border-white/[0.08] bg-[#07090e]/70 mb-6">
                 {MODES.map((m) => {
                   const active = mode === m.id;
                   return (
@@ -343,28 +316,6 @@ export default function LoginPage() {
                   )}
                 </Button>
 
-                {/* Divider */}
-                <div className="relative py-2">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-white/[0.08]" />
-                  </div>
-                  <div className="relative flex justify-center text-[10px] uppercase font-semibold text-zinc-500">
-                    <span className="bg-[#0c101a] px-3">OR</span>
-                  </div>
-                </div>
-
-                {/* Continue with Existing Session */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleRefreshToken}
-                  disabled={isRefreshing}
-                  className="w-full h-10 border-white/[0.1] bg-white/[0.03] hover:bg-white/[0.06] text-zinc-300 text-xs font-medium rounded-xl flex items-center justify-center gap-2"
-                >
-                  <LayoutGrid className="w-4 h-4 text-zinc-400" />
-                  <span>{isRefreshing ? "Restoring session..." : "Continue with existing session"}</span>
-                </Button>
-
                 {/* Security Note Callout */}
                 <div className="flex items-start gap-2.5 p-3 rounded-xl border border-white/[0.06] bg-black/30 text-[11px] text-zinc-400 leading-normal mt-3">
                   <Info className="h-4 w-4 text-blue-400 shrink-0 mt-0.5" />
@@ -377,50 +328,50 @@ export default function LoginPage() {
             </div>
           </div>
         </div>
+      </main>
 
-        {/* Footer */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-white/[0.06] text-xs text-zinc-500">
-          <div className="flex items-center gap-6">
-            <Link
-              href="https://github.com/niranjansah87/Secure-Enviornment-Manager"
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-1.5 hover:text-zinc-300 transition-colors"
-            >
-              <GithubIcon className="h-4 w-4" />
-              <span>GitHub</span>
-            </Link>
-            <Link
-              href="https://github.com/niranjansah87/Secure-Enviornment-Manager#documentation"
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-1.5 hover:text-zinc-300 transition-colors"
-            >
-              <BookOpen className="h-4 w-4" />
-              <span>Docs</span>
-            </Link>
-            <Link
-              href="https://github.com/niranjansah87/Secure-Enviornment-Manager#cli-usage"
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-1.5 hover:text-zinc-300 transition-colors"
-            >
-              <Terminal className="h-4 w-4" />
-              <span>CLI</span>
-            </Link>
-            <Link
-              href="https://github.com/niranjansah87/Secure-Enviornment-Manager#sdks"
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-1.5 hover:text-zinc-300 transition-colors"
-            >
-              <Code2 className="h-4 w-4" />
-              <span>SDK</span>
-            </Link>
-          </div>
-          <div>Made by Niranjan Sah</div>
+      {/* 3. Footer */}
+      <footer className="relative z-10 shrink-0 flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-white/[0.06] text-xs text-zinc-500">
+        <div className="flex items-center gap-6">
+          <Link
+            href="https://github.com/niranjansah87/Secure-Enviornment-Manager"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 hover:text-zinc-300 transition-colors"
+          >
+            <GithubIcon className="h-4 w-4" />
+            <span>GitHub</span>
+          </Link>
+          <Link
+            href="https://github.com/niranjansah87/Secure-Enviornment-Manager#documentation"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 hover:text-zinc-300 transition-colors"
+          >
+            <BookOpen className="h-4 w-4" />
+            <span>Docs</span>
+          </Link>
+          <Link
+            href="https://github.com/niranjansah87/Secure-Enviornment-Manager#cli-usage"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 hover:text-zinc-300 transition-colors"
+          >
+            <Terminal className="h-4 w-4" />
+            <span>CLI</span>
+          </Link>
+          <Link
+            href="https://github.com/niranjansah87/Secure-Enviornment-Manager#sdks"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 hover:text-zinc-300 transition-colors"
+          >
+            <Code2 className="h-4 w-4" />
+            <span>SDK</span>
+          </Link>
         </div>
-      </div>
+        <div>Made by Niranjan Sah</div>
+      </footer>
     </div>
   );
 }

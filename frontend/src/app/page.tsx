@@ -187,7 +187,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#07090e] text-white selection:bg-blue-500/30 overflow-x-hidden">
+    <div className="flex min-h-screen flex-col bg-[#07090e] text-white selection:bg-white/20 overflow-x-hidden">
       {/* 1. Redesigned Global Navigation Bar (Matching Reference Design) */}
       <header
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -198,11 +198,11 @@ export default function HomePage() {
       >
         <div className="max-w-7xl mx-auto px-6 md:px-12 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="relative h-9 w-9 shrink-0 rounded-xl p-1 bg-gradient-to-br from-blue-500/25 to-purple-500/15 border border-white/[0.1] group-hover:border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.25)] transition-all">
+            <div className="relative h-9 w-9 shrink-0 rounded-xl p-1 bg-white/[0.06] border border-white/[0.12] group-hover:border-white/30 shadow-[0_0_15px_rgba(255,255,255,0.08)] transition-all">
               <Image src="/logo.png" alt="SEM" fill className="object-contain" priority />
             </div>
             <div>
-              <span className="text-sm font-extrabold text-white tracking-tight group-hover:text-blue-400 transition-colors">
+              <span className="text-sm font-extrabold text-white tracking-tight group-hover:text-zinc-200 transition-colors">
                 SEM
               </span>
               <p className="text-[9px] uppercase tracking-wider font-semibold text-zinc-400 leading-none">
@@ -274,19 +274,19 @@ export default function HomePage() {
               <span className="block">
                 {text1 || (phase === 1 ? "" : line1)}
                 {phase === 1 && (
-                  <span className="inline-block w-[3px] h-[0.82em] bg-blue-500 ml-1.5 translate-y-[2px] animate-pulse shadow-[0_0_10px_#3b82f6]" />
+                  <span className="inline-block w-[3px] h-[0.82em] bg-white ml-1.5 translate-y-[2px] animate-pulse shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
                 )}
               </span>
               <span className="block">
                 {text2 || (phase >= 2 ? text2 : "")}
                 {phase === 2 && (
-                  <span className="inline-block w-[3px] h-[0.82em] bg-blue-500 ml-1.5 translate-y-[2px] animate-pulse shadow-[0_0_10px_#3b82f6]" />
+                  <span className="inline-block w-[3px] h-[0.82em] bg-white ml-1.5 translate-y-[2px] animate-pulse shadow-[0_0_10px_rgba(255,255,255,0.8)]" />
                 )}
               </span>
               <span className="block">
                 {text3 || (phase >= 3 ? text3 : "")}
                 {(phase === 3 || phase === 4) && (
-                  <span className="inline-block w-[3px] h-[0.82em] bg-blue-400 ml-1.5 translate-y-[2px] animate-[pulse_1s_infinite] shadow-[0_0_12px_#38bdf8]" />
+                  <span className="inline-block w-[3px] h-[0.82em] bg-white ml-1.5 translate-y-[2px] animate-[pulse_1s_infinite] shadow-[0_0_12px_rgba(255,255,255,0.9)]" />
                 )}
               </span>
             </h1>
@@ -325,7 +325,7 @@ export default function HomePage() {
       {/* 3. Pipeline Stepper Section ("From Development to Production") */}
       <section id="how-it-works" className="py-24 border-t border-white/[0.08] bg-[#07090e] relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 md:px-12 text-center relative z-10">
-          <p className="text-xs uppercase tracking-widest font-mono text-blue-400 mb-3">
+          <p className="text-xs uppercase tracking-widest font-mono text-zinc-400 mb-3">
             FROM DEVELOPMENT TO PRODUCTION
           </p>
           <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-4">
@@ -336,13 +336,13 @@ export default function HomePage() {
             from local development to production deployments.
           </p>
 
-          {/* Minimalist Linear / Vercel Connected Stage Grid */}
+          {/* Minimalist Linear / Vercel Connected Stage Grid (Monochrome) */}
           <div className="relative max-w-6xl mx-auto">
-            {/* Subtle connecting conduit line & smooth light beam across cards */}
+            {/* Subtle connecting conduit line & smooth pure monochrome light beam across cards */}
             <div className="hidden lg:block absolute top-[45px] left-[10%] right-[10%] -translate-y-1/2 z-0">
               <div className="h-[1px] w-full bg-white/[0.08] relative overflow-hidden">
                 <motion.div
-                  className="absolute top-0 bottom-0 w-36 bg-gradient-to-r from-transparent via-blue-400/90 to-transparent shadow-[0_0_10px_rgba(59,130,246,0.6)]"
+                  className="absolute top-0 bottom-0 w-36 bg-gradient-to-r from-transparent via-white/80 to-transparent shadow-[0_0_12px_rgba(255,255,255,0.6)]"
                   animate={{
                     left: ["-25%", "125%"],
                   }}
@@ -381,13 +381,13 @@ export default function HomePage() {
                     }}
                     whileHover={{ y: -3 }}
                     transition={{ duration: 0.15 }}
-                    className="relative rounded-2xl p-6 border border-white/[0.08] bg-[#0c101a]/80 hover:bg-[#101626] hover:border-blue-500/40 text-left flex flex-col justify-start min-h-[180px] transition-all duration-200 group cursor-pointer overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+                    className="relative rounded-2xl p-6 border border-white/[0.08] bg-[#0c0e14]/80 hover:bg-[#121520] hover:border-white/25 text-left flex flex-col justify-start min-h-[180px] transition-all duration-200 group cursor-pointer overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
                   >
-                    {/* Subtle top edge border-beam highlight */}
-                    <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-transparent to-transparent group-hover:via-blue-400/60 transition-all duration-300" />
+                    {/* Subtle top edge pure white border-beam highlight */}
+                    <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-transparent to-transparent group-hover:via-white/40 transition-all duration-300" />
 
                     {/* Icon Container */}
-                    <div className="h-10 w-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-zinc-300 group-hover:text-white group-hover:border-blue-500/40 group-hover:bg-blue-500/10 transition-all duration-200 mb-5 shrink-0 relative z-10 shadow-inner">
+                    <div className="h-10 w-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-zinc-300 group-hover:text-white group-hover:border-white/25 group-hover:bg-white/[0.08] transition-all duration-200 mb-5 shrink-0 relative z-10 shadow-inner">
                       <Icon className="h-4.5 w-4.5" />
                     </div>
 
