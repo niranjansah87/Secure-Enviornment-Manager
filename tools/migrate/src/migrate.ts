@@ -35,8 +35,13 @@ import {
 } from '@sem/crypto';
 import { fernetDecrypt } from './fernet.js';
 
-const workspaceEnv = resolve(process.cwd(), '../../.env');
-if (existsSync(workspaceEnv)) process.loadEnvFile(workspaceEnv);
+const envCandidates = [
+  resolve(process.cwd(), '.env'),
+  resolve(process.cwd(), '../../.env'),
+  resolve(import.meta.dirname, '../../../.env'),
+];
+const workspaceEnv = envCandidates.find((p) => existsSync(p));
+if (workspaceEnv) process.loadEnvFile(workspaceEnv);
 
 // ─────────────────────────────────────────────────────────── helpers ──
 
