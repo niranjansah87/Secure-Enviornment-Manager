@@ -5,7 +5,12 @@
   "description": "Secure Environment Manager v2 — monorepo root",
   "scripts": {
     "build": "turbo run build",
+    "build:backend": "turbo run build --filter=@sem/api",
+    "build:frontend": "turbo run build --filter=frontend",
     "dev": "turbo run dev",
+    "dev:backend": "turbo run dev --filter=@sem/api",
+    "dev:frontend": "turbo run dev --filter=frontend",
+    "dev:worker": "turbo run dev --filter=@sem/worker",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
@@ -13,7 +18,9 @@
     "test:integration": "turbo run test:integration",
     "test:e2e": "turbo run test:e2e",
     "db:migrate": "turbo run db:migrate --filter=@sem/api",
+    "db:bootstrap": "pnpm --filter @sem/api run db:bootstrap",
     "db:generate": "turbo run db:generate --filter=@sem/api",
+    "keys:generate": "pnpm --filter @sem/api run keys:generate",
     "clean": "turbo run clean && rm -rf node_modules"
   },
   "devDependencies": {

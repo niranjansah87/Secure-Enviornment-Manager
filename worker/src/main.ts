@@ -12,8 +12,14 @@ import { createRedis } from './infra/redis';
 import { EmailWorker } from './workers/email.worker';
 import { MaintenanceWorker } from './workers/maintenance.worker';
 
-const workspaceEnv = resolve(process.cwd(), '../.env');
-if (existsSync(workspaceEnv)) process.loadEnvFile(workspaceEnv);
+const envCandidates = [
+  resolve(process.cwd(), '.env'),
+  resolve(process.cwd(), '../.env'),
+  resolve(__dirname, '../../.env'),
+  resolve(__dirname, '../../../.env'),
+];
+const workspaceEnv = envCandidates.find((p) => existsSync(p));
+if (workspaceEnv) process.loadEnvFile(workspaceEnv);
 
 const logger = pino({ level: process.env['LOG_LEVEL'] ?? 'info' });
 

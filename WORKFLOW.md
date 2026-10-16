@@ -9,17 +9,17 @@ docker compose -f docker-compose.v2.yml up -d postgres redis
 # Install all workspace packages
 pnpm install
 
-# Run migrations
-pnpm --filter @sem/api db:migrate
+# Run migrations & seed default organization/master user
+pnpm db:migrate
+pnpm db:bootstrap
 
-# Start API (hot reload)
-pnpm --filter @sem/api dev          # http://localhost:3001
+# Start both backend API & frontend concurrently via Turborepo:
+pnpm dev
 
-# Start worker
-pnpm --filter @sem/worker dev
-
-# Start frontend
-pnpm --filter @sem/web dev          # http://localhost:3000
+# Or start individual services:
+pnpm dev:backend          # http://localhost:3001
+pnpm dev:frontend         # http://localhost:3000
+pnpm dev:worker           # BullMQ worker process
 ```
 
 Health check: `curl http://localhost:3001/api/v1/health`
@@ -27,7 +27,7 @@ Health check: `curl http://localhost:3001/api/v1/health`
 ## Generate key material
 
 ```bash
-pnpm --filter @sem/api tsx src/scripts/generate-keys.ts
+pnpm keys:generate
 ```
 
 Outputs: `SEM_MASTER_KEY`, `SEM_TOKEN_HMAC_KEY`, `SEM_JWT_PRIVATE_KEY`, `SEM_JWT_PUBLIC_KEY`.
@@ -66,11 +66,11 @@ docker compose -f docker-compose.v2.yml down
 
 ## Database migrations
 
-Migrations live in `apps/api/src/infra/database/migrations/`. They are plain SQL files, numbered sequentially (`0001_`, `0002_`, …).
+Migrations live in `backend/src/infra/database/migrations/`. They are plain SQL files, numbered sequentially (`0001_`, `0002_`, …).
 
 ```bash
 # Apply all pending migrations
-pnpm --filter @sem/api db:migrate
+pnpm db:migrate
 
 # Generate a new migration after schema changes
 pnpm --filter @sem/api db:generate

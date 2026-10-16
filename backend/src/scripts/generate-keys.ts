@@ -5,7 +5,13 @@ import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 
 function run() {
-  const envPath = resolve(process.cwd(), process.argv[2] ?? '../.env');
+  const envCandidates = [
+    resolve(process.cwd(), '.env'),
+    resolve(process.cwd(), '../.env'),
+    resolve(__dirname, '../../../.env'),
+  ];
+  const defaultPath = envCandidates.find((p) => existsSync(p)) ?? resolve(process.cwd(), '.env');
+  const envPath = resolve(process.cwd(), process.argv[2] ?? defaultPath);
   const existing = existsSync(envPath) ? readFileSync(envPath, 'utf8') : '';
   const present = new Set(
     existing

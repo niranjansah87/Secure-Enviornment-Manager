@@ -16,14 +16,14 @@ Secrets management API — envelope-encrypted at rest, multi-tenant, audit-logge
 ## Repository layout
 
 ```
-apps/
-  api/          NestJS API (port 3001)
-  worker/       BullMQ maintenance worker
-  web/          Next.js frontend (port 3000)
+backend/        NestJS API (port 3001) (@sem/api)
+worker/         BullMQ maintenance worker (@sem/worker)
+frontend/       Next.js frontend (port 3000)
+backend_v1/     Legacy Flask backend (archived reference)
 packages/
-  crypto/       AES-256-GCM envelope encryption
-  types/        Shared TypeScript types
-  sdk/          TypeScript client SDK
+  crypto/       AES-256-GCM envelope encryption (@sem/crypto)
+  types/        Shared TypeScript types (@sem/types)
+  sdk/          TypeScript client SDK (@sem/sdk)
 tools/
   migrate/      V1 → V2 data migration (TypeScript/tsx)
 infra/
@@ -35,29 +35,28 @@ infra/
 **Prerequisites:** Node 22, pnpm 9, Docker
 
 ```bash
-# 1. Start dependencies
+# 1. Start dependencies (Postgres + Redis)
 docker compose -f docker-compose.v2.yml up -d postgres redis
 
-# 2. Install
+# 2. Install dependencies
 pnpm install
 
-# 3. Configure
+# 3. Configure environment
 cp .env.example .env
-# Fill in DATABASE_URL, REDIS_URL, SEM_MASTER_KEY, JWT keys, SEM_TOKEN_HMAC_KEY
-# Use apps/api/src/scripts/generate-keys.ts to generate key material:
-#   pnpm --filter @sem/api tsx src/scripts/generate-keys.ts
+# Generate cryptographic key material automatically:
+pnpm keys:generate
 
-# 4. Run migrations
-pnpm --filter @sem/api db:migrate
+# 4. Run database migrations & seed default organization/master user
+pnpm db:migrate
+pnpm db:bootstrap
 
-# 5. Start API
-pnpm --filter @sem/api dev
+# 5. Run both Backend & Frontend simultaneously with Turborepo:
+pnpm dev
 
-# 6. Start worker (separate terminal)
-pnpm --filter @sem/worker dev
-
-# 7. Start frontend (separate terminal)
-cd apps/web && pnpm dev
+# Or run specific workspaces independently:
+pnpm dev:backend   # NestJS API on http://localhost:3001
+pnpm dev:frontend  # Next.js Frontend on http://localhost:3000
+pnpm dev:worker    # BullMQ worker process
 ```
 
 ## Docker (full stack)

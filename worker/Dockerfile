@@ -7,7 +7,7 @@ WORKDIR /app
 COPY pnpm-workspace.yaml turbo.json package.json pnpm-lock.yaml ./
 COPY packages/types/package.json   packages/types/package.json
 COPY packages/crypto/package.json  packages/crypto/package.json
-COPY apps/worker/package.json      apps/worker/package.json
+COPY worker/package.json      worker/package.json
 RUN pnpm install --frozen-lockfile
 
 # ── build ─────────────────────────────────────────────────────────────────────
@@ -16,10 +16,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules             ./node_modules
 COPY --from=deps /app/packages/types/node_modules   packages/types/node_modules
 COPY --from=deps /app/packages/crypto/node_modules  packages/crypto/node_modules
-COPY --from=deps /app/apps/worker/node_modules apps/worker/node_modules
+COPY --from=deps /app/worker/node_modules worker/node_modules
 COPY packages/types/   packages/types/
 COPY packages/crypto/  packages/crypto/
-COPY apps/worker/      apps/worker/
+COPY worker/      worker/
 COPY pnpm-workspace.yaml turbo.json package.json ./
 RUN pnpm --filter @sem/types build \
  && pnpm --filter @sem/crypto build \

@@ -12,24 +12,28 @@
 
 SEM is now a **pnpm + Turbo monorepo**:
 
-- **Backend — `apps/api`**: NestJS (Fastify adapter), listening on **port 3001**,
+- **Backend — `backend/`**: NestJS (Fastify adapter), listening on **port 3001**,
   all routes under `/api/v1`. Persistence via **Drizzle ORM + PostgreSQL**;
   **Redis** (ioredis) for sessions/rate-limiting; **BullMQ** worker in
-  `apps/worker`. Auth is JWT (ES256) with refresh-token rotation; secrets are
+  `worker/`. Auth is JWT (ES256) with refresh-token rotation; secrets are
   encrypted with envelope encryption (AES-256-GCM DEK/KEK). Shared packages:
-  `@sem/crypto`, `@sem/types`, `@sem/sdk`. CLI in `cli/`.
+  `@sem/crypto`, `@sem/types`, `@sem/sdk`.
 - **Frontend — `frontend/`**: Next.js 15 (App Router) + React 19 + Tailwind +
   Radix, framer-motion, Recharts, Lenis, Sonner. Talks to the NestJS API via
   `src/lib/sem-api.ts` (envelope `{ success, data }`); auth/workspace state in
   `src/context/workspace-context.tsx`; URL model `/[projectSlug]/[envSlug]`.
+- **Worker — `worker/`**: BullMQ background maintenance worker for key rotation,
+  session cleanup, and email notification tasks.
+- **Legacy Backend — `backend_v1/`**: Preserved historical Python/Flask backend
+  and test suite, archived for historical reference.
 - **Domains** (org-scoped, JWT-guarded): auth, organizations, projects,
   environments, secrets (+ versions/rollback/history/export/bulk/remote-config),
-  api-keys, audit, analytics, users, health.
+  snapshots, templates, api-keys, audit, analytics, users, health.
 
 Run locally: `pnpm install`, provision Postgres + Redis, set `.env`
 (`DATABASE_URL`, `REDIS_URL`, `SEM_MASTER_KEY`, `SEM_TOKEN_HMAC_KEY`, JWT keys),
-`pnpm db:migrate`, then `pnpm dev` (API) and `cd frontend && npm run dev` (UI on
-:3000). Templates in the UI are client-side starter presets (no backend domain yet).
+`pnpm db:migrate && pnpm db:bootstrap`, then run `pnpm dev` to launch both
+backend (:3001) and frontend (:3000) simultaneously with Turborepo.
 
 ---
 

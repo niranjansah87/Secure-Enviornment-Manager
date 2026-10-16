@@ -84,6 +84,8 @@ SKILLS.md
 
 # SEM V2 monorepo
 packages/*/dist/
+backend/dist/
+worker/dist/
 apps/*/dist/
 tools/*/dist/
 infra/docker/secrets/
@@ -106,3 +108,4 @@ sem_mobile/android/app/google-services.json
 /.codex
 /graphify-out
 /frontend/graphify-out
+codex-session-01a142cb-fa07-7293-abeb-27117875de3d.md

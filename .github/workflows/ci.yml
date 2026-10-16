@@ -81,11 +81,9 @@ jobs:
         run: pnpm --filter @sem/api test
 
       - name: Run migrations
-        run: |
-          PGPASSWORD=test_password psql -h localhost -U sem_app -d sem_v2_test \
-            -f apps/api/src/infra/database/migrations/0001_initial_schema.sql
-          PGPASSWORD=test_password psql -h localhost -U sem_app -d sem_v2_test \
-            -f apps/api/src/infra/database/migrations/0002_add_token_lookup_hmac.sql
+        run: pnpm --filter @sem/api run db:migrate
+        env:
+          DATABASE_URL: postgresql://sem_app:test_password@localhost:5432/sem_v2_test
 
       - name: Integration tests
         run: pnpm --filter @sem/api test:integration
