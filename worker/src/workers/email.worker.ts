@@ -33,7 +33,7 @@ export class EmailWorker {
     });
 
     this.worker = new Worker(
-      'sem:queue:email',
+      'sem-queue-email',
       async (job: Job) => this.process(job),
       {
         connection: redis,

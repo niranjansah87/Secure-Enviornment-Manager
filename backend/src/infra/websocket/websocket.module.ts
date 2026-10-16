@@ -4,8 +4,9 @@ import { Server } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
 import Redis from 'ioredis';
 import { SecretsGateway } from './secrets.gateway';
+import { SOCKET_SERVER } from './websocket.constants';
 
-export const SOCKET_SERVER = Symbol('SOCKET_SERVER');
+export { SOCKET_SERVER } from './websocket.constants';
 
 @Global()
 @Module({
@@ -19,9 +20,6 @@ export const SOCKET_SERVER = Symbol('SOCKET_SERVER');
         const password = config.get<string | undefined>('app.redis.password');
         const allowedOrigins = config.get<string[]>('app.cors.origins', ['http://localhost:3000']);
 
-        const pubClient = new Redis(redisUrl, { password });
-        const subClient = pubClient.duplicate();
-
         const io = new Server({
           cors: {
             origin: allowedOrigins,
@@ -30,7 +28,23 @@ export const SOCKET_SERVER = Symbol('SOCKET_SERVER');
           transports: ['websocket', 'polling'],
         });
 
-        io.adapter(createAdapter(pubClient, subClient));
+        try {
+          const pubClient = new Redis(redisUrl, {
+            password,
+            lazyConnect: true,
+            maxRetriesPerRequest: 1,
+            retryStrategy: () => null,
+          });
+          pubClient.on('error', () => {});
+          await pubClient.connect();
+          const subClient = pubClient.duplicate();
+          subClient.on('error', () => {});
+          await subClient.connect();
+          io.adapter(createAdapter(pubClient, subClient));
+        } catch {
+          // Fall back to in-memory Socket.io adapter when Redis is offline
+        }
+
         return io;
       },
     },

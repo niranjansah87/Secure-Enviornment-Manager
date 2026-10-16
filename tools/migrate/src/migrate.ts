@@ -53,11 +53,23 @@ function env(name: string, required = true): string {
 
 function parseArgs() {
   const args = process.argv.slice(2);
+  const getArg = (flag: string, fallback: string) => {
+    const idx = args.indexOf(flag);
+    return idx !== -1 && idx + 1 < args.length ? args[idx + 1]! : fallback;
+  };
+  const rawDataDir = getArg('--data-dir', 'backend_v1/data');
+  const candidateDirs = [
+    resolve(process.cwd(), rawDataDir),
+    resolve(import.meta.dirname, '../../..', rawDataDir),
+    resolve(import.meta.dirname, rawDataDir),
+  ];
+  const dataDir = candidateDirs.find((d) => existsSync(d)) ?? resolve(process.cwd(), rawDataDir);
+
   return {
     dryRun: !args.includes('--execute'),
-    orgName: args[args.indexOf('--org-name') + 1] ?? 'Default Organization',
-    orgSlug: args[args.indexOf('--org-slug') + 1] ?? 'default',
-    dataDir: args[args.indexOf('--data-dir') + 1] ?? 'data',
+    orgName: getArg('--org-name', 'Default Organization'),
+    orgSlug: getArg('--org-slug', 'default'),
+    dataDir,
   };
 }
 
@@ -218,6 +230,7 @@ function unwrapDek(
 interface MigrationPlan {
   orgName: string;
   orgSlug: string;
+  dataDir: string;
   users: V1User[];
   envGroups: Map<string, V1Env[]>;
   totalSecrets: number;
@@ -258,7 +271,7 @@ async function buildPlan(opts: ReturnType<typeof parseArgs>, fernetKey: string):
     }
   }
 
-  return { orgName: opts.orgName, orgSlug: opts.orgSlug, users, envGroups, totalSecrets, totalHistoryEntries, skippedEnvs };
+  return { orgName: opts.orgName, orgSlug: opts.orgSlug, dataDir: opts.dataDir, users, envGroups, totalSecrets, totalHistoryEntries, skippedEnvs };
 }
 
 function printPlan(plan: MigrationPlan, fernetKey: string): void {
@@ -479,6 +492,72 @@ async function execute(plan: MigrationPlan, client: Client, masterKey: Buffer, f
           kek.fill(0);
         }
       }
+    }
+
+    // 4. Migrate historical audit logs from audit.jsonl if present
+    const auditLogCandidates = [
+      resolve(plan.dataDir, '../audit_logs/audit.jsonl'),
+      resolve(plan.dataDir, 'audit_logs/audit.jsonl'),
+      resolve(process.cwd(), 'backend_v1/audit_logs/audit.jsonl'),
+      resolve(import.meta.dirname, '../../../backend_v1/audit_logs/audit.jsonl'),
+    ];
+    const auditLogPath = auditLogCandidates.find((p) => existsSync(p));
+    let auditLogCount = 0;
+    if (auditLogPath) {
+      const lines = readFileSync(auditLogPath, 'utf8').trim().split('\n').filter(Boolean);
+      for (const line of lines) {
+        try {
+          const entry = JSON.parse(line) as {
+            timestamp: string;
+            action: string;
+            namespace?: string;
+            environment?: string;
+            resource?: string;
+            user_id?: string;
+            ip_address?: string;
+            details?: Record<string, unknown>;
+          };
+          const actorId = entry.user_id ? userIdMap.get(entry.user_id) ?? null : null;
+          const actionMap: Record<string, string> = {
+            CREATE_VARIABLE: 'secret.create',
+            UPDATE_VARIABLE: 'secret.update',
+            DELETE_VARIABLE: 'secret.delete',
+            REVEAL_VARIABLE: 'secret.reveal',
+            APPLY_TEMPLATE: 'template.apply',
+            LOGIN_SUCCESS: 'auth.login',
+            LOGIN_FAILED: 'auth.login_failed',
+            LOGOUT: 'auth.logout',
+            EXPORT_SECRETS: 'secret.export',
+            SNAPSHOT_RESTORE: 'snapshot.restore',
+            PASSWORD_CHANGED: 'auth.password_changed',
+          };
+          const mappedAction = actionMap[entry.action] ?? entry.action.toLowerCase();
+          await client.query(
+            `INSERT INTO audit_events (id, occurred_at, org_id, actor_id, actor_type, action, resource_type, ip, metadata)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+            [
+              randomUUID(),
+              entry.timestamp || new Date().toISOString(),
+              actualOrgId,
+              actorId,
+              entry.user_id === 'api' ? 'api_key' : 'user',
+              mappedAction,
+              entry.namespace ? `env:${entry.namespace}/${entry.environment ?? 'default'}` : 'system',
+              entry.ip_address ?? null,
+              JSON.stringify({
+                original_action: entry.action,
+                legacy_user: entry.user_id,
+                resource: entry.resource,
+                details: entry.details ?? {},
+              }),
+            ],
+          );
+          auditLogCount++;
+        } catch {
+          // ignore single malformed line
+        }
+      }
+      console.log(`✓ Audit logs: ${auditLogCount} historical audit events migrated`);
     }
 
     await client.query('COMMIT');

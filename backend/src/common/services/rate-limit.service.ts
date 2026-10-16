@@ -18,6 +18,8 @@ export class RateLimitService {
     private readonly metrics: MetricsService,
   ) {}
 
+  private readonly fallback = new Map<string, { count: number; resetAt: number }>();
+
   /**
    * Increment attempt counter for a key.
    * @returns { count, isBlocked }
@@ -27,25 +29,52 @@ export class RateLimitService {
     maxAttempts: number,
     windowSeconds: number,
   ): Promise<{ count: number; isBlocked: boolean }> {
-    const count = await this.redis.incr(key);
-    if (count === 1) {
-      await this.redis.expire(key, windowSeconds);
+    try {
+      const count = await this.redis.incr(key);
+      if (count === 1) {
+        await this.redis.expire(key, windowSeconds);
+      }
+      return { count, isBlocked: count > maxAttempts };
+    } catch {
+      const now = Date.now();
+      const entry = this.fallback.get(key);
+      if (!entry || entry.resetAt <= now) {
+        this.fallback.set(key, { count: 1, resetAt: now + windowSeconds * 1000 });
+        return { count: 1, isBlocked: false };
+      }
+      entry.count++;
+      return { count: entry.count, isBlocked: entry.count > maxAttempts };
     }
-    return { count, isBlocked: count > maxAttempts };
   }
 
   async isBlocked(key: string, maxAttempts: number): Promise<boolean> {
-    const count = await this.redis.get(key);
-    return count !== null && parseInt(count, 10) > maxAttempts;
+    try {
+      const count = await this.redis.get(key);
+      return count !== null && parseInt(count, 10) > maxAttempts;
+    } catch {
+      const entry = this.fallback.get(key);
+      return Boolean(entry && entry.resetAt > Date.now() && entry.count > maxAttempts);
+    }
   }
 
   async reset(key: string): Promise<void> {
-    await this.redis.del(key);
+    try {
+      await this.redis.del(key);
+    } catch {
+      // ignore
+    }
+    this.fallback.delete(key);
   }
 
   async getRemainingAttempts(key: string, maxAttempts: number): Promise<number> {
-    const count = parseInt((await this.redis.get(key)) ?? '0', 10);
-    return Math.max(0, maxAttempts - count);
+    try {
+      const count = parseInt((await this.redis.get(key)) ?? '0', 10);
+      return Math.max(0, maxAttempts - count);
+    } catch {
+      const entry = this.fallback.get(key);
+      const count = entry && entry.resetAt > Date.now() ? entry.count : 0;
+      return Math.max(0, maxAttempts - count);
+    }
   }
 
   // ── Convenience methods for specific endpoints ──────────────────

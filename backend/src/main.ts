@@ -85,9 +85,12 @@ async function bootstrap() {
   const port = config.get<number>('PORT', 3001);
   const host = config.get<string>('HOST', '0.0.0.0');
 
-  await app.init();
-  app.get(SecretsGateway).attach(app.getHttpServer());
   await app.listen(port, host);
+  try {
+    app.get(SecretsGateway).attach(app.getHttpServer());
+  } catch (err) {
+    console.warn('[WebSocket] Attach deferred or unavailable:', err);
+  }
 
   const appLogger = new Logger('Bootstrap');
   appLogger.log(`SEM V2 API listening on ${host}:${port}`);

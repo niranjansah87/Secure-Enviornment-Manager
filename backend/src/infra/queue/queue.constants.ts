@@ -1,7 +1,7 @@
 export const QUEUE_NAMES = {
-  EMAIL: 'sem:queue:email',
-  AUDIT: 'sem:queue:audit',
-  MAINTENANCE: 'sem:queue:maintenance',
+  EMAIL: 'sem-queue-email',
+  AUDIT: 'sem-queue-audit',
+  MAINTENANCE: 'sem-queue-maintenance',
 } as const;
 
 export const EMAIL_QUEUE = Symbol('EMAIL_QUEUE');

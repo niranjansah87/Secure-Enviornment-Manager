@@ -24,7 +24,6 @@ import {
 import {
   SiDocker,
   SiKubernetes,
-  SiAmazonwebservices,
   SiVercel,
   SiGithub,
   SiGitlab,
@@ -43,14 +42,10 @@ import {
   SiGooglecloud,
   SiCloudflare,
 } from "react-icons/si";
-import dynamic from "next/dynamic";
+import { FaAws, FaGithub, FaLinkedinIn, FaXTwitter } from "react-icons/fa6";
+import { FiMail } from "react-icons/fi";
 import { useWorkspace } from "@/context/workspace-context";
-
-const Security3DAnimation = dynamic(
-  () => import("@/components/animations/security-3d").then((mod) => mod.Security3DAnimation),
-  { ssr: false }
-);
-
+import { useEffect } from "react";
 const GithubIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
     <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
@@ -88,7 +83,7 @@ const PIPELINE_STAGES = [
 const STACK_ROW_1 = [
   { name: "Docker", icon: SiDocker, color: "text-[#2496ED]" },
   { name: "Kubernetes", icon: SiKubernetes, color: "text-[#326CE5]" },
-  { name: "AWS", icon: SiAmazonwebservices, color: "text-[#FF9900]" },
+  { name: "AWS", icon: FaAws, color: "text-[#FF9900]" },
   { name: "Google Cloud", icon: SiGooglecloud, color: "text-[#4285F4]" },
   { name: "Cloudflare", icon: SiCloudflare, color: "text-[#F38020]" },
   { name: "Terraform", icon: SiTerraform, color: "text-[#844FBA]" },
@@ -132,6 +127,15 @@ export default function HomePage() {
   const { token } = useWorkspace();
   const [activeCodeTab, setActiveCodeTab] = useState<string>("CLI");
   const [copied, setCopied] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(CODE_EXAMPLES[activeCodeTab] || "");
@@ -141,93 +145,108 @@ export default function HomePage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-[#07090e] text-white selection:bg-blue-500/30 overflow-x-hidden">
-      {/* 1. Global Navigation Bar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 h-16 bg-[#07090e]/85 backdrop-blur-xl border-b border-white/[0.08]">
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="relative h-8 w-8 shrink-0 rounded-xl p-0.5 bg-gradient-to-br from-blue-500/30 to-purple-500/20 border border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.3)]">
-            <Image src="/logo.png" alt="SEM" fill className="object-contain" priority />
-          </div>
-          <div>
-            <span className="text-sm font-bold text-white tracking-tight group-hover:text-blue-400 transition-colors">
-              SEM
-            </span>
-            <p className="text-[9px] uppercase tracking-wider font-semibold text-zinc-500 leading-none">
-              Secure Environment Manager
-            </p>
-          </div>
-        </Link>
-
-        {/* Center Links */}
-        <div className="hidden lg:flex items-center gap-7 text-xs font-medium text-zinc-400">
-          <a href="#features" className="hover:text-white transition-colors">Features</a>
-          <a href="#how-it-works" className="hover:text-white transition-colors">How it works</a>
-          <a href="#integrations" className="hover:text-white transition-colors">Integrations</a>
-          <a href="#self-hosted" className="hover:text-white transition-colors">Self-hosted</a>
-          <a href="#security" className="hover:text-white transition-colors">Security</a>
-          <a href="https://github.com/niranjansah87/Secure-Enviornment-Manager#documentation" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Docs</a>
-        </div>
-
-        {/* Right CTA */}
-        <div className="flex items-center gap-4">
-          <Link
-            href="https://github.com/niranjansah87/Secure-Enviornment-Manager"
-            target="_blank"
-            rel="noreferrer"
-            className="text-zinc-400 hover:text-white transition-colors p-1.5"
-            aria-label="GitHub"
-          >
-            <GithubIcon className="h-4 w-4" />
+      {/* 1. Redesigned Global Navigation Bar (Matching Reference Design) */}
+      <header
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+          scrolled
+            ? "bg-[#07090e]/90 backdrop-blur-xl border-b border-white/[0.08] shadow-[0_10px_30px_rgba(0,0,0,0.8)] py-3.5"
+            : "bg-transparent border-b border-transparent py-5"
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-6 md:px-12 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="relative h-9 w-9 shrink-0 rounded-xl p-1 bg-gradient-to-br from-blue-500/25 to-purple-500/15 border border-white/[0.1] group-hover:border-blue-500/40 shadow-[0_0_15px_rgba(59,130,246,0.25)] transition-all">
+              <Image src="/logo.png" alt="SEM" fill className="object-contain" priority />
+            </div>
+            <div>
+              <span className="text-sm font-extrabold text-white tracking-tight group-hover:text-blue-400 transition-colors">
+                SEM
+              </span>
+              <p className="text-[9px] uppercase tracking-wider font-semibold text-zinc-400 leading-none">
+                Secure Environment Manager
+              </p>
+            </div>
           </Link>
-          <Link
-            href={token ? "/dashboard" : "/login"}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white hover:bg-zinc-200 text-zinc-950 font-semibold text-xs transition-all shadow-[0_0_15px_rgba(255,255,255,0.15)]"
-          >
-            <span>{token ? "Dashboard" : "Log in"}</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-      </nav>
 
-      {/* 2. Hero Section */}
-      <section className="relative pt-32 pb-20 md:pt-40 md:pb-28 overflow-hidden">
-        {/* Background Mountain Vista Image */}
+          {/* Center Links matching reference design */}
+          <nav className="hidden lg:flex items-center gap-8 text-xs font-medium text-zinc-300">
+            <a href="#features" className="hover:text-white transition-colors">Features</a>
+            <a href="#how-it-works" className="hover:text-white transition-colors">How it works</a>
+            <a href="#integrations" className="hover:text-white transition-colors">Integrations</a>
+            <a href="#self-hosted" className="hover:text-white transition-colors">Self-hosted</a>
+            <a href="#security" className="hover:text-white transition-colors">Security</a>
+            <a
+              href="https://github.com/niranjansah87/Secure-Enviornment-Manager#documentation"
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-white transition-colors"
+            >
+              Docs
+            </a>
+          </nav>
+
+          {/* Right CTA Area matching reference design */}
+          <div className="flex items-center gap-4">
+            <Link
+              href="https://github.com/niranjansah87/Secure-Enviornment-Manager"
+              target="_blank"
+              rel="noreferrer"
+              className="text-zinc-400 hover:text-white transition-colors p-1.5"
+              aria-label="GitHub"
+            >
+              <GithubIcon className="h-4 w-4" />
+            </Link>
+            <Link
+              href={token ? "/dashboard" : "/login"}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-semibold text-xs transition-all shadow-[0_0_15px_rgba(255,255,255,0.15)]"
+            >
+              <span>{token ? "Dashboard" : "Log in"}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* 2. Hero Section (Matching Reference Design: Full-Width Cinematic Vista) */}
+      <section className="relative min-h-[640px] lg:min-h-[720px] pt-32 pb-20 md:pt-40 md:pb-28 overflow-hidden flex items-center">
+        {/* Full Width Cinematic Mountain Vista Background Image */}
         <div className="absolute inset-0 z-0">
           <Image
             src="/home/hero.png"
             alt="Hero Background"
             fill
             priority
-            className="object-cover object-center filter brightness-[0.65] contrast-[1.1]"
+            className="object-cover object-right md:object-center filter brightness-[0.8] contrast-[1.05]"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#07090e] via-[#07090e]/40 to-[#07090e]/80" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#07090e]/90 via-transparent to-[#07090e]/90" />
+          {/* Subtle directional gradient overlay matching reference design */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#07090e] via-[#07090e]/30 to-[#07090e]/60" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#07090e] via-[#07090e]/75 to-transparent max-w-4xl" />
         </div>
 
-        <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-12">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            {/* Left Content */}
+        <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-12 w-full">
+          <div className="max-w-2xl space-y-6">
             <motion.div
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, ease: "easeOut" }}
-              className="lg:col-span-7 space-y-6"
+              className="space-y-6"
             >
-              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-white/[0.08] bg-[#0c101a]/70 backdrop-blur-md">
-                <span className="h-2 w-2 rounded-full bg-blue-400 shadow-[0_0_8px_#60a5fa]" />
-                <span className="text-[11px] font-medium text-zinc-300">
-                  Self-hosted • Open Source
+              {/* Clean Single-Color Pill without multiple rainbow accents */}
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-white/[0.1] bg-[#0c101a]/80 backdrop-blur-md">
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+                <span className="text-xs font-medium text-zinc-300">
+                  Self-hosted &bull; Open Source
                 </span>
               </div>
 
-              <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-white leading-[1.08]">
+              {/* Clean Typography matching reference design */}
+              <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white leading-[1.08]">
                 Environment <br />
                 variables, finally <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-white">
-                  under control.
-                </span>
+                under control.
               </h1>
 
-              <p className="text-base md:text-lg text-zinc-300 leading-relaxed max-w-xl">
+              <p className="text-sm md:text-base text-zinc-300 leading-relaxed max-w-xl">
                 Secure Environment Manager (SEM) is a self-hosted platform to securely manage,
                 version, and sync your environment variables across projects and teams.
               </p>
@@ -235,40 +254,40 @@ export default function HomePage() {
               <div className="flex flex-wrap items-center gap-3.5 pt-2">
                 <Link
                   href={token ? "/dashboard" : "/login"}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-semibold text-sm transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 font-semibold text-xs transition-all shadow-[0_0_20px_rgba(255,255,255,0.15)]"
                 >
                   <span>Get Started</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
                 <Link
                   href="https://github.com/niranjansah87/Secure-Enviornment-Manager"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl border border-white/[0.1] bg-[#0c101a]/80 hover:bg-[#121724] text-zinc-200 text-sm font-medium transition-all"
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl border border-white/[0.12] bg-[#0c101a]/70 hover:bg-[#121724] text-zinc-200 text-xs font-semibold transition-all backdrop-blur-md"
                 >
-                  <GithubIcon className="w-4 h-4" />
+                  <GithubIcon className="w-3.5 h-3.5" />
                   <span>View on GitHub</span>
                 </Link>
               </div>
 
-              {/* 3-Pill Trust Bar */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-6 border-t border-white/[0.08]">
-                <div className="flex items-start gap-3 p-3 rounded-xl bg-[#0c101a]/50 border border-white/[0.06]">
-                  <Lock className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+              {/* 3-Pill Trust Bar with Unified Cohesive Palette */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-8 border-t border-white/[0.08]">
+                <div className="flex items-start gap-3 p-3 rounded-xl bg-[#0c101a]/60 border border-white/[0.08] backdrop-blur-md">
+                  <Lock className="w-4 h-4 text-zinc-300 shrink-0 mt-0.5" />
                   <div>
                     <p className="text-xs font-semibold text-zinc-200">Encrypted at rest</p>
                     <p className="text-[11px] text-zinc-400">AES-256 (Fernet)</p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 p-3 rounded-xl bg-[#0c101a]/50 border border-white/[0.06]">
-                  <Users className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                <div className="flex items-start gap-3 p-3 rounded-xl bg-[#0c101a]/60 border border-white/[0.08] backdrop-blur-md">
+                  <Users className="w-4 h-4 text-zinc-300 shrink-0 mt-0.5" />
                   <div>
                     <p className="text-xs font-semibold text-zinc-200">Built for teams</p>
                     <p className="text-[11px] text-zinc-400">RBAC, audit logs, API keys</p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 p-3 rounded-xl bg-[#0c101a]/50 border border-white/[0.06]">
-                  <Layers className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
+                <div className="flex items-start gap-3 p-3 rounded-xl bg-[#0c101a]/60 border border-white/[0.08] backdrop-blur-md">
+                  <Layers className="w-4 h-4 text-zinc-300 shrink-0 mt-0.5" />
                   <div>
                     <p className="text-xs font-semibold text-zinc-200">Developer friendly</p>
                     <p className="text-[11px] text-zinc-400">Web UI, CLI, SDK & dotenv</p>
@@ -276,20 +295,6 @@ export default function HomePage() {
                 </div>
               </div>
             </motion.div>
-
-            {/* Right Interactive 3D Vault / Monitor Display */}
-            <div className="lg:col-span-5 relative flex items-center justify-center">
-              <div className="relative w-full max-w-lg aspect-square rounded-3xl border border-white/[0.1] bg-[#0c101a]/40 backdrop-blur-2xl p-4 shadow-[0_20px_50px_rgba(0,0,0,0.8)] overflow-hidden">
-                <Security3DAnimation />
-                <div className="absolute bottom-4 left-4 right-4 p-3 rounded-2xl bg-[#07090e]/85 backdrop-blur-md border border-white/[0.08] flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="text-xs font-mono text-zinc-300">Vault Status: SECURE</span>
-                  </div>
-                  <span className="text-[10px] font-mono text-blue-400">256-bit Fernet AES</span>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </section>
@@ -308,14 +313,31 @@ export default function HomePage() {
             from local development to production deployments.
           </p>
 
-          {/* Stepper Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 relative">
+          {/* Stepper Cards with Scroll Motion & Hover Lift */}
+          <motion.div
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: "-50px" }}
+            variants={{
+              hidden: { opacity: 0 },
+              show: { opacity: 1, transition: { staggerChildren: 0.1 } },
+            }}
+            className="grid grid-cols-1 md:grid-cols-5 gap-4 relative"
+          >
             {PIPELINE_STAGES.map((s, idx) => {
               const Icon = s.icon;
               return (
-                <div key={idx} className="relative flex flex-col items-center">
-                  <div className="w-full flex-1 p-5 rounded-2xl border border-white/[0.07] bg-[#0c101a]/70 hover:bg-[#121724] hover:border-blue-500/30 transition-all text-center flex flex-col items-center justify-center min-h-[170px]">
-                    <div className="h-10 w-10 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-blue-400 mb-3 shadow-inner">
+                <motion.div
+                  key={idx}
+                  variants={{
+                    hidden: { opacity: 0, y: 24 },
+                    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 260, damping: 20 } },
+                  }}
+                  whileHover={{ y: -5, transition: { duration: 0.15 } }}
+                  className="relative flex flex-col items-center"
+                >
+                  <div className="w-full flex-1 p-5 rounded-2xl border border-white/[0.08] bg-[#0c101a]/75 hover:bg-[#121724] hover:border-blue-500/40 hover:shadow-[0_0_25px_rgba(59,130,246,0.15)] transition-all text-center flex flex-col items-center justify-center min-h-[175px]">
+                    <div className="h-10 w-10 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-zinc-300 mb-3 shadow-inner group-hover:text-white transition-colors">
                       <Icon className="h-5 w-5" />
                     </div>
                     <h3 className="text-sm font-bold text-zinc-100 mb-1">{s.title}</h3>
@@ -326,10 +348,10 @@ export default function HomePage() {
                       <ChevronRight className="h-5 w-5" />
                     </div>
                   )}
-                </div>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -402,9 +424,15 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Right Angled High-Fidelity UI Screenshot */}
-            <div className="lg:col-span-7 relative">
-              <div className="relative rounded-2xl overflow-hidden border border-white/[0.1] bg-[#0c101a] shadow-[0_20px_60px_rgba(0,0,0,0.9)]">
+            {/* Right Angled High-Fidelity UI Screenshot with subtle scroll elevation */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 30 }}
+              whileInView={{ opacity: 1, scale: 1, y: 0 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+              className="lg:col-span-7 relative"
+            >
+              <div className="relative rounded-2xl overflow-hidden border border-white/[0.1] bg-[#0c101a] shadow-[0_20px_60px_rgba(0,0,0,0.9)] hover:border-blue-500/30 transition-all">
                 <Image
                   src="/home/Secure_Secrets_Dashboard_at_Sunset.png"
                   alt="Secrets Dashboard"
@@ -414,7 +442,7 @@ export default function HomePage() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#07090e]/60 via-transparent to-transparent pointer-events-none" />
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -699,61 +727,196 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-white/[0.08] bg-[#05070a] py-14 text-xs text-zinc-500">
-        <div className="max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2.5">
-              <div className="relative h-7 w-7 rounded-lg p-0.5 bg-blue-500/20 border border-blue-500/30">
+      {/* Redesigned Footer (Matching Reference Design exactly: 5 Columns + Social Links) */}
+      <footer className="border-t border-white/[0.08] bg-[#05070a] pt-16 pb-12 text-xs text-zinc-400">
+        <div className="max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-10">
+          {/* Col 1: Brand & Bio */}
+          <div className="space-y-4 md:col-span-1">
+            <Link href="/" className="flex items-center gap-2.5">
+              <div className="relative h-8 w-8 rounded-xl p-1 bg-blue-500/10 border border-blue-500/20">
                 <Image src="/logo.png" alt="SEM" fill className="object-contain" />
               </div>
-              <span className="text-sm font-bold text-white">SEM</span>
-            </div>
-            <p className="text-[11px] text-zinc-500 leading-relaxed">
-              Self-hosted platform to securely manage, version, and sync environment variables.
+              <div>
+                <span className="text-sm font-bold text-white tracking-tight">SEM</span>
+                <p className="text-[9px] uppercase tracking-wider font-medium text-zinc-500 leading-none">
+                  Secure Environment Manager
+                </p>
+              </div>
+            </Link>
+            <p className="text-[11px] text-zinc-400 leading-relaxed">
+              Self-hosted platform to securely manage, version, and sync environment variables across projects and teams.
             </p>
           </div>
 
+          {/* Col 2: Product */}
           <div>
-            <h4 className="text-xs font-semibold text-zinc-200 mb-3">Product</h4>
-            <ul className="space-y-2 text-[11px]">
-              <li><a href="#features" className="hover:text-zinc-300">Features</a></li>
-              <li><a href="#self-hosted" className="hover:text-zinc-300">Self-hosted</a></li>
-              <li><a href="#integrations" className="hover:text-zinc-300">Integrations</a></li>
-              <li><a href="#security" className="hover:text-zinc-300">Security</a></li>
+            <h4 className="text-xs font-semibold text-zinc-200 mb-3.5">Product</h4>
+            <ul className="space-y-2.5 text-[11px]">
+              <li><a href="#features" className="hover:text-white transition-colors">Features</a></li>
+              <li><a href="#how-it-works" className="hover:text-white transition-colors">How it works</a></li>
+              <li><a href="#self-hosted" className="hover:text-white transition-colors">Self-hosted</a></li>
+              <li><a href="#integrations" className="hover:text-white transition-colors">Integrations</a></li>
+              <li><a href="#security" className="hover:text-white transition-colors">Security</a></li>
             </ul>
           </div>
 
+          {/* Col 3: Resources */}
           <div>
-            <h4 className="text-xs font-semibold text-zinc-200 mb-3">Resources</h4>
-            <ul className="space-y-2 text-[11px]">
-              <li><a href="https://github.com/niranjansah87/Secure-Enviornment-Manager#documentation" target="_blank" rel="noreferrer" className="hover:text-zinc-300">Documentation</a></li>
-              <li><a href="https://github.com/niranjansah87/Secure-Enviornment-Manager" target="_blank" rel="noreferrer" className="hover:text-zinc-300">GitHub</a></li>
-              <li><a href="https://github.com/niranjansah87/Secure-Enviornment-Manager/releases" target="_blank" rel="noreferrer" className="hover:text-zinc-300">Releases</a></li>
+            <h4 className="text-xs font-semibold text-zinc-200 mb-3.5">Resources</h4>
+            <ul className="space-y-2.5 text-[11px]">
+              <li>
+                <a
+                  href="https://github.com/niranjansah87/Secure-Enviornment-Manager#documentation"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:text-white transition-colors"
+                >
+                  Documentation
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://github.com/niranjansah87/Secure-Enviornment-Manager"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:text-white transition-colors"
+                >
+                  GitHub
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://github.com/niranjansah87/Secure-Enviornment-Manager/releases"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:text-white transition-colors"
+                >
+                  Releases
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://github.com/niranjansah87/Secure-Enviornment-Manager/issues"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:text-white transition-colors"
+                >
+                  Support
+                </a>
+              </li>
             </ul>
           </div>
 
+          {/* Col 4: Community */}
           <div>
-            <h4 className="text-xs font-semibold text-zinc-200 mb-3">Stay updated</h4>
-            <p className="text-[11px] text-zinc-500 mb-3">Get the latest releases and news.</p>
-            <div className="flex items-center gap-1.5">
+            <h4 className="text-xs font-semibold text-zinc-200 mb-3.5">Community</h4>
+            <ul className="space-y-2.5 text-[11px]">
+              <li>
+                <a
+                  href="https://github.com/niranjansah87/Secure-Enviornment-Manager/discussions"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:text-white transition-colors"
+                >
+                  Discussions
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://github.com/niranjansah87/Secure-Enviornment-Manager/blob/main/CONTRIBUTING.md"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:text-white transition-colors"
+                >
+                  Contributing
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://github.com/niranjansah87/Secure-Enviornment-Manager/blob/main/CODE_OF_CONDUCT.md"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:text-white transition-colors"
+                >
+                  Code of Conduct
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://github.com/niranjansah87/Secure-Enviornment-Manager/blob/main/LICENSE"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="hover:text-white transition-colors"
+                >
+                  License
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          {/* Col 5: Stay Updated & Social Icons Row */}
+          <div>
+            <h4 className="text-xs font-semibold text-zinc-200 mb-3.5">Stay updated</h4>
+            <p className="text-[11px] text-zinc-400 mb-3 leading-relaxed">
+              Get the latest releases, security advisories, and architecture notes.
+            </p>
+            <div className="flex items-center gap-1.5 mb-5">
               <input
                 type="email"
                 placeholder="Enter your email"
-                className="h-9 px-3 rounded-xl border border-white/[0.08] bg-white/[0.04] text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 flex-1"
+                className="h-9 px-3 rounded-xl border border-white/[0.08] bg-[#0c101a] text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-blue-500/50 flex-1"
               />
               <button
-                className="h-9 w-9 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 flex items-center justify-center shrink-0"
+                className="h-9 w-9 rounded-xl bg-white hover:bg-zinc-200 text-zinc-950 flex items-center justify-center shrink-0 transition-colors shadow-sm"
                 aria-label="Subscribe"
               >
                 <ArrowRight className="h-4 w-4" />
               </button>
             </div>
+
+            {/* Social Icons matching reference */}
+            <div className="flex items-center gap-3 text-zinc-400 pt-1">
+              <a
+                href="https://github.com/niranjansah87/Secure-Enviornment-Manager"
+                target="_blank"
+                rel="noreferrer"
+                className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.06] hover:text-white hover:bg-white/[0.08] hover:border-white/[0.15] transition-all"
+                aria-label="GitHub"
+              >
+                <FaGithub className="h-3.5 w-3.5" />
+              </a>
+              <a
+                href="https://linkedin.com/in/niranjansah87"
+                target="_blank"
+                rel="noreferrer"
+                className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.06] hover:text-white hover:bg-white/[0.08] hover:border-white/[0.15] transition-all"
+                aria-label="LinkedIn"
+              >
+                <FaLinkedinIn className="h-3.5 w-3.5" />
+              </a>
+              <a
+                href="https://x.com/niranjansah87"
+                target="_blank"
+                rel="noreferrer"
+                className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.06] hover:text-white hover:bg-white/[0.08] hover:border-white/[0.15] transition-all"
+                aria-label="X (Twitter)"
+              >
+                <FaXTwitter className="h-3.5 w-3.5" />
+              </a>
+              <a
+                href="mailto:contact@niranjansah87.com.np"
+                className="p-2 rounded-lg bg-white/[0.03] border border-white/[0.06] hover:text-white hover:bg-white/[0.08] hover:border-white/[0.15] transition-all"
+                aria-label="Email"
+              >
+                <FiMail className="h-3.5 w-3.5" />
+              </a>
+            </div>
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-6 md:px-12 pt-8 mt-8 border-t border-white/[0.05] flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px]">
-          <div>© {new Date().getFullYear()} Secure Environment Manager. Open source under MIT License.</div>
+        {/* Bottom Copyright & Attribution Bar */}
+        <div className="max-w-7xl mx-auto px-6 md:px-12 pt-8 mt-12 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-zinc-500">
+          <div>&copy; {new Date().getFullYear()} Secure Environment Manager. Open source under MIT License.</div>
           <div>Made with ❤️ by Niranjan Sah</div>
         </div>
       </footer>

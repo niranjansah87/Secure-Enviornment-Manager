@@ -16,7 +16,7 @@ export class MaintenanceWorker {
   private readonly worker: Worker;
 
   constructor(private readonly db: Pool, redis: Redis, private readonly logger: Logger) {
-    this.worker = new Worker('sem:queue:maintenance', async (job: Job) => this.process(job), {
+    this.worker = new Worker('sem-queue-maintenance', async (job: Job) => this.process(job), {
       connection: redis,
       concurrency: 1,
     });

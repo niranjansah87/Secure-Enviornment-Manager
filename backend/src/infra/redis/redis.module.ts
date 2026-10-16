@@ -16,19 +16,23 @@ export const REDIS_CLIENT = Symbol('REDIS_CLIENT');
 
         const client = new Redis(url, {
           password,
-          retryStrategy: (times) => Math.min(times * 50, 2000),
-          maxRetriesPerRequest: 3,
+          retryStrategy: () => null,
+          maxRetriesPerRequest: 1,
+          lazyConnect: true,
           enableOfflineQueue: false,
-          lazyConnect: false,
-          keyPrefix: '', // we prefix keys explicitly in each service
+          keyPrefix: '',
         });
 
-        client.on('error', (err) => {
-          // Log but do not throw — Redis failures should degrade gracefully
-          console.error('[Redis] Connection error', err.message);
+        client.on('error', () => {
+          // Degrade gracefully
         });
 
-        await client.ping(); // verify connection on module init
+        try {
+          await client.connect();
+          await client.ping();
+        } catch {
+          console.warn('[Redis] Connection not established; running in standalone mode');
+        }
         return client;
       },
     },

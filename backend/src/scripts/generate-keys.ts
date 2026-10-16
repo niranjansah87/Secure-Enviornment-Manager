@@ -37,7 +37,7 @@ function run() {
 
   for (const [key, value] of Object.entries(generated)) {
     const currentVal = presentValues.get(key);
-    if (!currentVal || currentVal.length === 0) {
+    if (!currentVal || currentVal.length === 0 || currentVal.includes('...')) {
       filledCount++;
       const keyRegex = new RegExp(`^\\s*${key}\\s*=.*$`, 'm');
       if (keyRegex.test(updatedContent)) {

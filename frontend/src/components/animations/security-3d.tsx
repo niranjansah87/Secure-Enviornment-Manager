@@ -197,3 +197,5 @@ export function Security3DAnimation() {
     </div>
   );
 }
+
+export default Security3DAnimation;
