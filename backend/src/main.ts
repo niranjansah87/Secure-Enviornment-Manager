@@ -6,7 +6,6 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import fastifyHelmet from '@fastify/helmet';
 import fastifyCors from '@fastify/cors';
-import pino from 'pino';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
@@ -14,11 +13,9 @@ import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
 import { SecretsGateway } from './infra/websocket/secrets.gateway';
 
 async function bootstrap() {
-  const logger = pino({ level: process.env['LOG_LEVEL'] ?? 'info' });
-
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    new FastifyAdapter({ logger }),
+    new FastifyAdapter({ logger: false }),
     { bufferLogs: true },
   );
 

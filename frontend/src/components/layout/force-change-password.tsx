@@ -1,11 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { KeyRound, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, ShieldCheck, Terminal, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useWorkspace } from "@/context/workspace-context";
 import { ApiError } from "@/lib/sem-api";
 
@@ -20,10 +18,10 @@ export function ForceChangePassword() {
   const [error, setError] = useState<string | null>(null);
 
   const validate = (): string | null => {
-    if (!currentPassword) return "Enter your current (temporary) password.";
-    if (newPassword.length < 8) return "New password must be at least 8 characters.";
-    if (newPassword === currentPassword) return "New password must differ from the current one.";
-    if (newPassword !== confirm) return "Passwords do not match.";
+    if (!currentPassword) return "ERR_EMPTY_FIELD: Enter your current temporary password.";
+    if (newPassword.length < 8) return "ERR_POLICY_VIOLATION: New password must be at least 8 characters.";
+    if (newPassword === currentPassword) return "ERR_REUSE: New password must differ from the current one.";
+    if (newPassword !== confirm) return "ERR_MISMATCH: Passwords do not match.";
     return null;
   };
 
@@ -38,98 +36,152 @@ export function ForceChangePassword() {
     setError(null);
     try {
       await changePassword(currentPassword, newPassword);
-      toast.success("Password updated. Other sessions were signed out.");
-      // mustChangePassword is cleared in context → overlay disappears.
+      toast.success("Password updated. All sessions rotated.");
     } catch (e2) {
-      setError(e2 instanceof ApiError ? e2.message : "Failed to change password.");
+      setError(e2 instanceof ApiError ? `ERR_${e2.status || 400}: ${e2.message}` : "ERR_FAILED: Failed to change password.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md">
-      <div className="w-full max-w-md mx-4 rounded-2xl border border-white/10 bg-zinc-900/95 p-8 shadow-2xl ring-1 ring-white/5">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center shrink-0">
-            <KeyRound className="w-5 h-5 text-violet-400" />
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/85 backdrop-blur-md p-4">
+      {/* Terminal Window */}
+      <div className="w-full max-w-md rounded-2xl border border-white/[0.12] bg-[#090d16]/95 backdrop-blur-2xl shadow-[0_25px_60px_rgba(0,0,0,0.95)] overflow-hidden font-mono select-none">
+        {/* Terminal Header Bar */}
+        <div className="flex items-center justify-between px-4 py-3 bg-[#0d121f] border-b border-white/[0.08]">
+          {/* 3 macOS / Linux Dots */}
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-[#ff5f56]/90 border border-[#e0443e]" />
+            <div className="w-3 h-3 rounded-full bg-[#ffbd2e]/90 border border-[#dea123]" />
+            <div className="w-3 h-3 rounded-full bg-[#27c93f]/90 border border-[#1aab29]" />
           </div>
-          <div>
-            <h2 className="text-base font-semibold text-zinc-100">Set a new password</h2>
-            <p className="text-xs text-zinc-500">You must change your password before continuing.</p>
+
+          {/* Session Title */}
+          <div className="flex items-center gap-1.5 text-xs text-zinc-300 font-medium">
+            <Terminal className="w-3.5 h-3.5 text-zinc-400" />
+            <span>sem passwd --update</span>
+          </div>
+
+          {/* Status Chip */}
+          <div className="flex items-center gap-1.5 text-[10px] text-zinc-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+            <span>policy: required</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 mb-5 p-3 rounded-xl bg-white/5 border border-white/8">
-          <div className="w-8 h-8 rounded-full bg-violet-600/30 border border-violet-500/30 flex items-center justify-center text-xs font-bold text-violet-300 shrink-0">
-            {displayName.slice(0, 2).toUpperCase()}
-          </div>
-          <p className="text-sm font-medium text-zinc-200">{displayName}</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <PasswordField
-            label="Current (temporary) password"
-            value={currentPassword}
-            onChange={(v) => {
-              setCurrentPassword(v);
-              setError(null);
-            }}
-            show={showCurrent}
-            onToggle={() => setShowCurrent((s) => !s)}
-            placeholder="The password you just signed in with"
-            autoFocus
-          />
-          <PasswordField
-            label="New password"
-            value={newPassword}
-            onChange={(v) => {
-              setNewPassword(v);
-              setError(null);
-            }}
-            show={showNew}
-            onToggle={() => setShowNew((s) => !s)}
-            placeholder="At least 8 characters"
-          />
-          <PasswordField
-            label="Confirm new password"
-            value={confirm}
-            onChange={(v) => {
-              setConfirm(v);
-              setError(null);
-            }}
-            show={showNew}
-            onToggle={() => setShowNew((s) => !s)}
-            placeholder="Repeat new password"
-          />
-
-          {error && (
-            <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2" role="alert">
-              {error}
+        {/* Terminal Body */}
+        <div className="p-5 sm:p-6 space-y-4 text-xs">
+          {/* Boot & Security Notice */}
+          <div className="space-y-1 pb-3 border-b border-white/[0.06] text-[11px]">
+            <div className="flex items-center justify-between">
+              <span className="text-zinc-200 font-bold">Password Rotation Policy</span>
+              <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold">tty1</span>
+            </div>
+            <p className="text-zinc-400 leading-normal">
+              First-time login detected. You must set a permanent password before unlocking your workspace.
             </p>
-          )}
-
-          <div className="flex gap-3 pt-1">
-            <Button type="button" variant="ghost" onClick={() => void logout()} className="text-zinc-500 hover:text-zinc-300 text-sm">
-              Sign out
-            </Button>
-            <Button type="submit" disabled={loading} className="flex-1 bg-violet-600 hover:bg-violet-500 text-white h-10">
-              {loading ? "Saving…" : "Set password & continue"}
-            </Button>
           </div>
-        </form>
 
-        <div className="mt-5 flex items-center gap-2 text-xs text-zinc-600">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-500/60" />
-          Passwords are hashed with Argon2id. They are never stored in plain text.
+          {/* Target Identity Pill */}
+          <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-black/50 border border-white/[0.08] text-[11px]">
+            <span className="text-zinc-500">identity:</span>
+            <span className="text-white font-semibold">{displayName}</span>
+            <span className="ml-auto text-[10px] text-zinc-500">[unprivileged]</span>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-3.5">
+            <TerminalPasswordField
+              prompt="auth@sem:~$ enter current_password:"
+              value={currentPassword}
+              onChange={(v) => {
+                setCurrentPassword(v);
+                setError(null);
+              }}
+              show={showCurrent}
+              onToggle={() => setShowCurrent((s) => !s)}
+              placeholder="temporary password..."
+              autoFocus
+            />
+
+            <TerminalPasswordField
+              prompt="vault@sem:~$ enter new_password (min 8 chars):"
+              value={newPassword}
+              onChange={(v) => {
+                setNewPassword(v);
+                setError(null);
+              }}
+              show={showNew}
+              onToggle={() => setShowNew((s) => !s)}
+              placeholder="at least 8 characters..."
+            />
+
+            <TerminalPasswordField
+              prompt="vault@sem:~$ confirm new_password:"
+              value={confirm}
+              onChange={(v) => {
+                setConfirm(v);
+                setError(null);
+              }}
+              show={showNew}
+              onToggle={() => setShowNew((s) => !s)}
+              placeholder="repeat new password..."
+            />
+
+            {/* Error Message */}
+            {error && (
+              <div className="p-2.5 rounded-xl border border-red-500/30 bg-red-500/10 text-xs text-red-300 leading-relaxed font-mono">
+                {error}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex items-center gap-3 pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => void logout()}
+                className="h-10 px-4 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.06] font-mono text-xs transition-colors"
+              >
+                $ exit
+              </Button>
+              <Button
+                type="submit"
+                disabled={loading}
+                className="flex-1 h-10 bg-white hover:bg-zinc-200 text-zinc-950 font-mono font-bold rounded-xl text-xs transition-all shadow-[0_0_15px_rgba(255,255,255,0.15)] flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="inline-block w-2 h-2 rounded-full bg-zinc-950 animate-ping" />
+                    <span>hashing & rotating...</span>
+                  </span>
+                ) : (
+                  <>
+                    <span>$ sem passwd --commit</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+
+          {/* Terminal Footer */}
+          <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between text-[10.5px] text-zinc-500">
+            <span className="flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-zinc-400" />
+              <span>cipher: Argon2id (zero-knowledge)</span>
+            </span>
+            <span>secure session</span>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function PasswordField({
-  label,
+function TerminalPasswordField({
+  prompt,
   value,
   onChange,
   show,
@@ -137,7 +189,7 @@ function PasswordField({
   placeholder,
   autoFocus,
 }: {
-  label: string;
+  prompt: string;
   value: string;
   onChange: (v: string) => void;
   show: boolean;
@@ -146,15 +198,17 @@ function PasswordField({
   autoFocus?: boolean;
 }) {
   return (
-    <div className="space-y-1.5">
-      <Label className="text-xs font-medium text-zinc-400">{label}</Label>
+    <div className="space-y-1">
+      <div className="text-[11px] text-zinc-400 flex items-center gap-1.5">
+        <span className="text-zinc-500">{prompt}</span>
+      </div>
       <div className="relative">
-        <Input
+        <input
           type={show ? "text" : "password"}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="pr-10 bg-black/40 border-white/10 text-zinc-100 placeholder:text-zinc-600 h-10"
+          className="w-full h-10 bg-black/60 border border-white/[0.12] rounded-xl pl-3.5 pr-10 text-xs text-white placeholder:text-zinc-600 focus:border-white/40 focus:outline-none font-mono"
           autoFocus={autoFocus}
           required
         />
@@ -162,7 +216,8 @@ function PasswordField({
           type="button"
           onClick={onToggle}
           aria-label={show ? "Hide password" : "Show password"}
-          className="absolute right-3 top-2.5 text-zinc-500 hover:text-zinc-300 transition-colors"
+          className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-500 hover:text-zinc-300 transition-colors"
+          tabIndex={-1}
         >
           {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>
