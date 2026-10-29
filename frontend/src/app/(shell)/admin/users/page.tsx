@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Users,
@@ -55,7 +56,8 @@ const USER_SCOPES = [
 ];
 
 export default function UsersPage() {
-  const { call, me } = useWorkspace();
+  const { call, me, isAdmin } = useWorkspace();
+  const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -76,24 +78,28 @@ export default function UsersPage() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    if (!isAdmin) {
+      setLoading(false);
+      return;
+    }
     try {
       const list = await call((t) => sem.listUsers(t));
       setUsers(list);
-    } catch {
-      // Demo fallback
-      setUsers([
-        { id: "usr-1", username: "niranjan", email: "niranjan@sem.local", role: "admin", scopes: USER_SCOPES, created_at: new Date(Date.now() - 60 * 86400000).toISOString(), is_active: true, must_change_password: false },
-        { id: "usr-2", username: "alex.dev", email: "alex@sem.local", role: "developer", scopes: ["secrets:read", "secrets:write"], created_at: new Date(Date.now() - 20 * 86400000).toISOString(), is_active: true, must_change_password: false },
-        { id: "usr-3", username: "sarah.qa", email: "sarah@sem.local", role: "viewer", scopes: ["secrets:read"], created_at: new Date(Date.now() - 5 * 86400000).toISOString(), is_active: true, must_change_password: false },
-      ]);
+    } catch (e) {
+      setUsers([]);
+      setError(e instanceof ApiError ? e.message : "Failed to load users");
     } finally {
       setLoading(false);
     }
-  }, [call]);
+  }, [call, isAdmin]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (me && !isAdmin) router.replace("/dashboard");
+  }, [isAdmin, me, router]);
 
   const openCreate = () => {
     setEditing(null);
@@ -157,6 +163,8 @@ export default function UsersPage() {
   const admins = users.filter((u) => u.role === "admin").length;
   const developers = users.filter((u) => u.role === "developer").length;
   const viewers = users.filter((u) => u.role === "viewer").length;
+
+  if (!me || !isAdmin) return null;
 
   return (
     <div className="space-y-6">

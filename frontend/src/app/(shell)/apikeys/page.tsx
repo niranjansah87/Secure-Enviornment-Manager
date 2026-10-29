@@ -65,12 +65,9 @@ export default function ApiKeysPage() {
     try {
       const list = await call((t) => sem.listApiKeys(t));
       setKeys(list);
-    } catch {
-      // Demo fallback
-      setKeys([
-        { id: "key-1", name: "CI/CD Deployment Token", key_prefix: "sem_live_c1...", scopes: ["secrets:read", "secrets:export"], expires_at: new Date(Date.now() + 60 * 86400000).toISOString(), created_at: new Date(Date.now() - 30 * 86400000).toISOString(), revoked: false, user_id: "user-1", last_used_at: null },
-        { id: "key-2", name: "Terraform Automation", key_prefix: "sem_live_tf...", scopes: ["secrets:read", "secrets:write"], expires_at: new Date(Date.now() + 180 * 86400000).toISOString(), created_at: new Date(Date.now() - 10 * 86400000).toISOString(), revoked: false, user_id: "user-1", last_used_at: null },
-      ]);
+    } catch (e) {
+      setKeys([]);
+      setError(e instanceof ApiError ? e.message : "Failed to load API keys");
     } finally {
       setLoading(false);
     }

@@ -76,15 +76,7 @@ export default function HistoryPage({
         setSelectedV2(v[1]?.version ?? v[0].version);
       }
     } catch {
-      // Mock versions matching reference design
-      setVersions([
-        { id: "v-12", version: 12, change_type: "update", changed_by: "Niranjan Sah", created_at: new Date(Date.now() - 2 * 3600000).toISOString() },
-        { id: "v-11", version: 11, change_type: "update", changed_by: "Admin", created_at: new Date(Date.now() - 26 * 3600000).toISOString() },
-        { id: "v-10", version: 10, change_type: "update", changed_by: "Niranjan Sah", created_at: new Date(Date.now() - 72 * 3600000).toISOString() },
-        { id: "v-9", version: 9, change_type: "update", changed_by: "System", created_at: new Date(Date.now() - 168 * 3600000).toISOString() },
-        { id: "v-8", version: 8, change_type: "update", changed_by: "Niranjan Sah", created_at: new Date(Date.now() - 336 * 3600000).toISOString() },
-        { id: "v-7", version: 7, change_type: "create", changed_by: "Admin", created_at: new Date(Date.now() - 504 * 3600000).toISOString() },
-      ]);
+      setVersions([]);
     } finally {
       setLoading(false);
     }

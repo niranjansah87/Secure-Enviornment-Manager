@@ -107,12 +107,7 @@ export default function ProjectSettingsPage({
     try {
       setEnvs(await call((t) => sem.listEnvironments(t, project.id)));
     } catch {
-      // Demo fallback
-      setEnvs([
-        { id: "env-1", name: "Production", slug: "production", project_id: project.id, created_at: "" },
-        { id: "env-2", name: "Staging", slug: "staging", project_id: project.id, created_at: "" },
-        { id: "env-3", name: "Development", slug: "development", project_id: project.id, created_at: "" },
-      ]);
+      setEnvs([]);
     } finally {
       setLoadingEnvs(false);
     }

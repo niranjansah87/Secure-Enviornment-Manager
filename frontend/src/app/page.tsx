@@ -47,6 +47,7 @@ import { useWorkspace } from "@/context/workspace-context";
 import { useEffect } from "react";
 import Dashboard3DShowcase from "@/components/animations/dashboard-3d-showcase";
 import HeroPillars3D from "@/components/animations/hero-pillars-3d";
+import HeroArtwork3D from "@/components/landing/hero-artwork-3d";
 import DeveloperWorkflowTerminal from "@/components/landing/developer-workflow-terminal";
 import Security3DCard from "@/components/animations/security-3d-card";
 const GithubIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -244,22 +245,8 @@ export default function HomePage() {
 
       {/* 2. Hero Section */}
       <section className="relative min-h-[720px] lg:min-h-[820px] xl:min-h-[880px] flex flex-col justify-between pt-36 sm:pt-40 md:pt-44 pb-14 md:pb-16 overflow-hidden">
-        {/* Right-Aligned Native Scale Artwork (Strictly un-stretched, seamlessly blended into dark background) */}
-        <div className="absolute right-0 top-0 bottom-0 w-full max-w-[1050px] xl:max-w-[1200px] z-0 overflow-hidden pointer-events-none">
-          <div className="relative w-full h-full">
-            <Image
-              src="/home/hero.png"
-              alt="Secure Environment Manager Workspace"
-              fill
-              priority
-              className="object-contain object-right-top select-none opacity-80"
-            />
-            {/* Seamless edge blending gradients */}
-            <div className="absolute inset-0 bg-gradient-to-r from-[#07090e] via-[#07090e]/60 to-transparent w-[55%] pointer-events-none" />
-            <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-[#07090e] to-transparent pointer-events-none" />
-            <div className="absolute bottom-0 left-0 right-0 h-44 bg-gradient-to-t from-[#07090e] via-[#07090e]/85 to-transparent pointer-events-none" />
-          </div>
-        </div>
+        {/* Right-Aligned Native Scale Artwork with 3D Depth & Tilt */}
+        <HeroArtwork3D />
 
         <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-12 w-full flex-1 flex flex-col justify-between">
           {/* Hero Content Area (Left-aligned matching reference design) */}

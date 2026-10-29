@@ -70,15 +70,8 @@ export default function AuditPage({
       setEvents(page.events);
       setTotal(page.pagination.total);
     } catch {
-      // Demo fallback data if empty
-      setEvents([
-        { id: "ev-1", action: "secret.update", actor_id: "Niranjan Sah", actor_type: "user", occurred_at: new Date(Date.now() - 2 * 60000).toISOString(), ip: "192.168.1.10", resource_type: "secret", resource_id: "DATABASE_URL", metadata: { key: "DATABASE_URL", env: envSlug } },
-        { id: "ev-2", action: "secret.create", actor_id: "Admin", actor_type: "user", occurred_at: new Date(Date.now() - 12 * 60000).toISOString(), ip: "192.168.1.10", resource_type: "secret", resource_id: "STRIPE_SECRET_KEY", metadata: { key: "STRIPE_SECRET_KEY", env: envSlug } },
-        { id: "ev-3", action: "secret.bulk_replace", actor_id: "Niranjan Sah", actor_type: "user", occurred_at: new Date(Date.now() - 60 * 60000).toISOString(), ip: "192.168.1.10", resource_type: "secret", resource_id: "bulk", metadata: { count: 12, env: envSlug } },
-        { id: "ev-4", action: "auth.login", actor_id: "admin@sem.local", actor_type: "user", occurred_at: new Date(Date.now() - 120 * 60000).toISOString(), ip: "192.168.1.10", resource_type: "session", resource_id: null, metadata: { method: "master_token" } },
-        { id: "ev-5", action: "secret.rollback", actor_id: "Niranjan Sah", actor_type: "user", occurred_at: new Date(Date.now() - 240 * 60000).toISOString(), ip: "192.168.1.10", resource_type: "secret", resource_id: "JWT_SECRET", metadata: { key: "JWT_SECRET", version: 4 } },
-      ]);
-      setTotal(1248);
+      setEvents([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
