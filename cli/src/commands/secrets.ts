@@ -8,7 +8,7 @@ import table from 'text-table';
 import inquirer from 'inquirer';
 import { loadConfig, debug } from './config.js';
 
-async function authenticatedFetch(path: string, options: RequestInit = {}): Promise<unknown> {
+async function authenticatedFetch(path: string, options: any = {}): Promise<any> {
   const config = loadConfig();
   if (!config?.token) throw new Error('Not authenticated. Run: sem auth login');
 

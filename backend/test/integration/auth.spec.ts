@@ -11,12 +11,14 @@ import * as schema from '../../src/infra/database/schema';
 describe('Auth — password login', () => {
   let ctx: TestContext;
   let orgId: string;
+  let permissionUserId: string;
 
   beforeAll(async () => {
     ctx = await createTestContext();
     const org = await seedOrg(ctx.db, 'auth-test-org');
     orgId = org.id;
     await seedUser(ctx.db, orgId, 'alice', { role: 'admin', scopes: ['secrets:read', 'secrets:write'] });
+    permissionUserId = (await seedUser(ctx.db, orgId, 'permission-user', { role: 'developer', scopes: ['secrets:read', 'secrets:write'] })).user.id;
     await seedUser(ctx.db, orgId, 'inactive', { role: 'developer' }).then(async ({ user }) => {
       await ctx.db.update(schema.users).set({ isActive: false }).where(eq(schema.users.id, user.id));
     });
@@ -96,6 +98,26 @@ describe('Auth — password login', () => {
     expect(meRes.body.data.role).toBe('admin');
     expect(meRes.body.data.org_id).toBe(orgId);
   });
+
+  it('revokes active sessions when an administrator changes permissions', async () => {
+    const [adminLogin, userLogin] = await Promise.all([
+      ctx.agent.post('/api/v1/auth/login').send({ username: 'alice', password: 'TestPassword123!' }),
+      ctx.agent.post('/api/v1/auth/login').send({ username: 'permission-user', password: 'TestPassword123!' }),
+    ]);
+
+    const update = await ctx.agent
+      .put(`/api/v1/admin/users/${permissionUserId}`)
+      .set('Authorization', `Bearer ${adminLogin.body.data.access_token}`)
+      .send({ role: 'viewer', scopes: ['secrets:read'] });
+    expect(update.status).toBe(200);
+
+    const [accessResult, refreshResult] = await Promise.all([
+      ctx.agent.get('/api/v1/auth/me').set('Authorization', `Bearer ${userLogin.body.data.access_token}`),
+      ctx.agent.post('/api/v1/auth/refresh').send({ refresh_token: userLogin.body.data.refresh_token }),
+    ]);
+    expect(accessResult.status).toBe(401);
+    expect(refreshResult.status).toBe(401);
+  });
 });
 
 describe('Auth — refresh token lifecycle', () => {
@@ -172,6 +194,21 @@ describe('Auth — refresh token lifecycle', () => {
       .send({ refresh_token: 'semr_completelyfake_' + 'x'.repeat(40) });
 
     expect(res.body.success).toBe(false);
+  });
+
+  it('allows only one concurrent rotation of the same refresh token', async () => {
+    const login = await ctx.agent
+      .post('/api/v1/auth/login')
+      .send({ username: 'bob', password: 'TestPassword123!' });
+
+    const token = login.body.data.refresh_token;
+    const results = await Promise.all([
+      ctx.agent.post('/api/v1/auth/refresh').send({ refresh_token: token }),
+      ctx.agent.post('/api/v1/auth/refresh').send({ refresh_token: token }),
+    ]);
+
+    expect(results.filter((result) => result.status === 200)).toHaveLength(1);
+    expect(results.filter((result) => result.status === 401)).toHaveLength(1);
   });
 });
 
