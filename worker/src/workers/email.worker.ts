@@ -1,7 +1,7 @@
 import { Worker, Job } from 'bullmq';
 import type { Redis } from 'ioredis';
 import type { Logger } from 'pino';
-import nodemailer from 'nodemailer';
+import nodemailer, { type Transporter } from 'nodemailer';
 
 // tempPassword is intentionally absent: the API returns it directly to the
 // caller; it must never travel through Redis/BullMQ as a job payload.
@@ -20,7 +20,7 @@ export interface SendPasswordResetEmailJob {
 
 export class EmailWorker {
   private readonly worker: Worker;
-  private readonly transporter: nodemailer.Transporter;
+  private readonly transporter: Transporter;
 
   constructor(redis: Redis, private readonly logger: Logger) {
     this.transporter = nodemailer.createTransport({

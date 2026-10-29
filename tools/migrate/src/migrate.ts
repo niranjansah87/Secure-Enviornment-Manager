@@ -73,11 +73,12 @@ function parseArgs() {
   };
 }
 
-const ARGON2_OPTS: argon2.Options = {
+const ARGON2_OPTS: argon2.HashOptions & { raw: false } = {
   type: argon2.argon2id,
   memoryCost: 65536,
   timeCost: 3,
   parallelism: 4,
+  raw: false,
 };
 
 // Randomly generated placeholder — user must change password after migration
