@@ -68,7 +68,7 @@ async function bootstrap() {
   app.useGlobalInterceptors(new LoggingInterceptor(), new MetricsInterceptor());
 
   // OpenAPI docs (disabled in production unless explicitly enabled)
-  if (config.get<string>('NODE_ENV') !== 'production' || config.get<boolean>('SWAGGER_ENABLED')) {
+  if (config.get<string>('NODE_ENV') !== 'production' || config.get<boolean>('app.swaggerEnabled', false)) {
     const docConfig = new DocumentBuilder()
       .setTitle('SEM V2 API')
       .setDescription('Secure Environment Manager V2 Backend API')

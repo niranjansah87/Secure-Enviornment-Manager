@@ -38,11 +38,12 @@ export interface LoginCredentials {
   userAgent?: string;
 }
 
-const ARGON2_OPTIONS: argon2.Options = {
+const ARGON2_OPTIONS: argon2.HashOptions & { raw: false } = {
   type: argon2.argon2id,
   memoryCost: 65536,
   timeCost: 3,
   parallelism: 4,
+  raw: false,
 };
 
 @Injectable()
@@ -159,7 +160,7 @@ export class AuthService {
 
     let verified = false;
     try {
-      verified = await argon2.verify(hashToVerify, creds.password!, ARGON2_OPTIONS);
+      verified = await argon2.verify(hashToVerify, creds.password!);
     } catch {
       verified = false;
     }
@@ -270,7 +271,7 @@ export class AuthService {
 
     if (!user) throw new ForbiddenException({ code: 'NOT_FOUND', message: 'User not found' });
 
-    const valid = await argon2.verify(user.passwordHash, currentPassword, ARGON2_OPTIONS);
+    const valid = await argon2.verify(user.passwordHash, currentPassword);
     if (!valid) {
       throw new ForbiddenException({ code: 'INVALID_CREDENTIALS', message: 'Current password is incorrect' });
     }

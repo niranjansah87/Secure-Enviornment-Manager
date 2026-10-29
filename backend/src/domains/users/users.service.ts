@@ -15,11 +15,12 @@ import * as schema from '../../infra/database/schema';
 import { AuditService } from '../audit/audit.service';
 import { EMAIL_QUEUE } from '../../infra/queue/queue.module';
 
-const ARGON2_OPTIONS: argon2.Options = {
+const ARGON2_OPTIONS: argon2.HashOptions & { raw: false } = {
   type: argon2.argon2id,
   memoryCost: 65536,
   timeCost: 3,
   parallelism: 4,
+  raw: false,
 };
 
 @Injectable()
@@ -109,15 +110,23 @@ export class UsersService {
       await this.ensureAnotherAdmin(id, orgId);
     }
 
-    const [updated] = await this.db
-      .update(schema.users)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(and(eq(schema.users.id, id), eq(schema.users.orgId, orgId)))
-      .returning();
+    return this.db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(schema.users)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(and(eq(schema.users.id, id), eq(schema.users.orgId, orgId)))
+        .returning();
 
-    if (!updated) throw new Error('Failed to update user');
-    await this.audit.writeEvent({ orgId, actorId, actorType: 'user', action: 'user.update', resourceType: 'user', resourceId: id, metadata: { role: updated.role, active: String(updated.isActive) }, ip });
-    return updated;
+      if (!updated) throw new Error('Failed to update user');
+      if (updates.role !== undefined || updates.scopes !== undefined || updates.isActive !== undefined) {
+        await tx
+          .update(schema.sessions)
+          .set({ revoked: true, revokedAt: new Date(), revokedReason: 'permissions_changed' })
+          .where(and(eq(schema.sessions.userId, id), eq(schema.sessions.revoked, false)));
+      }
+      await this.audit.writeEvent({ orgId, actorId, actorType: 'user', action: 'user.update', resourceType: 'user', resourceId: id, metadata: { role: updated.role, active: String(updated.isActive) }, ip }, tx);
+      return updated;
+    });
   }
 
   async delete(id: string, orgId: string, actorId: string, ip?: string): Promise<void> {

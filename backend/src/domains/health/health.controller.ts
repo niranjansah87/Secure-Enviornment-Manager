@@ -1,4 +1,4 @@
-import { Controller, Get, Header, Inject, ServiceUnavailableException } from '@nestjs/common';
+import { Controller, Get, Header, Inject, ServiceUnavailableException, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Public } from '../../common/decorators/public.decorator';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
@@ -9,6 +9,7 @@ import { REDIS_CLIENT } from '../../infra/redis/redis.module';
 import * as schema from '../../infra/database/schema';
 import { MetricsService } from '../../infra/observability/metrics.service';
 import { renderHomePage } from './home.template';
+import { AdminGuard } from '../../common/guards/admin.guard';
 
 @Controller()
 export class HealthController {
@@ -78,7 +79,7 @@ export class HealthController {
   }
 
   @Get('metrics')
-  @Public()
+  @UseGuards(AdminGuard)
   @Header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
   metricsReport() {
     return this.metrics.registry.metrics();

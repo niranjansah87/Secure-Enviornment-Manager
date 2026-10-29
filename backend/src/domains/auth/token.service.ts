@@ -181,11 +181,13 @@ export class TokenService implements OnModuleInit {
       return null;
     }
 
-    // Rotate: revoke old session before issuing new one
-    await this.db
+    // Consume the token atomically so concurrent refreshes cannot both rotate it.
+    const [consumed] = await this.db
       .update(schema.sessions)
       .set({ revoked: true, revokedAt: new Date(), revokedReason: 'rotated' })
-      .where(eq(schema.sessions.id, matchedSession.id));
+      .where(and(eq(schema.sessions.id, matchedSession.id), eq(schema.sessions.revoked, false)))
+      .returning({ id: schema.sessions.id });
+    if (!consumed) return null;
 
     const [user] = await this.db
       .select()

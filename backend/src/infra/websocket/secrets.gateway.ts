@@ -13,7 +13,7 @@ import type { JwtPayload } from '@sem/types';
 import { ConfigService } from '@nestjs/config';
 import { SOCKET_SERVER } from './websocket.constants';
 import type { Server as HttpServer } from 'http';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, gt } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { DB_TOKEN } from '../database/database.module';
 import * as schema from '../database/schema';
@@ -43,13 +43,19 @@ export class SecretsGateway {
       const raw = socket.handshake.auth['token'] ?? socket.handshake.headers.authorization?.replace(/^Bearer\s+/i, '');
       const user = typeof raw === 'string' ? this.verifyConnectionToken(raw) : null;
       if (!user) return next(new Error('Authentication required'));
-      const [session] = await this.db.select({ id: schema.sessions.id }).from(schema.sessions).where(and(eq(schema.sessions.id, user.session_id), eq(schema.sessions.userId, user.sub), eq(schema.sessions.revoked, false))).limit(1);
+      const [session] = await this.db.select({ id: schema.sessions.id }).from(schema.sessions).where(and(eq(schema.sessions.id, user.session_id), eq(schema.sessions.userId, user.sub), eq(schema.sessions.revoked, false), gt(schema.sessions.expiresAt, new Date()))).limit(1);
       if (!session) return next(new Error('Session is no longer active'));
+      if (user.role !== 'admin' && !user.scopes.includes('secrets:read')) {
+        return next(new Error('Insufficient permissions'));
+      }
       socket.data['user'] = user;
       next();
     });
     this.io.on('connection', (socket) => {
       const user = socket.data['user'] as JwtPayload;
+      const expiresIn = Math.max(0, user.exp * 1000 - Date.now());
+      const expiryTimer = setTimeout(() => socket.disconnect(true), expiresIn);
+      socket.once('disconnect', () => clearTimeout(expiryTimer));
       void socket.join([`org:${user.org}`, `user:${user.sub}`]);
       socket.on('subscribe:environment', async (environmentId: string, acknowledge?: (result: { ok: boolean }) => void) => {
         const [environment] = await this.db
