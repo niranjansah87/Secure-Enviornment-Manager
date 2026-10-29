@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { FaGithub } from "react-icons/fa6";
 import { useWorkspace } from "@/context/workspace-context";
@@ -13,7 +12,6 @@ interface PublicHeaderProps {
 }
 
 export function PublicHeader({ className = "" }: PublicHeaderProps) {
-  const pathname = usePathname();
   const { token } = useWorkspace();
   const [scrolled, setScrolled] = useState(false);
 
@@ -24,14 +22,6 @@ export function PublicHeader({ className = "" }: PublicHeaderProps) {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
-  const navLinks = [
-    { name: "Features", href: "/features" },
-    { name: "Workflow", href: "/workflow" },
-    { name: "Integrations", href: "/integrations" },
-    { name: "Security", href: "/security" },
-    { name: "Docs", href: "/docs" },
-  ];
 
   return (
     <header
@@ -57,27 +47,7 @@ export function PublicHeader({ className = "" }: PublicHeaderProps) {
           </div>
         </Link>
 
-        {/* Center Navigation Links */}
-        <nav className="hidden lg:flex items-center gap-8 text-xs font-medium">
-          {navLinks.map((link) => {
-            const isActive = pathname === link.href;
-            return (
-              <Link
-                key={link.name}
-                href={link.href}
-                className={`transition-colors relative py-1 ${
-                  isActive
-                    ? "text-white font-semibold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-blue-500 after:rounded-full"
-                    : "text-zinc-400 hover:text-white"
-                }`}
-              >
-                {link.name}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* Right CTA */}
+        {/* Right Actions */}
         <div className="flex items-center gap-4">
           <a
             href="https://github.com/niranjansah87/Secure-Enviornment-Manager"

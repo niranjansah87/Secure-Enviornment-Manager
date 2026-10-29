@@ -34,7 +34,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <AppSidebar />
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#07090e]">
         <AppHeader />
-        <main className="flex-1 overflow-y-auto px-6 py-6 lg:px-8 lg:py-6">
+        <main data-lenis-prevent className="flex-1 overflow-y-auto px-6 py-6 lg:px-8 lg:py-6">
           <PageMotion>{children}</PageMotion>
         </main>
       </div>

@@ -205,6 +205,34 @@ export default function SecretsPage({
     }
   };
 
+  const revealAll = async () => {
+    if (Object.keys(revealed).length > 0) {
+      setRevealed({});
+      return;
+    }
+    if (!projectId || !envId) return;
+    try {
+      const results = await Promise.all(
+        filtered.map(async (s) => {
+          try {
+            const res = await call((t) => sem.getSecretValue(t, projectId, envId, s.key));
+            return { key: s.key, value: res.value };
+          } catch {
+            return null;
+          }
+        })
+      );
+      const next: Record<string, string> = {};
+      results.forEach((r) => {
+        if (r) next[r.key] = r.value;
+      });
+      setRevealed(next);
+      toast.success("Revealed secrets");
+    } catch {
+      toast.error("Failed to reveal secrets");
+    }
+  };
+
   const handleDelete = async () => {
     if (!deleteTarget || !projectId || !envId) return;
     setDeleting(true);
@@ -509,8 +537,34 @@ export default function SecretsPage({
                     </th>
                     <th className="py-3 px-4">Name</th>
                     <th className="py-3 px-4">Type</th>
-                    <th className="py-3 px-4">Environment</th>
-                    <th className="py-3 px-4">Tags</th>
+                    <th className="py-3 px-4 min-w-[280px]">
+                      <div className="flex items-center justify-between">
+                        <span>Secret Value</span>
+                        {canReveal && filtered.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void revealAll();
+                            }}
+                            className="text-[10px] text-zinc-400 hover:text-sky-300 font-mono font-normal normal-case flex items-center gap-1 transition-colors px-1.5 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.08]"
+                            title={Object.keys(revealed).length > 0 ? "Hide all values" : "Reveal all values"}
+                          >
+                            {Object.keys(revealed).length > 0 ? (
+                              <>
+                                <EyeOff className="h-3 w-3 text-sky-400" />
+                                <span>Hide all</span>
+                              </>
+                            ) : (
+                              <>
+                                <Eye className="h-3 w-3" />
+                                <span>Reveal all</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </th>
                     <th className="py-3 px-4">Last updated</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
@@ -518,7 +572,7 @@ export default function SecretsPage({
                 <tbody className="divide-y divide-white/[0.05]">
                   {loading && (
                     <tr>
-                      <td colSpan={7} className="py-12 text-center text-zinc-500">
+                      <td colSpan={6} className="py-12 text-center text-zinc-500">
                         Loading secrets…
                       </td>
                     </tr>
@@ -526,7 +580,7 @@ export default function SecretsPage({
 
                   {!loading && error && (
                     <tr>
-                      <td colSpan={7} className="py-8 text-center text-rose-400">
+                      <td colSpan={6} className="py-8 text-center text-rose-400">
                         {error}
                       </td>
                     </tr>
@@ -534,7 +588,7 @@ export default function SecretsPage({
 
                   {!loading && filtered.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="py-16 text-center text-zinc-500">
+                      <td colSpan={6} className="py-16 text-center text-zinc-500">
                         <KeyRound className="h-8 w-8 mx-auto text-zinc-600 mb-2" />
                         <p className="text-zinc-300 font-medium">No secrets found</p>
                         <p className="text-xs text-zinc-500 mt-1">
@@ -591,26 +645,55 @@ export default function SecretsPage({
                               {s.is_sensitive ? "Secret" : "Text"}
                             </span>
                           </td>
-                          <td className="py-3.5 px-4">
-                            <div className="flex items-center gap-1.5">
-                              <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", envDotClass(envSlug))} />
-                              <span className="capitalize text-zinc-300">{envSlug}</span>
-                            </div>
-                          </td>
-                          <td className="py-3.5 px-4">
-                            <div className="flex flex-wrap items-center gap-1">
-                              {(s as SecretWithTags).tags && (s as SecretWithTags).tags!.length > 0 ? (
-                                (s as SecretWithTags).tags!.map((t) => (
-                                  <span
-                                    key={t}
-                                    className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.05] text-zinc-400 font-mono"
-                                  >
-                                    {t}
+                          <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-2 max-w-sm sm:max-w-md">
+                              <div className="relative flex-1 flex items-center min-w-0">
+                                {isRevealed ? (
+                                  <code className="font-mono text-xs text-sky-300 bg-sky-950/40 border border-sky-500/25 rounded-lg px-2.5 py-1 select-all truncate max-w-full">
+                                    {revealed[s.key]}
+                                  </code>
+                                ) : (
+                                  <span className="font-mono text-xs text-zinc-500 tracking-widest select-none bg-black/30 border border-white/[0.05] rounded-lg px-2.5 py-1">
+                                    ••••••••••••••••
                                   </span>
-                                ))
-                              ) : (
-                                <span className="text-[11px] text-zinc-600">—</span>
+                                )}
+                              </div>
+
+                              {canReveal && (
+                                <button
+                                  type="button"
+                                  onClick={() => void reveal(s.key)}
+                                  disabled={revealing[s.key]}
+                                  className={cn(
+                                    "p-1.5 rounded-lg transition-colors shrink-0",
+                                    isRevealed
+                                      ? "text-sky-400 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30"
+                                      : "text-zinc-400 hover:text-white hover:bg-white/[0.08]"
+                                  )}
+                                  title={isRevealed ? "Hide secret" : "Reveal secret"}
+                                >
+                                  {revealing[s.key] ? (
+                                    <span className="block h-3.5 w-3.5 rounded-full border-2 border-sky-400 border-t-transparent animate-spin" />
+                                  ) : isRevealed ? (
+                                    <EyeOff className="h-3.5 w-3.5" />
+                                  ) : (
+                                    <Eye className="h-3.5 w-3.5" />
+                                  )}
+                                </button>
                               )}
+
+                              <button
+                                type="button"
+                                onClick={() => void copyValue(s.key)}
+                                className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors shrink-0"
+                                title="Copy secret value"
+                              >
+                                {copiedKey === s.key ? (
+                                  <Check className="h-3.5 w-3.5 text-emerald-400" />
+                                ) : (
+                                  <Copy className="h-3.5 w-3.5" />
+                                )}
+                              </button>
                             </div>
                           </td>
                           <td className="py-3.5 px-4">

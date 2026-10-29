@@ -29,26 +29,7 @@ export function PublicFooter({ className = "" }: PublicFooterProps) {
           </span>
         </div>
 
-        {/* Center: Dedicated Route Nav Links */}
-        <nav className="flex items-center gap-6 text-[11px] text-zinc-400 font-medium">
-          <Link href="/features" className="hover:text-white transition-colors">
-            Features
-          </Link>
-          <Link href="/workflow" className="hover:text-white transition-colors">
-            Workflow
-          </Link>
-          <Link href="/integrations" className="hover:text-white transition-colors">
-            Integrations
-          </Link>
-          <Link href="/security" className="hover:text-white transition-colors">
-            Security
-          </Link>
-          <Link href="/docs" className="hover:text-white transition-colors">
-            Docs
-          </Link>
-        </nav>
-
-        {/* Right: Exact Personal Social Links */}
+        {/* Right: Personal Social Links */}
         <div className="flex items-center gap-2.5">
           <a
             href="https://github.com/niranjansah87"
@@ -105,4 +86,3 @@ export function PublicFooter({ className = "" }: PublicFooterProps) {
     </footer>
   );
 }
-

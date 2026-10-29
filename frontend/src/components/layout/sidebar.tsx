@@ -247,7 +247,7 @@ export function AppSidebar() {
       </div>
 
       {/* Navigation Links */}
-      <div className="flex-1 overflow-y-auto py-3 px-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <div data-lenis-prevent className="flex-1 overflow-y-auto py-3 px-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {sections.map((section, si) => (
           <div key={si} className={si > 0 ? "mt-5" : ""}>
             {section.label && !collapsed && (

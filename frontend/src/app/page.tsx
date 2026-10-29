@@ -45,6 +45,7 @@ import { FaAws, FaGithub, FaLinkedinIn, FaXTwitter } from "react-icons/fa6";
 import { FiMail } from "react-icons/fi";
 import { useWorkspace } from "@/context/workspace-context";
 import { useEffect } from "react";
+import { SmoothScroll } from "@/components/landing/smooth-scroll";
 import Dashboard3DShowcase from "@/components/animations/dashboard-3d-showcase";
 import HeroPillars3D from "@/components/animations/hero-pillars-3d";
 import HeroArtwork3D from "@/components/landing/hero-artwork-3d";
@@ -189,6 +190,7 @@ export default function HomePage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-[#07090e] text-white selection:bg-white/20 overflow-x-hidden">
+      <SmoothScroll />
       {/* 1. Redesigned Global Navigation Bar (Matching Reference Design) */}
       <header
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -211,15 +213,6 @@ export default function HomePage() {
               </p>
             </div>
           </Link>
-
-          {/* Center Links pointing to dedicated standalone pages */}
-          <nav className="hidden lg:flex items-center gap-8 text-xs font-medium text-zinc-300">
-            <Link href="/features" className="hover:text-white transition-colors">Features</Link>
-            <Link href="/workflow" className="hover:text-white transition-colors">Workflow</Link>
-            <Link href="/integrations" className="hover:text-white transition-colors">Integrations</Link>
-            <Link href="/security" className="hover:text-white transition-colors">Security</Link>
-            <Link href="/docs" className="hover:text-white transition-colors">Docs</Link>
-          </nav>
 
           {/* Right CTA Area matching reference design */}
           <div className="flex items-center gap-4">
@@ -690,15 +683,6 @@ export default function HomePage() {
               Secure Environment Manager
             </span>
           </div>
-
-          {/* Center: Dedicated Route Nav Links */}
-          <nav className="flex items-center gap-6 text-[11px] text-zinc-400 font-medium">
-            <Link href="/features" className="hover:text-white transition-colors">Features</Link>
-            <Link href="/workflow" className="hover:text-white transition-colors">Workflow</Link>
-            <Link href="/integrations" className="hover:text-white transition-colors">Integrations</Link>
-            <Link href="/security" className="hover:text-white transition-colors">Security</Link>
-            <Link href="/docs" className="hover:text-white transition-colors">Docs</Link>
-          </nav>
 
           {/* Right: Exact Personal Social Links */}
           <div className="flex items-center gap-2.5">
