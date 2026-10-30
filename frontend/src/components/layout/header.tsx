@@ -9,9 +9,14 @@ import {
   Search,
   Command,
   Check,
-  Sun,
-  Moon,
+  Lock,
+  LogOut,
+  ShieldCheck,
+  UserCog,
+  Users,
+  KeyRound,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -23,6 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useWorkspace } from "@/context/workspace-context";
 import { CommandPalette } from "@/components/layout/command-palette";
+import { ChangePasswordDialog } from "@/components/modals/change-password-dialog";
 import { envDotClass } from "@/lib/env-style";
 import { cn } from "@/lib/utils";
 
@@ -36,11 +42,34 @@ type Pair = { projectSlug: string; envSlug: string; label: string };
 
 export function AppHeader() {
   const router = useRouter();
-  const { token, projects, workspace, selectWorkspace, environmentsFor, displayName } = useWorkspace();
+  const {
+    token,
+    projects,
+    workspace,
+    selectWorkspace,
+    environmentsFor,
+    displayName,
+    me,
+    org,
+    isAdmin,
+    logout,
+  } = useWorkspace();
   const [cmdOpen, setCmdOpen] = useState(false);
   const [pairs, setPairs] = useState<Pair[]>([]);
   const [loadingPairs, setLoadingPairs] = useState(false);
-  const [isDark, setIsDark] = useState(true);
+  const [showChangePwd, setShowChangePwd] = useState(false);
+
+  const roleLabel = isAdmin ? "Administrator" : me?.role ? me.role[0].toUpperCase() + me.role.slice(1) : "Developer";
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.success("Logged out successfully");
+      router.push("/login");
+    } catch {
+      router.push("/login");
+    }
+  };
 
   // Lazily build the full list of project/environment pairs for the switcher
   const loadPairs = useCallback(async () => {
@@ -209,23 +238,113 @@ export function AppHeader() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Light/Dark Toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsDark((d) => !d)}
-            aria-label="Toggle theme"
-            className="h-9 w-9 text-zinc-400 hover:text-white hover:bg-white/[0.06] rounded-xl"
-          >
-            {isDark ? <Sun className="h-4 w-4 text-zinc-400" /> : <Moon className="h-4 w-4 text-blue-400" />}
-          </Button>
+          {/* User Profile Menu */}
+          {token && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  aria-label="User profile menu"
+                  className="flex items-center gap-2 p-1 pl-1.5 pr-2.5 rounded-full border border-white/[0.1] bg-[#0d121f]/80 hover:bg-[#131b2e] hover:border-blue-500/40 transition-all text-left focus:outline-none focus:ring-1 focus:ring-blue-500 group shadow-sm cursor-pointer ml-1"
+                >
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 border border-blue-400/40 text-[11px] font-bold text-white shadow-md shrink-0 group-hover:scale-105 transition-transform">
+                    {displayName.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="hidden md:flex flex-col min-w-0 pr-0.5">
+                    <span className="text-xs font-semibold text-zinc-200 group-hover:text-white truncate max-w-[110px] leading-tight">
+                      {displayName}
+                    </span>
+                    <span className="text-[10px] text-zinc-400 leading-tight">
+                      {roleLabel}
+                    </span>
+                  </div>
+                  <ChevronDown className="h-3 w-3 text-zinc-400 group-hover:text-zinc-200 shrink-0" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-64 bg-[#0c101a]/95 border-white/[0.1] shadow-2xl backdrop-blur-2xl rounded-2xl p-2 text-xs"
+              >
+                {/* User Info Header */}
+                <div className="p-3 bg-gradient-to-b from-white/[0.04] to-transparent rounded-xl border border-white/[0.05] mb-1">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 border border-blue-400/50 flex items-center justify-center text-xs font-bold text-white shadow-md shrink-0">
+                      {displayName.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-zinc-100 truncate text-xs">{displayName}</p>
+                      {org?.slug && (
+                        <p className="text-[10px] text-zinc-400 truncate">org: {org.slug}</p>
+                      )}
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className={cn(
+                          "inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border",
+                          isAdmin
+                            ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                            : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                        )}>
+                          {isAdmin ? <ShieldCheck className="h-2.5 w-2.5" /> : <UserCog className="h-2.5 w-2.5" />}
+                          <span>{roleLabel}</span>
+                        </span>
+                        {org?.slug && (
+                          <span className="text-[10px] text-zinc-500 truncate font-mono">
+                            @{org.slug}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-          {/* User Avatar Circle */}
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 border border-blue-400/40 text-xs font-bold text-white shadow-md">
-            {displayName.slice(0, 2).toUpperCase()}
-          </div>
+                <DropdownMenuSeparator className="bg-white/[0.08]" />
+
+                {/* Navigation Options */}
+                {isAdmin && (
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href="/admin/users"
+                      className="flex items-center gap-2.5 px-2.5 py-2 text-zinc-300 hover:text-white hover:bg-white/[0.06] rounded-xl cursor-pointer"
+                    >
+                      <Users className="h-3.5 w-3.5 text-zinc-400" />
+                      <span>Manage Users</span>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/apikeys"
+                    className="flex items-center gap-2.5 px-2.5 py-2 text-zinc-300 hover:text-white hover:bg-white/[0.06] rounded-xl cursor-pointer"
+                  >
+                    <KeyRound className="h-3.5 w-3.5 text-zinc-400" />
+                    <span>API Keys</span>
+                  </Link>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onClick={() => setShowChangePwd(true)}
+                  className="flex items-center gap-2.5 px-2.5 py-2 text-zinc-300 hover:text-white hover:bg-white/[0.06] rounded-xl cursor-pointer"
+                >
+                  <Lock className="h-3.5 w-3.5 text-zinc-400" />
+                  <span>Change Password</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="bg-white/[0.08]" />
+
+                {/* Logout */}
+                <DropdownMenuItem
+                  onClick={() => void handleLogout()}
+                  className="flex items-center gap-2.5 px-2.5 py-2 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-xl cursor-pointer"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  <span>Log Out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </header>
+
+      <ChangePasswordDialog open={showChangePwd} onOpenChange={setShowChangePwd} />
     </>
   );
 }

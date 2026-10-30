@@ -25,6 +25,8 @@ import {
   ExternalLink,
   Layers,
   ArrowRight,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkspace } from "@/context/workspace-context";
@@ -104,6 +106,14 @@ export default function SecretsPage({
   const [revealing, setRevealing] = useState<Record<string, boolean>>({});
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  // Checkbox Selection & Bulk Actions State
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+
+  // Pagination State
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
   // Modals & Inspector Drawer State
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -205,50 +215,6 @@ export default function SecretsPage({
     }
   };
 
-  const revealAll = async () => {
-    if (Object.keys(revealed).length > 0) {
-      setRevealed({});
-      return;
-    }
-    if (!projectId || !envId) return;
-    try {
-      const results = await Promise.all(
-        filtered.map(async (s) => {
-          try {
-            const res = await call((t) => sem.getSecretValue(t, projectId, envId, s.key));
-            return { key: s.key, value: res.value };
-          } catch {
-            return null;
-          }
-        })
-      );
-      const next: Record<string, string> = {};
-      results.forEach((r) => {
-        if (r) next[r.key] = r.value;
-      });
-      setRevealed(next);
-      toast.success("Revealed secrets");
-    } catch {
-      toast.error("Failed to reveal secrets");
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!deleteTarget || !projectId || !envId) return;
-    setDeleting(true);
-    try {
-      await call((t) => sem.deleteSecret(t, projectId, envId, deleteTarget.key));
-      toast.success(`Deleted ${deleteTarget.key}`);
-      if (selectedSecret?.key === deleteTarget.key) setSelectedSecret(null);
-      setDeleteTarget(null);
-      await loadSecrets();
-    } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : "Failed to delete");
-    } finally {
-      setDeleting(false);
-    }
-  };
-
   const filtered = useMemo(() => {
     return secrets.filter((s) => {
       if (typeFilter === "secret" && !s.is_sensitive) return false;
@@ -262,6 +228,136 @@ export default function SecretsPage({
       );
     });
   }, [secrets, query, typeFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [query, typeFilter]);
+
+  const paginated = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, currentPage, pageSize]);
+
+  const isAllSelected = paginated.length > 0 && paginated.every((s) => selectedKeys.has(s.key));
+  const isSomeSelected = paginated.some((s) => selectedKeys.has(s.key)) && !isAllSelected;
+
+  const headerCheckboxRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (headerCheckboxRef.current) {
+      headerCheckboxRef.current.indeterminate = isSomeSelected;
+    }
+  }, [isSomeSelected]);
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedKeys((prev) => {
+        const next = new Set(prev);
+        paginated.forEach((s) => next.delete(s.key));
+        return next;
+      });
+    } else {
+      setSelectedKeys((prev) => {
+        const next = new Set(prev);
+        paginated.forEach((s) => next.add(s.key));
+        return next;
+      });
+    }
+  };
+
+  const handleToggleRow = (key: string) => {
+    setSelectedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const revealAll = async () => {
+    const areSomeRevealed = paginated.some((s) => revealed[s.key] !== undefined);
+    if (areSomeRevealed) {
+      setRevealed((prev) => {
+        const next = { ...prev };
+        paginated.forEach((s) => delete next[s.key]);
+        return next;
+      });
+      return;
+    }
+    if (!projectId || !envId) return;
+    try {
+      const results = await Promise.all(
+        paginated.map(async (s) => {
+          try {
+            const res = await call((t) => sem.getSecretValue(t, projectId, envId, s.key));
+            return { key: s.key, value: res.value };
+          } catch {
+            return null;
+          }
+        })
+      );
+      setRevealed((prev) => {
+        const next = { ...prev };
+        results.forEach((r) => {
+          if (r) next[r.key] = r.value;
+        });
+        return next;
+      });
+      toast.success("Revealed page secrets");
+    } catch {
+      toast.error("Failed to reveal secrets");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget || !projectId || !envId) return;
+    setDeleting(true);
+    try {
+      await call((t) => sem.deleteSecret(t, projectId, envId, deleteTarget.key));
+      toast.success(`Deleted ${deleteTarget.key}`);
+      if (selectedSecret?.key === deleteTarget.key) setSelectedSecret(null);
+      setSelectedKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(deleteTarget.key);
+        return next;
+      });
+      setDeleteTarget(null);
+      await loadSecrets();
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Failed to delete");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!projectId || !envId || selectedKeys.size === 0) return;
+    setDeleting(true);
+    try {
+      const keysToDelete = Array.from(selectedKeys);
+      await Promise.all(
+        keysToDelete.map((k) => call((t) => sem.deleteSecret(t, projectId, envId, k)))
+      );
+      toast.success(`Deleted ${keysToDelete.length} secrets`);
+      setSelectedKeys(new Set());
+      setBulkDeleteConfirm(false);
+      if (selectedSecret && selectedKeys.has(selectedSecret.key)) {
+        setSelectedSecret(null);
+      }
+      await loadSecrets();
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : "Failed to delete selected secrets");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const base = `/${projectSlug}/${envSlug}`;
 
@@ -523,7 +619,51 @@ export default function SecretsPage({
         </div>
       </div>
 
-      {/* 6. Main Secrets Table & Flyout Drawer Container */}
+      {/* 6. Bulk Selection Toolbar (Appears when items are selected) */}
+      {selectedKeys.size > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 rounded-2xl bg-blue-600/15 border border-blue-500/30 text-xs shadow-lg animate-in fade-in-50">
+          <div className="flex items-center gap-3">
+            <span className="font-semibold text-white">
+              {selectedKeys.size} {selectedKeys.size === 1 ? "secret" : "secrets"} selected
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelectedKeys(new Set())}
+              className="text-[11px] text-zinc-400 hover:text-white underline transition-colors"
+            >
+              Clear selection
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const keys = Array.from(selectedKeys).join("\n");
+                navigator.clipboard.writeText(keys);
+                toast.success(`Copied ${selectedKeys.size} key names to clipboard`);
+              }}
+              className="h-8 px-3 rounded-xl border-white/[0.1] bg-[#0c101a] text-zinc-200 text-xs hover:text-white hover:bg-white/[0.05]"
+            >
+              <Copy className="h-3.5 w-3.5 mr-1.5 text-zinc-400" />
+              <span>Copy keys</span>
+            </Button>
+            {canDelete && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setBulkDeleteConfirm(true)}
+                className="h-8 px-3 rounded-xl border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs"
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                <span>Delete selected ({selectedKeys.size})</span>
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 7. Main Secrets Table & Flyout Drawer Container */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Secrets Table (Takes col-span-8 if drawer open, col-span-12 if closed) */}
         <div className={selectedSecret ? "lg:col-span-8 transition-all" : "lg:col-span-12"}>
@@ -533,14 +673,21 @@ export default function SecretsPage({
                 <thead>
                   <tr className="border-b border-white/[0.08] bg-[#07090e]/60 text-zinc-400 font-semibold uppercase tracking-wider text-[10px]">
                     <th className="py-3 px-4 w-10">
-                      <input type="checkbox" className="rounded border-white/20 bg-black/40" />
+                      <input
+                        ref={headerCheckboxRef}
+                        type="checkbox"
+                        checked={isAllSelected}
+                        onChange={handleToggleSelectAll}
+                        className="rounded border-white/20 bg-black/40 text-blue-600 focus:ring-0 focus:ring-offset-0 cursor-pointer h-3.5 w-3.5"
+                        title={isAllSelected ? "Deselect all on this page" : "Select all on this page"}
+                      />
                     </th>
                     <th className="py-3 px-4">Name</th>
                     <th className="py-3 px-4">Type</th>
                     <th className="py-3 px-4 min-w-[280px]">
                       <div className="flex items-center justify-between">
                         <span>Secret Value</span>
-                        {canReveal && filtered.length > 0 && (
+                        {canReveal && paginated.length > 0 && (
                           <button
                             type="button"
                             onClick={(e) => {
@@ -548,17 +695,17 @@ export default function SecretsPage({
                               void revealAll();
                             }}
                             className="text-[10px] text-zinc-400 hover:text-sky-300 font-mono font-normal normal-case flex items-center gap-1 transition-colors px-1.5 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.08]"
-                            title={Object.keys(revealed).length > 0 ? "Hide all values" : "Reveal all values"}
+                            title={paginated.some((s) => revealed[s.key] !== undefined) ? "Hide page values" : "Reveal page values"}
                           >
-                            {Object.keys(revealed).length > 0 ? (
+                            {paginated.some((s) => revealed[s.key] !== undefined) ? (
                               <>
                                 <EyeOff className="h-3 w-3 text-sky-400" />
-                                <span>Hide all</span>
+                                <span>Hide page</span>
                               </>
                             ) : (
                               <>
                                 <Eye className="h-3 w-3" />
-                                <span>Reveal all</span>
+                                <span>Reveal page</span>
                               </>
                             )}
                           </button>
@@ -599,9 +746,10 @@ export default function SecretsPage({
                   )}
 
                   {!loading &&
-                    filtered.map((s) => {
+                    paginated.map((s) => {
                       const isRevealed = revealed[s.key] !== undefined;
                       const isSelected = selectedSecret?.key === s.key;
+                      const isChecked = selectedKeys.has(s.key);
                       return (
                         <tr
                           key={s.key}
@@ -610,11 +758,18 @@ export default function SecretsPage({
                             "cursor-pointer transition-colors group",
                             isSelected
                               ? "bg-blue-600/15 border-l-2 border-l-blue-500"
+                              : isChecked
+                              ? "bg-blue-500/[0.08]"
                               : "hover:bg-white/[0.03]"
                           )}
                         >
                           <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
-                            <input type="checkbox" className="rounded border-white/20 bg-black/40" />
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleToggleRow(s.key)}
+                              className="rounded border-white/20 bg-black/40 text-blue-600 focus:ring-0 focus:ring-offset-0 cursor-pointer h-3.5 w-3.5"
+                            />
                           </td>
                           <td className="py-3.5 px-4">
                             <div className="flex items-center gap-3">
@@ -707,26 +862,27 @@ export default function SecretsPage({
                             </div>
                           </td>
                           <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-end gap-1.5">
-                              {canReveal && (
+                            <div className="flex items-center justify-end gap-1">
+                              {canWrite && (
                                 <button
-                                  onClick={() => void reveal(s.key)}
+                                  type="button"
+                                  onClick={() => {
+                                    setEditing(s);
+                                    setDialogOpen(true);
+                                  }}
                                   className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors"
-                                  title={isRevealed ? "Hide value" : "Reveal value"}
+                                  title="Edit secret"
                                 >
-                                  {isRevealed ? <EyeOff className="h-3.5 w-3.5 text-blue-400" /> : <Eye className="h-3.5 w-3.5" />}
+                                  <Pencil className="h-3.5 w-3.5" />
                                 </button>
                               )}
-                              <button
-                                onClick={() => void copyValue(s.key)}
-                                className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors"
-                                title="Copy value"
-                              >
-                                {copiedKey === s.key ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
-                              </button>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <button className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-white/[0.08] transition-colors">
+                                  <button
+                                    type="button"
+                                    className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors"
+                                    title="More options"
+                                  >
                                     <MoreVertical className="h-3.5 w-3.5" />
                                   </button>
                                 </DropdownMenuTrigger>
@@ -767,6 +923,104 @@ export default function SecretsPage({
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            {!loading && filtered.length > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-white/[0.08] bg-[#07090e]/60 text-xs text-zinc-400">
+                <div className="flex items-center gap-3">
+                  <span>
+                    Showing{" "}
+                    <span className="font-semibold text-white">
+                      {(currentPage - 1) * pageSize + 1}
+                    </span>{" "}
+                    to{" "}
+                    <span className="font-semibold text-white">
+                      {Math.min(currentPage * pageSize, filtered.length)}
+                    </span>{" "}
+                    of <span className="font-semibold text-white">{filtered.length}</span> secrets
+                  </span>
+
+                  <div className="flex items-center gap-1.5 ml-2">
+                    <span className="text-[11px] text-zinc-500">Per page:</span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      className="h-7 px-2 rounded-lg border border-white/[0.1] bg-[#0c101a] text-zinc-300 text-xs focus:outline-none"
+                    >
+                      <option value={10}>10</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage <= 1}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    className="h-7 px-2.5 rounded-lg border-white/[0.1] bg-[#0c101a] text-zinc-300 hover:text-white disabled:opacity-30 disabled:pointer-events-none text-xs"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5 mr-1" />
+                    <span>Prev</span>
+                  </Button>
+
+                  <div className="flex items-center gap-1 px-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((p) => {
+                        return p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1;
+                      })
+                      .reduce<(number | string)[]>((acc, p, idx, arr) => {
+                        if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) {
+                          acc.push("...");
+                        }
+                        acc.push(p);
+                        return acc;
+                      }, [])
+                      .map((p, idx) => {
+                        if (typeof p === "string") {
+                          return (
+                            <span key={`ellipsis-${idx}`} className="px-1 text-zinc-600 select-none">
+                              …
+                            </span>
+                          );
+                        }
+                        const active = p === currentPage;
+                        return (
+                          <button
+                            key={p}
+                            onClick={() => setCurrentPage(p as number)}
+                            className={cn(
+                              "h-7 min-w-[28px] px-1.5 rounded-lg text-xs font-medium transition-colors",
+                              active
+                                ? "bg-blue-600 text-white shadow-[0_0_12px_rgba(59,130,246,0.35)]"
+                                : "text-zinc-400 hover:text-white hover:bg-white/[0.05]"
+                            )}
+                          >
+                            {p}
+                          </button>
+                        );
+                      })}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    className="h-7 px-2.5 rounded-lg border-white/[0.1] bg-[#0c101a] text-zinc-300 hover:text-white disabled:opacity-30 disabled:pointer-events-none text-xs"
+                  >
+                    <span>Next</span>
+                    <ChevronRight className="h-3.5 w-3.5 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -996,6 +1250,31 @@ export default function SecretsPage({
               className="bg-red-600 hover:bg-red-500 text-white text-xs font-semibold rounded-xl"
             >
               {deleting ? "Deleting…" : "Delete secret"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation Alert */}
+      <AlertDialog open={bulkDeleteConfirm} onOpenChange={(o) => !o && setBulkDeleteConfirm(false)}>
+        <AlertDialogContent className="bg-[#0c101a] border-white/[0.1] rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete selected secrets?</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-zinc-400">
+              Are you sure you want to delete <span className="font-bold text-white">{selectedKeys.size}</span> selected secrets?
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-transparent border-white/[0.1] text-zinc-300 text-xs hover:bg-white/[0.05]">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void handleBulkDelete()}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-500 text-white text-xs font-semibold rounded-xl"
+            >
+              {deleting ? "Deleting…" : `Delete ${selectedKeys.size} secrets`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

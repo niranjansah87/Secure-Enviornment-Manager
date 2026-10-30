@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -14,41 +14,16 @@ import {
   ChevronLeft,
   ChevronRight,
   GitCompare,
-  LogOut,
   History,
   BarChart3,
   Users,
-  Lock,
-  ShieldCheck,
-  UserCog,
-  MoreVertical,
   Settings,
   ChevronsUpDown,
 } from "lucide-react";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { envDotClass } from "@/lib/env-style";
 import { useWorkspace } from "@/context/workspace-context";
-import { ApiError } from "@/lib/sem-api";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 const STORAGE_KEY = "sem_sidebar_collapsed";
 
@@ -122,21 +97,11 @@ function isNavActive(key: string, pathname: string, base: string | null): boolea
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
-  const { workspace, token, isAdmin, displayName, me, org, changePassword, logout } = useWorkspace();
+  const { workspace, isAdmin } = useWorkspace();
 
   const [collapsed, setCollapsed] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
-
-  const [showChangePwd, setShowChangePwd] = useState(false);
-  const [currentPwd, setCurrentPwd] = useState("");
-  const [newPwd, setNewPwd] = useState("");
-  const [confirmPwd, setConfirmPwd] = useState("");
-  const [pwdLoading, setPwdLoading] = useState(false);
-  const [pwdError, setPwdError] = useState<string | null>(null);
 
   const base = workspace ? `/${workspace.projectSlug}/${workspace.envSlug}` : null;
-  const roleLabel = isAdmin ? "Administrator" : me?.role ? me.role[0].toUpperCase() + me.role.slice(1) : "Developer";
 
   useEffect(() => {
     try {
@@ -157,37 +122,6 @@ export function AppSidebar() {
       return next;
     });
   }, []);
-
-  const resetPwdDialog = () => {
-    setCurrentPwd("");
-    setNewPwd("");
-    setConfirmPwd("");
-    setPwdError(null);
-  };
-
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPwdError(null);
-    if (newPwd.length < 8) {
-      setPwdError("New password must be at least 8 characters.");
-      return;
-    }
-    if (newPwd !== confirmPwd) {
-      setPwdError("Passwords do not match.");
-      return;
-    }
-    setPwdLoading(true);
-    try {
-      await changePassword(currentPwd, newPwd);
-      setShowChangePwd(false);
-      resetPwdDialog();
-      toast.success("Password changed successfully.");
-    } catch (err) {
-      setPwdError(err instanceof ApiError ? err.message : "Failed to change password.");
-    } finally {
-      setPwdLoading(false);
-    }
-  };
 
   const sections = buildNav(base, isAdmin);
 
@@ -323,7 +257,7 @@ export function AppSidebar() {
 
         {/* Current Workspace Pill Card */}
         {workspace && (
-          <div className="relative z-10 px-2.5 pb-2">
+          <div className="relative z-10 px-2.5 pb-2.5">
             <Link
               href={base ?? "/projects"}
               className={cn(
@@ -358,162 +292,7 @@ export function AppSidebar() {
             </Link>
           </div>
         )}
-
-        {/* User Profile Pill */}
-        <div className="relative z-10 p-2.5 pt-0">
-          {token && (
-            <DropdownMenu open={userMenuOpen} onOpenChange={setUserMenuOpen}>
-              <DropdownMenuTrigger asChild>
-                <button
-                  aria-label="User menu"
-                  className={cn(
-                    "w-full flex items-center cursor-pointer rounded-xl border border-white/[0.06] bg-[#0c101a]/60 hover:bg-[#121724] hover:border-white/[0.12] transition-all p-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500",
-                    collapsed ? "justify-center p-2" : "gap-2.5"
-                  )}
-                >
-                  <div className="h-8 w-8 shrink-0 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 border border-blue-400/40 flex items-center justify-center text-xs font-bold text-white shadow-md">
-                    {displayName.slice(0, 2).toUpperCase()}
-                  </div>
-                  <AnimatePresence initial={false}>
-                    {!collapsed && (
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="flex-1 min-w-0 text-left"
-                      >
-                        <p className="text-xs font-semibold text-zinc-200 truncate leading-tight">
-                          {displayName}
-                        </p>
-                        <p className="text-[10px] text-zinc-500 truncate mt-0.5">{roleLabel}</p>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                  {!collapsed && <MoreVertical className="h-4 w-4 text-zinc-500 shrink-0" />}
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="start"
-                side="top"
-                className="w-56 bg-[#0c101a]/95 border-white/[0.1] shadow-2xl backdrop-blur-xl ml-1 mb-1 rounded-xl"
-              >
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex items-center gap-3 py-1">
-                    <div className="h-8 w-8 rounded-full bg-blue-600/30 border border-blue-500/40 flex items-center justify-center text-xs font-bold text-blue-300 shrink-0">
-                      {displayName.slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-zinc-200 truncate">{displayName}</p>
-                      {org?.slug && (
-                        <p className="text-[10px] text-zinc-500 truncate max-w-[140px]">
-                          org: {org.slug}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-1 mt-0.5">
-                        {isAdmin ? (
-                          <ShieldCheck className="h-3 w-3 text-amber-400" />
-                        ) : (
-                          <UserCog className="h-3 w-3 text-zinc-400" />
-                        )}
-                        <span className={cn("text-[10px] font-medium", isAdmin ? "text-amber-400" : "text-zinc-400")}>
-                          {roleLabel}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-white/[0.08]" />
-                <DropdownMenuItem
-                  onClick={() => {
-                    setUserMenuOpen(false);
-                    resetPwdDialog();
-                    setShowChangePwd(true);
-                  }}
-                  className="text-zinc-300 hover:text-white focus:bg-white/[0.06] cursor-pointer text-xs py-2 rounded-lg"
-                >
-                  <Lock className="h-3.5 w-3.5 mr-2 text-zinc-400" />
-                  Change password
-                </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-white/[0.08]" />
-                <DropdownMenuItem
-                  onClick={async () => {
-                    setUserMenuOpen(false);
-                    await logout();
-                    router.push("/login");
-                  }}
-                  className="text-red-400 hover:text-red-300 focus:bg-red-500/10 cursor-pointer text-xs py-2 rounded-lg"
-                >
-                  <LogOut className="h-3.5 w-3.5 mr-2" />
-                  Log out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
       </div>
-
-      {/* Change Password Dialog */}
-      <Dialog open={showChangePwd} onOpenChange={(o) => !o && setShowChangePwd(false)}>
-        <DialogContent className="sm:max-w-md bg-[#0c101a] border-white/[0.1] rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-zinc-100">Change password</DialogTitle>
-            <DialogDescription className="text-zinc-400 text-xs">
-              Enter your current password and choose a new one. Other sessions will be signed out.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={(e) => void handleChangePassword(e)} className="space-y-4 pt-2">
-            <Field label="Current password" value={currentPwd} onChange={setCurrentPwd} placeholder="Enter current password" autoFocus />
-            <Field label="New password" value={newPwd} onChange={setNewPwd} placeholder="At least 8 characters" />
-            <Field label="Confirm new password" value={confirmPwd} onChange={setConfirmPwd} placeholder="Repeat new password" />
-            {pwdError && (
-              <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
-                {pwdError}
-              </p>
-            )}
-            <DialogFooter className="pt-2">
-              <Button type="button" variant="ghost" onClick={() => setShowChangePwd(false)} className="text-zinc-400 hover:text-white">
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={pwdLoading || !currentPwd || !newPwd || !confirmPwd}
-                className="bg-blue-600 hover:bg-blue-500 text-white font-medium"
-              >
-                {pwdLoading ? "Saving…" : "Change password"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
     </motion.aside>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  placeholder,
-  autoFocus,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  autoFocus?: boolean;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label className="text-xs text-zinc-300">{label}</Label>
-      <Input
-        type="password"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="bg-black/50 border-white/[0.1] text-zinc-100 placeholder:text-zinc-600 rounded-xl"
-        autoFocus={autoFocus}
-        required
-      />
-    </div>
   );
 }
