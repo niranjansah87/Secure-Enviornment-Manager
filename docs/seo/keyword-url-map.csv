@@ -1,0 +1,15 @@
+Keyword,Cluster,Search Intent,Opportunity Score,Target URL,Page Title Target,Current Status
+secure environment manager,Brand,Navigational,10.0,https://sem.niranjansah87.com.np/,Secure Environment Manager | Self-Hosted Secrets Management,Optimized
+self-hosted secrets manager,Category,Commercial Investigation,9.5,https://sem.niranjansah87.com.np/,Self-Hosted Secrets Manager & Environment Sync | SEM,Optimized
+open source secrets manager,Category,Commercial Investigation,8.8,https://sem.niranjansah87.com.np/,Open-Source Secrets Management & Config Sync | SEM,Optimized
+self hosted doppler alternative,Competitor,Commercial Investigation,9.75,https://sem.niranjansah87.com.np/,Self-Hosted Doppler Alternative | Secure Environment Manager,Optimized
+open source hashicorp vault alternative,Competitor,Commercial Investigation,8.75,https://sem.niranjansah87.com.np/,Lightweight HashiCorp Vault Alternative | SEM,Optimized
+aes-256-gcm envelope encryption secrets,Cryptography,Informational,9.05,https://sem.niranjansah87.com.np/docs,Documentation & Cryptographic Architecture | Secure Environment Manager,Implementation Pending
+mek kek dek key hierarchy architecture,Cryptography,Informational,8.7,https://sem.niranjansah87.com.np/docs,Key Hierarchy (MEK to KEK to DEK) | SEM Docs,Implementation Pending
+aad authenticated data tampering defense secrets,Cryptography,Informational,8.4,https://sem.niranjansah87.com.np/docs,AAD Integrity & Relocation Defense | SEM Docs,Implementation Pending
+inject env vars into github actions securely,DevOps,Informational,8.75,https://sem.niranjansah87.com.np/docs,CLI Toolchain & CI/CD Pipeline Automation | SEM Docs,Implementation Pending
+dotenv server self-hosted sync,Productivity,Commercial,8.9,https://sem.niranjansah87.com.np/,Remote Dotenv Sync & Environment Management | SEM,Optimized
+tamper proof audit logs secrets management,Compliance,Informational,8.65,https://sem.niranjansah87.com.np/docs,Audit Traceability & Compliance Logging | SEM Docs,Implementation Pending
+on premise environment variable manager,Enterprise,Commercial,9.5,https://sem.niranjansah87.com.np/,On-Premises Environment Variable Management | SEM,Optimized
+sem cli installation and setup,DevOps,Informational,8.5,https://sem.niranjansah87.com.np/docs,CLI Installation & Authentication Guide | SEM Docs,Implementation Pending
+sem console login,Brand,Navigational,7.0,https://sem.niranjansah87.com.np/login,Log In | Secure Environment Manager,Existing

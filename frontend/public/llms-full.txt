@@ -1,369 +1,186 @@
-# Secure Environment Manager — Full Reference
+# Secure Environment Manager (SEM V2) — Complete Technical Reference
 
-> Complete API reference, architecture, and integration guide for Secure Environment Manager (SEM).
-> Self-hosted, AES-256 encrypted secrets management for modern development teams.
+> Authoritative architectural specification, API reference, cryptographic security model, and integration documentation for Secure Environment Manager (SEM V2).
 
-## Architecture
+- Canonical Domain: https://sem.niranjansah87.com.np
+- Technical Documentation: https://sem.niranjansah87.com.np/docs
+- Source Code: https://github.com/niranjansah87/Secure-Enviornment-Manager
+- Primary Author: Niranjan Sah (https://niranjansah87.com.np)
+- License: MIT License
+
+---
+
+## 1. System Architecture
 
 ```
-Frontend (Next.js 15, port 3000)
-  └── API Client (fetch-based, JWT auth)
-        └── Flask REST API (port 8070)
-              └── Fernet encryption layer
-                    └── File storage: data/<namespace>/<environment>.enc
+Client Tier:
+  ├── Next.js 15 Web Console (port 3000)
+  ├── Headless CLI (@sem/cli)
+  └── TypeScript SDK (@sem/sdk)
+        │ (HTTPS / ES256 JWT)
+        ▼
+Ingress Tier: Nginx / Caddy Reverse Proxy
+        │
+        ▼
+Application Tier: NestJS 10 + Fastify Engine (@sem/api, port 3001)
+  ├── Multi-Tenant Guard (Org Isolation at Query Level)
+  ├── ES256 ECDSA P-256 JWT Authentication
+  ├── Cryptographic Domain (@sem/crypto)
+  │     ├── Master Encryption Key (MEK) [via SEM_MASTER_KEY]
+  │     ├── Project Key Encryption Key (KEK) [AES-256-GCM wrapped]
+  │     └── Environment Data Encryption Key (DEK) [AES-256-GCM wrapped]
+  ├── Audit Service (Append-only tamper-evident logs)
+  └── Redis 7 + BullMQ Worker (@sem/worker) [Key rotation & metrics]
+        │
+        ▼
+Persistence Tier: PostgreSQL 16 + Drizzle ORM
 ```
 
-### Key design decisions
+---
 
-- **File-based storage**: each namespace/environment is one `.enc` file on disk; no database dependency
-- **Encryption**: Python `cryptography` library, Fernet (AES-128-CBC + HMAC-SHA256 by default; upgrade path to AES-256 available)
-- **Stateless API**: JWT tokens carry identity; server validates signature, no session state
-- **Append-only audit**: audit log grows monotonically; integrity verified on read
+## 2. Cryptographic Envelope Architecture (NIST SP 800-38D)
 
-## Authentication Reference
+SEM V2 eliminates plaintext storage across all layers:
 
-### Dashboard password login
+1. **Master Encryption Key (MEK):**
+   - 256-bit cryptographically secure key supplied via `SEM_MASTER_KEY` environment variable.
+   - Master key never touches raw application secret values.
+2. **Key Encryption Key (KEK):**
+   - Unique per-project AES-256 key, encrypted using the MEK via AES-256-GCM.
+3. **Data Encryption Key (DEK):**
+   - Unique per-environment AES-256 key, encrypted using the project KEK via AES-256-GCM.
+4. **Secret Plaintext Encryption:**
+   - Secrets are encrypted with the environment DEK using AES-256-GCM with a unique 96-bit initialization vector (IV) per record.
+5. **Additional Authenticated Data (AAD):**
+   - Authentication tag verification incorporates cryptographic AAD composed of `org_id:project_id:environment_id`.
+   - Prevents ciphertext relocation attacks across projects or environments.
+
+---
+
+## 3. Authentication & Authorization
+
+All protected endpoints require an ES256 signed JWT in the HTTP request:
 ```http
-POST /api/v1/auth/validate-password
-Content-Type: application/json
-
-{ "password": "your-dashboard-password" }
+Authorization: Bearer <access_token>
 ```
-Returns: `{ "valid": true }` — client then uses the raw password as a Bearer token.
 
-### User login (JWT)
-```http
-POST /api/v1/auth/login
-Content-Type: application/json
+### 3.1 `POST /api/v1/auth/login`
+Authenticates user, admin, or scoped API key.
 
-{ "username": "alice", "password": "secret123", "namespace": "myapp", "environment": "production" }
+**Request Formats:**
+```json
+// Mode 1: Master Token
+{ "master_token": "..." }
+
+// Mode 2: Username & Password
+{ "organization": "default", "username": "admin", "password": "..." }
+
+// Mode 3: Scoped API Key
+{ "api_key": "sem_live_..." }
 ```
-Returns:
+
+**Response (Standard JSON Envelope):**
 ```json
 {
-  "access_token": "<jwt>",
-  "refresh_token": "<jwt>",
-  "token_type": "bearer",
-  "expires_in": 900,
-  "must_change_password": false,
-  "username": "alice",
-  "scopes": ["read", "write"]
+  "success": true,
+  "data": {
+    "access_token": "eyJhbGciOiJFUzI1NiIs...",
+    "refresh_token": "...",
+    "token_type": "Bearer",
+    "expires_in": 900
+  }
 }
 ```
 
-### Refresh access token
+### 3.2 `POST /api/v1/auth/refresh`
+Rotates refresh tokens and issues fresh 15-minute access tokens.
+
+---
+
+## 4. Secrets Management API Reference
+
+### 4.1 List Secret Metadata
 ```http
-POST /api/v1/auth/refresh
-Content-Type: application/json
-
-{ "refresh_token": "<refresh_jwt>" }
+GET /api/v1/projects/:projectId/environments/:environmentId/secrets
+Authorization: Bearer <access_token>
 ```
+Returns list of secret keys, version numbers, and update timestamps. Plaintexts are never returned in list endpoints.
 
-### API key login
+### 4.2 Retrieve Plaintext Secret
 ```http
-POST /api/v1/auth/login
-Content-Type: application/json
-
-{ "api_key": "sem_xxxx...", "namespace": "myapp", "environment": "production" }
+GET /api/v1/projects/:projectId/environments/:environmentId/secrets/:key/value
+Authorization: Bearer <access_token>
 ```
 
-## Secrets API
-
-### Read all secrets
+### 4.3 Set or Update Secrets (Bulk or Single)
 ```http
-GET /api/v1/secrets/{namespace}/{environment}
-Authorization: Bearer <token>
-```
-Response:
-```json
-{
-  "namespace": "myapp",
-  "environment": "production",
-  "secrets": {
-    "DATABASE_URL": "postgres://...",
-    "REDIS_URL": "redis://..."
-  },
-  "count": 2,
-  "last_updated": "2025-01-15T10:30:00Z"
-}
-```
-
-### Write secrets (merge)
-```http
-POST /api/v1/secrets/{namespace}/{environment}
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{ "DATABASE_URL": "postgres://new-host/db" }
-```
-Merges new keys into existing secrets. Existing keys not in the payload are unchanged.
-
-### Bulk replace
-```http
-PUT /api/v1/secrets/{namespace}/{environment}
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{ "KEY1": "val1", "KEY2": "val2" }
-```
-Replaces ALL secrets atomically. Previous values are lost (use history to recover).
-
-### Delete a secret key
-```http
-DELETE /api/v1/secrets/{namespace}/{environment}/{key}
-Authorization: Bearer <token>
-```
-
-### Export as .env
-```http
-GET /api/v1/secrets/{namespace}/{environment}/export
-Authorization: Bearer <token>
-Accept: text/plain
-```
-Returns a `.env`-formatted file:
-```
-DATABASE_URL=postgres://...
-REDIS_URL=redis://...
-```
-
-## Version History API
-
-### List snapshots
-```http
-GET /api/v1/history/{namespace}/{environment}
-Authorization: Bearer <token>
-```
-
-### Get a snapshot
-```http
-GET /api/v1/history/{namespace}/{environment}/{snapshot_id}
-Authorization: Bearer <token>
-```
-
-### Restore a snapshot
-```http
-POST /api/v1/history/{namespace}/{environment}/{snapshot_id}/restore
-Authorization: Bearer <token>
-```
-
-## Audit Log API
-
-### Get audit log
-```http
-GET /api/v1/audit/{namespace}/{environment}
-Authorization: Bearer <token>
-```
-Optional query params: `?limit=50&offset=0&action=set`
-
-Response:
-```json
-{
-  "entries": [
-    {
-      "id": "uuid",
-      "timestamp": "2025-01-15T10:30:00Z",
-      "action": "set",
-      "resource": "DATABASE_URL",
-      "namespace": "myapp",
-      "environment": "production",
-      "actor": "alice",
-      "ip": "127.0.0.1"
-    }
-  ],
-  "total": 42
-}
-```
-
-## API Keys API
-
-### List keys for a namespace
-```http
-GET /api/v1/keys/{namespace}
-Authorization: Bearer <master-token-or-dashboard-password>
-```
-
-### Create a key
-```http
-POST /api/v1/keys/{namespace}
-Authorization: Bearer <master-token-or-dashboard-password>
+POST /api/v1/projects/:projectId/environments/:environmentId/secrets
+Authorization: Bearer <access_token>
 Content-Type: application/json
 
 {
-  "description": "GitHub Actions CI",
-  "validity_days": 90,
-  "namespaces": ["myapp", "shared"],
-  "custom_key": "my-custom-key-value-here"
-}
-```
-- `validity_days: 0` = no expiry
-- `namespaces: []` = access to all namespaces
-- `custom_key` is optional; auto-generated if omitted
-
-Response includes the full key value only once — store it immediately.
-
-### Revoke a key
-```http
-DELETE /api/v1/keys/{namespace}/{key_id}
-Authorization: Bearer <master-token-or-dashboard-password>
-```
-
-## User Management API (admin only)
-
-### List users
-```http
-GET /api/v1/users
-Authorization: Bearer <master-token>
-```
-
-### Create user
-```http
-POST /api/v1/users
-Authorization: Bearer <master-token>
-Content-Type: application/json
-
-{
-  "username": "alice",
-  "password": "temporary-password",
-  "email": "alice@example.com",
-  "scopes": ["read", "write"],
-  "namespaces": ["myapp"]
+  "secrets": [
+    { "key": "DATABASE_URL", "value": "postgres://..." },
+    { "key": "STRIPE_SECRET_KEY", "value": "sk_live_..." }
+  ]
 }
 ```
 
-### Change password (authenticated user)
+### 4.4 Delete Secret
 ```http
-POST /api/v1/user/change-password
-Authorization: Bearer <user-access-token>
-Content-Type: application/json
-
-{ "current_password": "old", "new_password": "new-secure-password" }
+DELETE /api/v1/projects/:projectId/environments/:environmentId/secrets/:key
+Authorization: Bearer <access_token>
 ```
 
-## Analytics API
+---
 
-### Get usage statistics
-```http
-GET /api/v1/meta/stats
-Authorization: Bearer <token>
+## 5. Developer CLI Workflows (`sem`)
+
+The official CLI automates secret synchronization in local terminal sessions and CI/CD pipelines:
+
+```bash
+# Global installation
+pnpm add -g @sem/cli
+
+# Authenticate against your SEM instance
+sem auth login --host https://sem.niranjansah87.com.np
+
+# Pull secrets to local .env file
+sem pull --project backend --env staging --output .env.staging
+
+# Run application with in-memory secrets injection (zero disk persistence)
+sem run --project backend --env production -- npm start
 ```
 
-### Get activity analytics
-```http
-GET /api/v1/meta/analytics?days=7
-Authorization: Bearer <token>
+---
+
+## 6. Self-Hosted Deployment Guide
+
+### Prerequisites
+- Node.js 22 LTS
+- pnpm 9+
+- Docker & Docker Compose
+- PostgreSQL 16
+- Redis 7
+
+### Installation via Docker Compose
+
+```bash
+# 1. Clone repository
+git clone https://github.com/niranjansah87/Secure-Enviornment-Manager.git
+cd Secure-Enviornment-Manager
+
+# 2. Setup environment and generate keys
+cp .env.example .env
+pnpm install
+pnpm keys:generate
+
+# 3. Launch stack
+docker compose -f docker-compose.v2.yml up --build -d
 ```
 
-Response includes:
-- `trends`: daily activity counts
-- `distribution.namespaces`: secret counts per namespace
-
-## Environment Comparison API
-
-### Compare two environments
-```http
-GET /api/v1/compare/{namespace}/{env1}/{env2}
-Authorization: Bearer <token>
-```
-
-Response:
-```json
-{
-  "only_in_env1": ["KEY_A"],
-  "only_in_env2": ["KEY_B"],
-  "different_values": ["DATABASE_URL"],
-  "identical": ["PORT", "NODE_ENV"]
-}
-```
-
-## Template API
-
-### List templates
-```http
-GET /api/v1/templates
-Authorization: Bearer <token>
-```
-
-### Apply a template
-```http
-POST /api/v1/templates/{namespace}/{environment}/apply
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{ "template_id": "nodejs-basic" }
-```
-
-## Error Response Format
-
-All errors follow this shape:
-```json
-{
-  "error": "Human-readable description",
-  "code": "MACHINE_READABLE_CODE",
-  "status": 401
-}
-```
-
-Common error codes:
-- `AUTH_TOKEN_MISSING` — no Authorization header
-- `AUTH_TOKEN_INVALID` — token expired or invalid
-- `AUTH_NAMESPACE_FORBIDDEN` — token lacks access to this namespace
-- `AUTH_MASTER_REQUIRED` — operation requires master token
-- `STORAGE_NOT_FOUND` — namespace or environment doesn't exist
-- `STORAGE_KEY_NOT_FOUND` — secret key doesn't exist
-- `VALIDATION_KEY_INVALID` — secret key contains invalid characters
-- `RATE_LIMIT_EXCEEDED` — too many requests (429)
-
-## Environment Variables (Server Configuration)
-
-The backend reads these environment variables on startup:
-
-| Variable | Required | Description |
-|---|---|---|
-| `ENCRYPTION_KEY` | Yes | Fernet key (base64); generate with `python generate_keys.py` |
-| `DASHBOARD_PASSWORD` | Yes | Password for web UI admin login |
-| `MASTER_TOKEN` | Recommended | Full-access API token for automation |
-| `ADMIN_USERNAME` | No | Display name for admin user (default: "admin") |
-| `ADMIN_EMAIL` | No | Admin email for notifications |
-| `SMTP_HOST` | No | SMTP server for email notifications |
-| `SMTP_PORT` | No | SMTP port (default: 587) |
-| `SMTP_USER` | No | SMTP username |
-| `SMTP_PASSWORD` | No | SMTP password |
-| `JWT_SECRET` | No | JWT signing secret (auto-generated if omitted) |
-| `PORT` | No | Backend port (default: 8070) |
-
-## Integration Examples
-
-### CI/CD (GitHub Actions)
-```yaml
-- name: Load secrets
-  run: |
-    curl -s -H "Authorization: Bearer ${{ secrets.SEM_API_KEY }}" \
-      https://sem.example.com/api/v1/secrets/myapp/production/export \
-      >> $GITHUB_ENV
-```
-
-### Node.js SDK pattern
-```js
-const res = await fetch(`${SEM_URL}/api/v1/secrets/${namespace}/${environment}`, {
-  headers: { Authorization: `Bearer ${SEM_API_KEY}` },
-});
-const { secrets } = await res.json();
-process.env = { ...process.env, ...secrets };
-```
-
-### Python pattern
-```python
-import requests, os
-
-resp = requests.get(
-    f"{os.environ['SEM_URL']}/api/v1/secrets/{namespace}/{environment}",
-    headers={"Authorization": f"Bearer {os.environ['SEM_API_KEY']}"},
-)
-secrets = resp.json()["secrets"]
-os.environ.update(secrets)
-```
-
-## Links
-
-- [Summary](/llms.txt)
-- [GitHub](https://github.com/niranjansah87/Secure-Enviornment-Manager)
+Services exposed:
+- `api`: NestJS Fastify backend on port 3001 (`/healthz` health check)
+- `frontend`: Next.js 15 console on port 3000
+- `postgres`: PostgreSQL 16 on port 5432
+- `redis`: Redis 7 on port 6379
