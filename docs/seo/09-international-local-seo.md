@@ -36,3 +36,4 @@ Secure Environment Manager is a globally accessible, open-source infrastructure 
 While SEM is a global digital software entity, transparent developer credentials enhance algorithmic trustworthiness:
 *   Creator Niranjan Sah operates publicly from Nepal (`.np` ccTLD infrastructure), contributing openly to international open-source cybersecurity and software repositories.
 *   Personal portfolio and author profile are linked to `https://niranjansah87.com.np/`, maintaining cross-entity consistency.
+

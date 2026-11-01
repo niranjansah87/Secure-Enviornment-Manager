@@ -62,3 +62,4 @@ The footer reinforces primary entity and resource pathways:
     *   The Documentation's introduction links back to the Homepage value proposition.
 3.  **Breadcrumb Architecture on `/docs`:**
     *   Implements Schema.org `BreadcrumbList` linking `Home (/)` $\to$ `Documentation (/docs)`.
+

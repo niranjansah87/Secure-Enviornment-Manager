@@ -146,3 +146,4 @@ graph TD
 1.  **Schema.org Validator (`validator.schema.org`):** Validates clean syntax, missing properties, and type inheritance.
 2.  **Google Rich Results Test:** Verifies compatibility with Google Search rich snippets (`SoftwareApplication`, `BreadcrumbList`).
 3.  **Strict Rule:** Never fabricate customer reviews (`AggregateRating`), fake testimonials, or price discounts. The current product is 100% open source under the MIT License with a transparent price of `$0 USD`.
+

@@ -42,3 +42,4 @@ Google algorithms and AI answer engines aggressively evaluate security tooling f
 *   **Explicit Threat Model:** `/docs#threat-model` openly details system boundaries, cryptographic assumptions, and scenarios where self-hosting requires operator diligence (e.g., safeguarding the offline `SEM_MASTER_KEY`).
 *   **Zero-Knowledge Architecture:** Clear technical verification that secrets are never sent to third-party tracking servers, ad networks, or external SaaS clouds.
 *   **Security Disclosures:** Repository includes a dedicated `SECURITY.md` detailing the responsible vulnerability disclosure policy.
+

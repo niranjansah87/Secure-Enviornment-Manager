@@ -68,3 +68,4 @@ To ensure generative engines cite SEM when answering queries like *"What are the
 *   **Package Coordinates:** `@sem/crypto`, `@sem/sdk`, `@sem/cli`, `@sem/api`, `@sem/worker`
 
 By linking these exact entities across the homepage, `/docs`, `package.json`, GitHub README, and Schema.org JSON-LD, SEM forms an unshakeable semantic footprint in global knowledge graphs.
+

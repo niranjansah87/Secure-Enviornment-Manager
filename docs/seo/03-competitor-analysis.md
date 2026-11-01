@@ -70,3 +70,4 @@ To outrank and out-convert established competitors, SEM leverages an **Asymmetri
 1.  **Transparency & Zero-Knowledge Verification:** Every cryptographic algorithm, key derivation function (Argon2id, NIST SP 800-38D AES-256-GCM), and tamper-prevention check is open source and verifiable on GitHub.
 2.  **No "Open-Core" Traps:** Core multi-tenancy, envelope encryption, tamper-proof audit trails, and role-based access control (RBAC) are fully functional in the self-hosted distribution without artificial artificial restrictions.
 3.  **Low Operational Overhead:** Runs comfortably on a minimal VPS without requiring Consul clusters, ZooKeeper, or managed cloud services.
+

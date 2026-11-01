@@ -56,3 +56,4 @@ Answer Engine Optimization (AEO) demands structuring responses to immediate deve
 1.  **Avoid Filler Openings:** Never begin answers with conversational padding like *"When considering your options for managing secrets..."* or *"As many developers know..."*. Jump straight into the noun-verb technical claim.
 2.  **Explicit Code Blocks:** Provide syntax-highlighted, copyable bash/yaml snippets with standard input flags.
 3.  **FAQPage Structured Data Placement:** Ensure every question featured in the visible UI is represented in `FAQPage` JSON-LD to qualify for expandable SERP answer accordions.
+

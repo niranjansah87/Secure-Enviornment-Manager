@@ -52,3 +52,4 @@
     *   Rewrote legacy V1 references (Fernet AES-256-CBC, SQLite/disk files, Flask port 8070).
     *   Synchronized with V2 architecture: NestJS + Fastify (port 3001), PostgreSQL 16 + Drizzle ORM, BullMQ + Redis 7, AES-256-GCM envelope encryption (MEK → KEK → DEK), and Headless CLI (`sem`).
 *   **Result:** LLMs, Perplexity, and ChatGPT search agents ingest 100% accurate, authoritative architectural facts.
+

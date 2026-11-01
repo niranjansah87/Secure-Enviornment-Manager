@@ -51,3 +51,4 @@ To protect domain equity and comply with Google Search Essentials:
 *   ❌ **Zero PBNs (Private Blog Networks):** Avoid synthetic blog farms.
 *   ❌ **Zero Automated Submissions:** Never use automated SEO software to blast comments, forums, or bookmark sites.
 *   ✅ **Rel="sponsored" / Rel="nofollow":** Ensure any future sponsored tutorials or external partner notices carry appropriate link attributes.
+

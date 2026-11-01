@@ -101,3 +101,4 @@ SEO visibility must translate directly into developer engagement:
 *   **Hero Primary CTA:** Direct copyable command (`git clone ... && docker compose up -d`) paired with a high-contrast "Read Documentation" link.
 *   **Contextual GitHub Proof:** Prominent links to GitHub source code (`https://github.com/niranjansah87/Secure-Enviornment-Manager`) reinforcing open-source trust and zero-vendor-lockin.
 *   **Persistent Navigation:** Sticky header with immediate access to `/docs` and `/login` regardless of scroll depth.
+

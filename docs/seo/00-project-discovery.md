@@ -105,3 +105,4 @@ An inspection of `frontend/src/app/layout.tsx`, `robots.ts`, `sitemap.ts`, and `
 *   **Primary Conversion Goal**: Developer adoption (GitHub stars, repository cloning, Docker Compose deployment, CLI installation via `npm install -g @sem/cli` / `pnpm`).
 *   **Secondary Conversion Goal**: Platform exploration (reading docs, understanding zero-knowledge security guarantees, signing into demo / local instance).
 *   **Brand Entity Anchor**: "Secure Environment Manager" (Brand) + "Niranjan Sah" (Author & Software Architect).
+

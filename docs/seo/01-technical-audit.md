@@ -136,3 +136,4 @@ While the foundational Next.js 15 App Router architecture provides excellent mod
 | **INP (Interaction to Next Paint)**| $\le 200\text{ms}$ | Fast interactive response across tabs and clipboard buttons. | Avoid heavy synchronous blocking loops on the main UI thread. |
 | **CLS (Cumulative Layout Shift)**  | $\le 0.1$ | Fixed layout dimensions, reserved icon bounding boxes. | Explicit height and width styling on 3D containers and terminal blocks. |
 | **TTFB (Time to First Byte)**     | $\le 800\text{ms}$ | Fastify backend + Next.js optimized production build behind Caddy/Nginx. | Enable Brotli/Gzip compression and edge cache static assets. |
+

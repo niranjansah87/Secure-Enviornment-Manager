@@ -37,3 +37,4 @@ Tasks are ranked across 6 dimensions:
 
 *   **Zero Breaking Changes:** None of the proposed changes modify backend database schemas, encryption algorithms, API token contracts, or authenticated shell routes (`(shell)/`).
 *   **Decoupled Server/Client Metadata:** Creating `frontend/src/app/docs/layout.tsx` enables full Server-Side Rendering (SSR) of metadata while preserving all existing client-side interactivity, search filtering, and state inside `frontend/src/app/docs/page.tsx` (`"use client"`).
+

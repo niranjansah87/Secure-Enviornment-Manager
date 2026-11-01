@@ -48,3 +48,4 @@
         }
         ```
     *   Fastify API backend guarantees sub-10ms response times on health and metadata endpoints.
+

@@ -112,3 +112,4 @@ $$\text{BOS} = (\text{Relevance} \times 0.40) + (\text{Conversion Intent} \times
 2.  **Identified Content Gaps:**
     *   Lack of explicit step-by-step CI/CD code snippets on the homepage (addressed in terminal component).
     *   Absence of a Dedicated FAQ schema on `/docs` addressing key migration concerns (e.g., migrating from Doppler or HashiCorp Vault).
+
