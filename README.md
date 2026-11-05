@@ -1,5 +1,9 @@
 <div align="center">
 
+<a href="https://github.com/niranjansah87/Secure-Enviornment-Manager">
+  <img src="./screenshots/logo.png" alt="Secure Environment Manager (SEM) Logo" width="140" />
+</a>
+
 # 🔒 Secure Environment Manager (SEM)
 
 ### The Production-Grade, Self-Hosted Developer Secrets Infrastructure
