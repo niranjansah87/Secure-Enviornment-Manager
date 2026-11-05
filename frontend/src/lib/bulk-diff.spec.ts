@@ -51,3 +51,4 @@ describe('bulk-diff utilities', () => {
     expect(secrets).toEqual({ A: '1', B: '2' });
   });
 });
+

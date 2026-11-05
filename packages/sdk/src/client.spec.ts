@@ -176,3 +176,4 @@ describe('SemClient', () => {
     expect(diff.commonKeys).toEqual(['FOO']);
   });
 });
+

@@ -52,3 +52,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial reference implementation of Secure Environment Manager using Python Flask and Fernet symmetric encryption.
 - SQLite database storage for encrypted environment variables.
 - Basic Bearer token authentication and namespace scoping.
+

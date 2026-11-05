@@ -37,3 +37,4 @@ Before filing an issue, please verify:
    pnpm db:migrate
    ```
 4. **Logs**: Check container or console logs for specific error codes (e.g., `ACCOUNT_LOCKED`, `INVALID_CREDENTIALS`, `DECRYPTION_FAILED`).
+

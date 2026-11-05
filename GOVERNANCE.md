@@ -40,3 +40,4 @@ Anyone who submits code, documentation, bug reports, or helps triage issues. Con
 ## 4. Conflict Resolution
 
 Disagreements among contributors or maintainers are resolved through consensus wherever possible. If consensus cannot be achieved, the Lead Maintainer has the final decision-making authority, with justification recorded in the issue or PR.
+
