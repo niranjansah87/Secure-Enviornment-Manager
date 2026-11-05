@@ -1,0 +1,29 @@
+🟡 Still to generate
+Global History / Versions ← this is the one we just attempted, but image generation hit the limit
+Audit Logs
+Templates
+Analytics
+API Keys
+Users
+Account / Organization Settings
+Supporting screens
+
+After the main pages, we still need designs for:
+
+Add Secret
+Edit Secret
+Bulk Import
+Restore Version / Restore confirmation
+Audit Event Details
+Create API Key
+API Key one-time reveal
+Create User
+Edit User
+Workspace / Environment switcher
+Command Palette
+Notifications / activity drawer
+Empty states
+Loading states
+Error states
+Destructive confirmation states
+Responsive/mobile versions

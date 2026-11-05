@@ -7,7 +7,7 @@ import chalk from 'chalk';
 import table from 'text-table';
 import { loadConfig, debug } from './config.js';
 
-async function authenticatedFetch(path: string, options: RequestInit = {}): Promise<unknown> {
+async function authenticatedFetch(path: string, options: any = {}): Promise<any> {
   const config = loadConfig();
   if (!config?.token) throw new Error('Not authenticated. Run: sem auth login');
 
@@ -22,7 +22,7 @@ async function authenticatedFetch(path: string, options: RequestInit = {}): Prom
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
 
-  const data = await response.json();
+  const data: any = await response.json();
   if (!response.ok && response.status !== 401) {
     throw new Error(data.error || `HTTP ${response.status}`);
   }

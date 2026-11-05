@@ -1,89 +1,64 @@
-# Architecture
+# Architecture (SEM V2)
 
-Secure Environment Manager (SEM) is built as a high-performance, self-hosted web application with a modular design to ensure scalability, security, and easy maintenance.
-
-## System Components
-
-The SEM ecosystem consists of four main layers:
-
-1.  **Frontend (Next.js)**: A React-based Single Page Application (SPA) providing a modern, responsive UI. It communicates with the backend via a REST API.
-2.  **Backend (Flask)**: A Python-powered API server that handles business logic, authentication, and communication with the storage layer.
-3.  **Security Layer (Fernet)**: A middleware that encrypts data before it reaches the disk and decrypts it only when requested by an authorized user.
-4.  **Storage Layer (File-based)**: Encrypted `.enc` files stored in the filesystem, organized by namespace and environment.
-5.  **User Service (Python)**: Handles developer account CRUD, PBKDF2 password hashing with per-user salt, and role-based access control.
-6.  **Email Service (Python)**: Optional SMTP integration for welcome emails and password resets — fire-and-forget, never blocks the API.
-
-## Design Diagram
-
-```mermaid
-graph TD
-    User([User / CLI]) --> UI[Next.js Frontend]
-    UI --> API[Flask API Server]
-    API --> Auth{Auth Middleware}
-    Auth -- Success --> Logic[Business Logic]
-    Auth -- Failure --> Error[401/403 Error]
-    
-    Logic --> UserSvc[User Service]
-    Logic --> EmailSvc[Email Service - Optional SMTP]
-    Logic --> History[History Manager]
-    Logic --> Audit[Audit Logger]
-    Logic --> Encryption[Encryption Layer - AES-256]
-    
-    Encryption --> FS[(Local Filesystem - .enc files)]
-    History --> Snapshots[(History Snapshots)]
-    Audit --> Logs[(Audit Logs)]
-```
-
-## Component Breakdown
-
-### 1. Frontend (Next.js 15)
-The frontend is a modern React application optimized for developer experience.
-*   **Framework**: Next.js 15 with App Router.
-*   **State Management**: React Hooks and Context API.
-*   **Styling**: Tailwind CSS with a dark-mode first design.
-*   **Communication**: Axios-based API client with automatic token handling.
-
-### 2. Backend (Flask)
-The backend is a lightweight but robust REST API.
-*   **Web Framework**: Flask with Werkzeug.
-*   **Gunicorn**: Production WSGI server for concurrent request handling.
-*   **Prometheus**: Integrated exporter for system monitoring and metrics.
-
-### 3. Encryption Layer
-The core of SEM's security is the **Fernet** implementation (from the `cryptography` library).
-*   **Algorithm**: AES-256 in CBC mode with HMAC-SHA256.
-*   **Process**: Secrets are JSON-serialized, padded, and encrypted before being written to disk.
-*   **Key Isolation**: The encryption key is never stored in the database or alongside the data; it must be provided as an environment variable (`ENCRYPTION_KEY`).
-
-### 4. Storage & Namespacing
-SEM uses a hierarchical file structure to manage secrets.
-*   **Namespace**: A logical grouping of related environments (e.g., `project-alpha`).
-*   **Environment**: A specific instance within a namespace (e.g., `production`, `staging`).
-*   **Paths**: `data/{namespace}/{environment}.enc`
-
-### 5. User Service
-Manages developer accounts with secure password storage.
-*   **Hashing**: PBKDF2-SHA256 with 480,000 iterations and per-user random 16-byte salt.
-*   **Format**: Self-describing hash strings: `pbkdf2_sha256$480000$<base64_salt>$<base64_hash>`.
-*   **Storage**: File-based in `data/users.json` with atomic writes (mode 0o600).
-*   **Roles**: `admin` (full access) and `developer` (scoped access).
-*   **Password Flow**: Temp password → forced change on first login → fresh JWT issued.
-
-### 6. Email Service
-Optional SMTP integration for user notifications.
-*   **Non-blocking**: All emails sent via daemon threads — SMTP failures never block API responses.
-*   **Configuration**: Set `EMAIL_SMTP_HOST` to enable; if absent, operations continue normally.
-*   **Templates**: Welcome email (with temp password), password reset notifications.
-
-## Data Flow: Reading a Secret
-
-1.  **Request**: User requests `GET /api/v1/project-alpha/production`.
-2.  **Auth**: Backend validates the Bearer token against the allowed namespaces.
-3.  **Read**: Backend reads the encrypted file from `data/project-alpha/production.enc`.
-4.  **Decrypt**: The Security Layer uses the `ENCRYPTION_KEY` to decrypt the payload.
-5.  **Log**: The Audit Logger records the access event.
-6.  **Response**: The plain text secret is sent to the authorized client over TLS.
+Secure Environment Manager (SEM) V2 is built as a high-performance, multi-tenant secrets management platform designed for security, auditability, and scalability.
 
 ---
 
-Next: [Installation Guide](installation.md)
+## System Architecture
+
+```mermaid
+graph TD
+    Client([Web UI / CLI / SDK]) --> Ingress[Nginx Reverse Proxy]
+    Ingress --> API[NestJS + Fastify API Server]
+    
+    API --> AuthGuard{ES256 JWT Guard}
+    AuthGuard -- Pass --> Domains[Domain Controllers]
+    AuthGuard -- Fail --> Err[401 / 403 Response]
+    
+    Domains --> Projects[Projects & Environments]
+    Domains --> Secrets[Secrets Engine]
+    Domains --> Audit[Audit Service]
+    Domains --> Templates[Templates Service]
+    
+    Secrets --> Crypto[AES-256-GCM Envelope Encryption]
+    Crypto --> MasterKey[(SEM Master Key)]
+    Crypto --> KEK[(Project Key Encryption Key)]
+    Crypto --> DEK[(Environment Data Encryption Key)]
+    
+    Domains --> Postgres[(PostgreSQL 16 + Drizzle ORM)]
+    Domains --> Redis[(Redis 7 - Optional)]
+    Redis --> Worker[BullMQ Worker Service]
+```
+
+---
+
+## Core Components
+
+### 1. Frontend (`frontend/`)
+- **Framework**: Next.js 15 (React 19) with App Router.
+- **State & Identity**: React Context (`WorkspaceContext`), session token management, and auto-refresh on 401.
+- **Styling & Motion**: Tailwind CSS + Framer Motion.
+- **API Client**: `frontend/src/lib/sem-api.ts` typed client consuming JSON envelopes `{ success: true, data: ... }`.
+
+### 2. Backend API (`backend/`, `@sem/api`)
+- **Framework**: NestJS 10 on Fastify engine for maximum throughput and minimal overhead.
+- **Multi-Tenancy**: Organization isolation enforced at the database query level on every operation.
+- **Authentication**: ES256 ECDSA P-256 signed JWTs, Argon2id password hashing, and refresh token rotation with HMAC lookup.
+- **Observability**: Prometheus metrics export (`/metrics`) and Pino structured logging.
+
+### 3. Cryptography & Envelope Encryption (`packages/crypto/`, `@sem/crypto`)
+- **Envelope Key Hierarchy**:
+  1. **Master Key**: 256-bit AES key supplied via environment variable (`SEM_MASTER_KEY`).
+  2. **Project KEK**: Project-level Key Encryption Key, wrapped by the Master Key.
+  3. **Environment DEK**: Environment-level Data Encryption Key, wrapped by the Project KEK.
+  4. **Secret Plaintext**: Encrypted with AES-256-GCM using the Environment DEK and authenticated data (AAD).
+- **Zero-Plaintext Leakage**: Secret plaintexts are never persisted to disk, logs, or message queues.
+
+### 4. Database Layer
+- **Engine**: PostgreSQL 16.
+- **ORM & Migrations**: Drizzle ORM (`drizzle-kit`).
+- **Audit Trails**: Append-only `audit_events` table written atomically within the same database transaction as secret mutations.
+
+### 5. Optional Queue & Cache Layer
+- **Queue**: BullMQ with Redis 7.
+- **Resilience**: Redis is controlled via `REDIS_ENABLED`. If false or offline, the API runs seamlessly in standalone mode with internal in-memory fallbacks.

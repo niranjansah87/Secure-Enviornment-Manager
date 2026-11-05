@@ -24,7 +24,7 @@ service_account.json
 *.crt
 *.p12
 *.pfx
-secrets/
+/secrets/
 
 # Data and logs
 data/
@@ -72,15 +72,30 @@ out/
 nginx/dotenv_soundchan_ai.conf
 /.claude
 AGENTS.md
-ARCHITECTURE.md
+
 CLAUDE.md
-DESIGN.md
+
 DEBUGGING.md
 MEMORY.md
 SKILLS.md
-WORKFLOW.md
+
 # Added by code-review-graph
 .code-review-graph/
+
+# SEM V2 monorepo
+packages/*/dist/
+backend/dist/
+worker/dist/
+apps/*/dist/
+tools/*/dist/
+infra/docker/secrets/
+
+# Coverage and turbo cache
+coverage/
+.turbo/
+
+# Internal tooling sessions (never commit)
+**/.claude/autoharness/
 GEMINI.md
 .windsurfrules
 .opencode.json
@@ -92,3 +107,5 @@ sem_mobile/android/app/google-services.json
 /.agents
 /.codex
 /graphify-out
+/frontend/graphify-out
+codex-session-01a142cb-fa07-7293-abeb-27117875de3d.md

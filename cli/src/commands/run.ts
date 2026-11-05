@@ -61,7 +61,7 @@ runRoutes
       }
 
       // Set environment variables and execute command
-      const env = { ...process.env, ...secrets };
+      const mergedEnv = { ...process.env, ...secrets };
       const command = process.argv.slice(process.argv.indexOf('exec') + 2).join(' ');
 
       if (!command) {
@@ -76,7 +76,7 @@ runRoutes
       const { spawn } = await import('child_process');
       const child = spawn(command, [], {
         shell: true,
-        env,
+        env: mergedEnv,
         stdio: 'inherit',
       });
 

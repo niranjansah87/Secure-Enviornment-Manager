@@ -1,165 +1,226 @@
 "use client";
 
 import { useState } from "react";
-import { KeyRound, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, ShieldCheck, Terminal, ArrowRight } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useWorkspace } from "@/context/workspace-context";
-import { apiBase } from "@/lib/api-base";
-import { loadAccessToken, saveAuthTokens } from "@/lib/utils";
+import { ApiError } from "@/lib/sem-api";
 
 export function ForceChangePassword() {
-  const { username, email, setToken, logout } = useWorkspace();
+  const { displayName, changePassword, logout } = useWorkspace();
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const validate = (): string | null => {
-    if (newPassword.length < 8) return "Password must be at least 8 characters.";
-    if (newPassword !== confirm) return "Passwords do not match.";
+    if (!currentPassword) return "ERR_EMPTY_FIELD: Enter your current temporary password.";
+    if (newPassword.length < 8) return "ERR_POLICY_VIOLATION: New password must be at least 8 characters.";
+    if (newPassword === currentPassword) return "ERR_REUSE: New password must differ from the current one.";
+    if (newPassword !== confirm) return "ERR_MISMATCH: Passwords do not match.";
     return null;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const err = validate();
-    if (err) { setError(err); return; }
-
+    if (err) {
+      setError(err);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      const token = loadAccessToken();
-      const res = await fetch(`${apiBase()}/api/v1/user/change-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({ new_password: newPassword }),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        // Try multiple error formats: new API envelope, old-style error string
-        const msg =
-          (data.error && typeof data.error === "object" ? data.error.message : null) ??
-          (typeof data.error === "string" ? data.error : null) ??
-          data.message ??
-          `Request failed with status ${res.status}`;
-        setError(msg);
-        return;
-      }
-
-      // Backend returns a fresh JWT with must_change_password cleared
-      const { access_token, refresh_token } = data.data as { access_token: string; refresh_token: string };
-      saveAuthTokens({ accessToken: access_token, refreshToken: refresh_token });
-      setToken(access_token);
-      // Page will re-render with mustChangePassword = false — overlay disappears
-    } catch {
-      setError("Failed to connect to the server.");
+      await changePassword(currentPassword, newPassword);
+      toast.success("Password updated. All sessions rotated.");
+    } catch (e2) {
+      setError(e2 instanceof ApiError ? `ERR_${e2.status || 400}: ${e2.message}` : "ERR_FAILED: Failed to change password.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-md">
-      <div className="w-full max-w-md mx-4 rounded-2xl border border-white/10 bg-zinc-900/95 p-8 shadow-2xl ring-1 ring-white/5">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center shrink-0">
-            <KeyRound className="w-5 h-5 text-violet-400" />
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/85 backdrop-blur-md p-4">
+      {/* Terminal Window */}
+      <div className="w-full max-w-md rounded-2xl border border-white/[0.12] bg-[#090d16]/95 backdrop-blur-2xl shadow-[0_25px_60px_rgba(0,0,0,0.95)] overflow-hidden font-mono select-none">
+        {/* Terminal Header Bar */}
+        <div className="flex items-center justify-between px-4 py-3 bg-[#0d121f] border-b border-white/[0.08]">
+          {/* 3 macOS / Linux Dots */}
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-[#ff5f56]/90 border border-[#e0443e]" />
+            <div className="w-3 h-3 rounded-full bg-[#ffbd2e]/90 border border-[#dea123]" />
+            <div className="w-3 h-3 rounded-full bg-[#27c93f]/90 border border-[#1aab29]" />
           </div>
-          <div>
-            <h2 className="text-base font-semibold text-zinc-100">Set Your Password</h2>
-            <p className="text-xs text-zinc-500">You must set a new password before continuing.</p>
+
+          {/* Session Title */}
+          <div className="flex items-center gap-1.5 text-xs text-zinc-300 font-medium">
+            <Terminal className="w-3.5 h-3.5 text-zinc-400" />
+            <span>sem passwd --update</span>
+          </div>
+
+          {/* Status Chip */}
+          <div className="flex items-center gap-1.5 text-[10px] text-zinc-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+            <span>policy: required</span>
           </div>
         </div>
 
-        {/* User info */}
-        {(username || email) && (
-          <div className="flex items-center gap-3 mb-5 p-3 rounded-xl bg-white/5 border border-white/8">
-            <div className="w-8 h-8 rounded-full bg-violet-600/30 border border-violet-500/30 flex items-center justify-center text-xs font-bold text-violet-300 shrink-0">
-              {(username ?? "?").slice(0, 2).toUpperCase()}
+        {/* Terminal Body */}
+        <div className="p-5 sm:p-6 space-y-4 text-xs">
+          {/* Boot & Security Notice */}
+          <div className="space-y-1 pb-3 border-b border-white/[0.06] text-[11px]">
+            <div className="flex items-center justify-between">
+              <span className="text-zinc-200 font-bold">Password Rotation Policy</span>
+              <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold">tty1</span>
             </div>
-            <div>
-              {username && <p className="text-sm font-medium text-zinc-200">{username}</p>}
-              {email && <p className="text-xs text-zinc-500">{email}</p>}
-            </div>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-zinc-400">New Password</Label>
-            <div className="relative">
-              <Input
-                type={showNew ? "text" : "password"}
-                value={newPassword}
-                onChange={(e) => { setNewPassword(e.target.value); setError(null); }}
-                placeholder="At least 8 characters"
-                className="pr-10 bg-black/40 border-white/10 text-zinc-100 placeholder:text-zinc-600 focus:border-violet-500/60 focus:ring-1 focus:ring-violet-500/20 h-10"
-                autoFocus
-                required
-              />
-              <button type="button" onClick={() => setShowNew(s => !s)}
-                className="absolute right-3 top-2.5 text-zinc-500 hover:text-zinc-300 transition-colors">
-                {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-zinc-400">Confirm Password</Label>
-            <div className="relative">
-              <Input
-                type={showConfirm ? "text" : "password"}
-                value={confirm}
-                onChange={(e) => { setConfirm(e.target.value); setError(null); }}
-                placeholder="Repeat new password"
-                className="pr-10 bg-black/40 border-white/10 text-zinc-100 placeholder:text-zinc-600 focus:border-violet-500/60 focus:ring-1 focus:ring-violet-500/20 h-10"
-                required
-              />
-              <button type="button" onClick={() => setShowConfirm(s => !s)}
-                className="absolute right-3 top-2.5 text-zinc-500 hover:text-zinc-300 transition-colors">
-                {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-          </div>
-
-          {error && (
-            <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
-              {error}
+            <p className="text-zinc-400 leading-normal">
+              First-time login detected. You must set a permanent password before unlocking your workspace.
             </p>
-          )}
-
-          <div className="flex gap-3 pt-1">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => void logout()}
-              className="text-zinc-500 hover:text-zinc-300 text-sm"
-            >
-              Sign out
-            </Button>
-            <Button
-              type="submit"
-              disabled={loading || !newPassword || !confirm}
-              className="flex-1 bg-violet-600 hover:bg-violet-500 text-white h-10"
-            >
-              {loading ? "Saving…" : "Set Password & Continue"}
-            </Button>
           </div>
-        </form>
 
-        <div className="mt-5 flex items-center gap-2 text-xs text-zinc-600">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-500/60" />
-          Your password is hashed with PBKDF2-SHA256 (480k iterations). It is never stored in plain text.
+          {/* Target Identity Pill */}
+          <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-black/50 border border-white/[0.08] text-[11px]">
+            <span className="text-zinc-500">identity:</span>
+            <span className="text-white font-semibold">{displayName}</span>
+            <span className="ml-auto text-[10px] text-zinc-500">[unprivileged]</span>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-3.5">
+            <TerminalPasswordField
+              prompt="auth@sem:~$ enter current_password:"
+              value={currentPassword}
+              onChange={(v) => {
+                setCurrentPassword(v);
+                setError(null);
+              }}
+              show={showCurrent}
+              onToggle={() => setShowCurrent((s) => !s)}
+              placeholder="temporary password..."
+              autoFocus
+            />
+
+            <TerminalPasswordField
+              prompt="vault@sem:~$ enter new_password (min 8 chars):"
+              value={newPassword}
+              onChange={(v) => {
+                setNewPassword(v);
+                setError(null);
+              }}
+              show={showNew}
+              onToggle={() => setShowNew((s) => !s)}
+              placeholder="at least 8 characters..."
+            />
+
+            <TerminalPasswordField
+              prompt="vault@sem:~$ confirm new_password:"
+              value={confirm}
+              onChange={(v) => {
+                setConfirm(v);
+                setError(null);
+              }}
+              show={showNew}
+              onToggle={() => setShowNew((s) => !s)}
+              placeholder="repeat new password..."
+            />
+
+            {/* Error Message */}
+            {error && (
+              <div className="p-2.5 rounded-xl border border-red-500/30 bg-red-500/10 text-xs text-red-300 leading-relaxed font-mono">
+                {error}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex items-center gap-3 pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => void logout()}
+                className="h-10 px-4 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.06] font-mono text-xs transition-colors"
+              >
+                $ exit
+              </Button>
+              <Button
+                type="submit"
+                disabled={loading}
+                className="flex-1 h-10 bg-white hover:bg-zinc-200 text-zinc-950 font-mono font-bold rounded-xl text-xs transition-all shadow-[0_0_15px_rgba(255,255,255,0.15)] flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="inline-block w-2 h-2 rounded-full bg-zinc-950 animate-ping" />
+                    <span>hashing & rotating...</span>
+                  </span>
+                ) : (
+                  <>
+                    <span>$ sem passwd --commit</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+
+          {/* Terminal Footer */}
+          <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between text-[10.5px] text-zinc-500">
+            <span className="flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-zinc-400" />
+              <span>cipher: Argon2id (zero-knowledge)</span>
+            </span>
+            <span>secure session</span>
+          </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function TerminalPasswordField({
+  prompt,
+  value,
+  onChange,
+  show,
+  onToggle,
+  placeholder,
+  autoFocus,
+}: {
+  prompt: string;
+  value: string;
+  onChange: (v: string) => void;
+  show: boolean;
+  onToggle: () => void;
+  placeholder?: string;
+  autoFocus?: boolean;
+}) {
+  return (
+    <div className="space-y-1">
+      <div className="text-[11px] text-zinc-400 flex items-center gap-1.5">
+        <span className="text-zinc-500">{prompt}</span>
+      </div>
+      <div className="relative">
+        <input
+          type={show ? "text" : "password"}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full h-10 bg-black/60 border border-white/[0.12] rounded-xl pl-3.5 pr-10 text-xs text-white placeholder:text-zinc-600 focus:border-white/40 focus:outline-none font-mono"
+          autoFocus={autoFocus}
+          required
+        />
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={show ? "Hide password" : "Show password"}
+          className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-500 hover:text-zinc-300 transition-colors"
+          tabIndex={-1}
+        >
+          {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
       </div>
     </div>
   );

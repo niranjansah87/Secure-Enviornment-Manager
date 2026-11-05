@@ -1,0 +1,36 @@
+{
+  "name": "@sem/worker",
+  "version": "2.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc",
+    "start": "node dist/main",
+    "start:dev": "tsx watch src/main.ts",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@nestjs/common": "^12.3.2",
+    "@nestjs/core": "^12.3.2",
+    "@nestjs/config": "^12.0.1",
+    "argon2": "^0.45.1",
+    "bullmq": "^5.81.5",
+    "drizzle-orm": "^0.45.4",
+    "ioredis": "^5.11.1",
+    "nodemailer": "^10.2.1",
+    "pg": "^8.23.1",
+    "pino": "^9.14.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "@sem/types": "workspace:*",
+    "@sem/crypto": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/nodemailer": "^8.0.2",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.19.3",
+    "typescript": "^5.9.3"
+  }
+}

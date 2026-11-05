@@ -55,7 +55,7 @@ const _subscribers: Set<LogSubscriber> = new Set();
 function _shouldLog(level: LogLevel): boolean {
   if (typeof window === "undefined") return false;
   const envLevel = (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_LOG_LEVEL) as string | undefined;
-  if (!envLevel) return level >= LogLevel.INFO;
+  if (!envLevel) return level >= LogLevel.ERROR;
   const config =
     envLevel.toUpperCase() === "DEBUG"
       ? LogLevel.DEBUG

@@ -2,6 +2,7 @@
   "name": "@sem-org/sem-cli",
   "version": "1.0.0",
   "description": "Official CLI for Secure Environment Manager",
+  "type": "module",
   "main": "dist/index.js",
   "bin": {
     "sem": "./bin/sem.js"
@@ -10,7 +11,7 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "test": "vitest",
-    "lint": "eslint src --ext .ts"
+    "lint": "eslint src"
   },
   "keywords": [
     "sem",
@@ -21,20 +22,22 @@
   "author": "SEM Team",
   "license": "MIT",
   "dependencies": {
-    "commander": "^12.0.0",
-    "inquirer": "^9.0.0",
-    "chalk": "^5.0.0",
-    "ora": "^7.0.0",
-    "axios": "^1.6.0",
-    "ws": "^8.16.0"
+    "axios": "^1.21.0",
+    "chalk": "^5.6.0",
+    "commander": "^15.0.0",
+    "inquirer": "^14.2.5",
+    "ora": "^9.4.1",
+    "text-table": "^0.2.0",
+    "ws": "^8.22.0"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "@types/inquirer": "^9.0.0",
-    "@types/ws": "^8.5.0",
-    "typescript": "^5.0.0"
+    "@types/inquirer": "^9.0.10",
+    "@types/node": "^22.20.5",
+    "@types/text-table": "^0.2.5",
+    "@types/ws": "^8.18.2",
+    "typescript": "^5.9.3"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.0.0"
   }
 }

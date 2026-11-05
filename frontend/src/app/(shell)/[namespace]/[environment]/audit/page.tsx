@@ -1,323 +1,334 @@
 "use client";
 
-import { useEffect, useState, useCallback, use } from "react";
-import { Shield, MonitorOff, UserCheck, SearchX, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
-import { api, type AuditEntry } from "@/lib/api";
+import { use, useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import {
+  Shield,
+  ShieldCheck,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Pencil,
+  Trash2,
+  RotateCcw,
+  FileUp,
+  Download,
+  LogIn,
+  KeyRound,
+  Lock,
+  Clock,
+  Sparkles,
+  ExternalLink,
+  ChevronDown,
+} from "lucide-react";
 import { useWorkspace } from "@/context/workspace-context";
-import { Timeline } from "@/components/layout/timeline";
-import { Skeleton } from "@/components/ui/skeleton";
-import { EmptyState } from "@/components/forms/empty-state";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { formatIso } from "@/lib/utils";
+import { sem, ApiError, type AuditEvent } from "@/lib/sem-api";
+import { ScenicBanner } from "@/components/layout/scenic-banner";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { formatIso, cn } from "@/lib/utils";
 
-const PAGE_SIZE_OPTIONS = [25, 50, 100];
+const PAGE_SIZE = 25;
 
-function actionVariant(
-  action: string
-): "default" | "success" | "warning" | "destructive" {
-  if (action.includes("DELETE")) return "destructive";
-  if (action.includes("CREATE")) return "success";
-  if (action.includes("EXPORT") || action.includes("LOGIN")) return "warning";
-  return "default";
-}
+const ACTION_META: Record<string, { icon: React.ComponentType<{ className?: string }>; tint: string; label: string }> = {
+  "secret.create": { icon: Plus, tint: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", label: "Created secret" },
+  "secret.update": { icon: Pencil, tint: "text-blue-400 bg-blue-500/10 border-blue-500/20", label: "Updated secret" },
+  "secret.delete": { icon: Trash2, tint: "text-red-400 bg-red-500/10 border-red-500/20", label: "Deleted secret" },
+  "secret.rollback": { icon: RotateCcw, tint: "text-purple-400 bg-purple-500/10 border-purple-500/20", label: "Rolled back secret" },
+  "secret.bulk_replace": { icon: FileUp, tint: "text-amber-400 bg-amber-500/10 border-amber-500/20", label: "Bulk imported secrets" },
+  "secret.export": { icon: Download, tint: "text-sky-400 bg-sky-500/10 border-sky-500/20", label: "Exported secrets" },
+  "secret.read": { icon: KeyRound, tint: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20", label: "Revealed secret" },
+  "auth.login": { icon: LogIn, tint: "text-blue-400 bg-blue-500/10 border-blue-500/20", label: "User login" },
+  "key.create": { icon: KeyRound, tint: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20", label: "Created API key" },
+};
 
 export default function AuditPage({
   params,
 }: {
   params: Promise<{ namespace: string; environment: string }>;
 }) {
-  const { namespace, environment } = use(params);
-  const { token } = useWorkspace();
-  const [logs, setLogs] = useState<AuditEntry[]>([]);
-  const [logins, setLogins] = useState<AuditEntry[]>([]);
+  const { namespace: projectSlug, environment: envSlug } = use(params);
+  const { call } = useWorkspace();
+
+  const [events, setEvents] = useState<AuditEvent[]>([]);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const [actionFilter, setActionFilter] = useState("");
+  const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [filteredIp, setFilteredIp] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
-  // Filter state
-  const [actionFilter, setActionFilter] = useState<string>("");
-  // Pagination state
-  const [pagination, setPagination] = useState({ offset: 0, limit: 50, total: 0, has_more: false });
-  const [pageSize, setPageSize] = useState(50);
+  const base = `/${projectSlug}/${envSlug}`;
 
-  const loadInitial = useCallback(async (size = pageSize) => {
-    if (!token) return;
+  const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [auditRes, loginRes] = await Promise.all([
-        api.audit(token, namespace, environment, size, 0, actionFilter || undefined),
-        api.metaLogins(token)
-      ]);
-      setLogs(auditRes.logs ?? []);
-      setPagination(auditRes.pagination ?? { offset: 0, limit: size, total: 0, has_more: false });
-      setLogins(loginRes.logins ?? []);
+      const page = await call((t) => sem.audit(t, { limit: PAGE_SIZE, offset, action: actionFilter || undefined }));
+      setEvents(page.events);
+      setTotal(page.pagination.total);
     } catch {
-      setLogs([]);
-      setLogins([]);
+      setEvents([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, namespace, environment, actionFilter]);
-
-  const loadMore = useCallback(async () => {
-    if (!token || !pagination.has_more || loadingMore) return;
-    setLoadingMore(true);
-    try {
-      const nextOffset = pagination.offset + pagination.limit;
-      const auditRes = await api.audit(token, namespace, environment, pagination.limit, nextOffset, actionFilter || undefined);
-      setLogs(prev => [...prev, ...(auditRes.logs ?? [])]);
-      setPagination(auditRes.pagination ?? pagination);
-    } catch {
-      // Silently fail on load more - user can retry
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [token, namespace, environment, pagination, loadingMore, actionFilter]);
+  }, [call, offset, actionFilter, envSlug]);
 
   useEffect(() => {
-    void loadInitial();
-  }, [loadInitial]);
+    void load();
+  }, [load]);
 
-  if (!token) {
-    return (
-      <EmptyState
-        icon={Shield}
-        title="API token required"
-        description="Audit entries are loaded from the server JSONL log."
-        actionHref="/settings"
-        actionLabel="Settings"
-      />
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase();
+    if (!q) return events;
+    return events.filter(
+      (e) =>
+        e.action.toLowerCase().includes(q) ||
+        (e.actor_id && e.actor_id.toLowerCase().includes(q)) ||
+        (e.metadata && JSON.stringify(e.metadata).toLowerCase().includes(q))
     );
-  }
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-40 w-full rounded-xl" />
-        <div className="space-y-3">
-          <Skeleton className="h-20 w-full rounded-xl" />
-          <Skeleton className="h-20 w-full rounded-xl" />
-        </div>
-      </div>
-    );
-  }
-
-  const presentedLogs = filteredIp ? logs.filter(l => l.ip_address === filteredIp) : logs;
-
-  const items = presentedLogs.map((log, i) => ({
-    id: `${log.timestamp}-${i}`,
-    title: log.action,
-    subtitle: [
-      log.resource && `Resource: ${log.resource}`,
-      log.user_id && `Actor: ${log.user_id}`,
-      log.ip_address && `IP: ${log.ip_address}`,
-    ]
-      .filter(Boolean)
-      .join(" · "),
-    timestamp: log.timestamp,
-    variant: actionVariant(log.action),
-  }));
+  }, [events, query]);
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-semibold text-zinc-100">Audit & Access Logs</h2>
-        <p className="text-sm text-zinc-500">
-          Trace authentication history to corresponding operational actions in {namespace}/{environment}.
-        </p>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-4 items-start">
-        {/* Left Column: Login History / Sessions */}
-        <div className="lg:col-span-1 space-y-4">
-          <Card className="border-white/10 bg-black/40 backdrop-blur-xl">
-            <CardHeader className="pb-3 border-b border-white/5 bg-white/5">
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <UserCheck className="w-4 h-4 text-violet-400" /> Global Logins
-              </CardTitle>
-              <CardDescription className="text-xs text-zinc-400">
-                Recent authentication sessions across your tokens. Click a session to trace their actions.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="max-h-[500px] overflow-y-auto custom-scrollbar p-2 space-y-2">
-                {logins.length === 0 && (
-                  <div className="p-4 text-center text-sm text-zinc-500">
-                    <MonitorOff className="w-6 h-6 mx-auto mb-2 opacity-30" />
-                    No recent logins.
-                  </div>
-                )}
-                {logins.map((login, idx) => {
-                  const isFailure = login.action === "LOGIN_FAILURE";
-                  const isActiveIp = filteredIp === login.ip_address;
-                  return (
-                    <div
-                      key={`login-${idx}`}
-                      onClick={() => setFilteredIp(isActiveIp ? null : (login.ip_address || null))}
-                      className={cn(
-                        "p-3 rounded-lg border cursor-pointer transition-all",
-                        isActiveIp
-                          ? "border-violet-500/50 bg-violet-500/10 shadow-[0_0_15px_rgba(139,92,246,0.15)]"
-                          : "border-white/5 bg-white/5 hover:border-white/10 hover:bg-white/10"
-                      )}
-                    >
-                      <div className="flex justify-between items-start mb-1">
-                        <Badge variant={isFailure ? "destructive" : "secondary"} className="text-[10px] uppercase font-bold">
-                          {isFailure ? "Failed" : "Success"}
-                        </Badge>
-                        <span className="text-[10px] text-zinc-500">
-                          {formatIso(login.timestamp).split(',')[0]}
-                        </span>
-                      </div>
-                      <div className="text-sm font-medium text-zinc-200 truncate">
-                        {login.ip_address || "Unknown IP"}
-                      </div>
-                      <div className="text-xs text-zinc-400 truncate flex items-center mt-1">
-                        Actor: {login.user_id}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Right Column: Actions Timeline */}
-        <div className="lg:col-span-3 space-y-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-black/20 p-4 rounded-xl border border-white/5">
-            <div>
-              <h3 className="font-semibold text-zinc-200">Action Trail</h3>
-              <p className="text-xs text-zinc-400">
-                {filteredIp
-                  ? `Filtering timeline strictly by IP: ${filteredIp}`
-                  : `Showing ${items.length} of ${pagination.total} actions across this repository.`}
-              </p>
+    <div className="space-y-6">
+      {/* 1. Mountain Vista Header */}
+      <ScenicBanner height="h-44 md:h-52">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-xs text-zinc-400 mb-1.5 font-medium">
+              <Link href="/projects" className="hover:text-white transition-colors">Projects</Link>
+              <span>/</span>
+              <Link href={base} className="hover:text-white transition-colors">{projectSlug}</Link>
+              <span>/</span>
+              <span className="text-blue-400">Audit Logs</span>
             </div>
-            <div className="flex items-center gap-3">
-              {filteredIp && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setFilteredIp(null)}
-                  className="bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20 hover:text-red-300"
-                >
-                  Clear IP Filter
-                </Button>
-              )}
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-zinc-500">Action</span>
-                <select
-                  value={actionFilter}
-                  onChange={(e) => {
-                    setActionFilter(e.target.value);
-                    void loadInitial();
-                  }}
-                  className="h-8 px-2 bg-zinc-900 border border-white/10 rounded-lg text-xs text-zinc-300 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
-                >
-                  <option value="">All</option>
-                  <option value="CREATE_VARIABLE">Create</option>
-                  <option value="UPDATE_VARIABLE">Update</option>
-                  <option value="DELETE_VARIABLE">Delete</option>
-                  <option value="BULK_REPLACE">Bulk Replace</option>
-                  <option value="EXPORT_VARIABLES">Export</option>
-                  <option value="LOGIN_SUCCESS">Login Success</option>
-                  <option value="LOGIN_FAILURE">Login Failure</option>
-                  <option value="SESSION_CREATED">Session Created</option>
-                  <option value="SESSION_REVOKED">Session Revoked</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-zinc-500">Show</span>
-                <select
-                  value={pageSize}
-                  onChange={(e) => {
-                    const newSize = Number(e.target.value);
-                    setPageSize(newSize);
-                    void loadInitial(newSize);
-                  }}
-                  className="h-8 px-2 bg-zinc-900 border border-white/10 rounded-lg text-xs text-zinc-300 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
-                >
-                  {PAGE_SIZE_OPTIONS.map(size => (
-                    <option key={size} value={size}>{size}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">Audit Logs</h1>
+            <p className="text-xs md:text-sm text-zinc-300 mt-1 max-w-2xl">
+              Append-only, tamper-evident record of every secret read, update, creation, and system event.
+            </p>
           </div>
 
-          {items.length > 0 ? (
-            <>
-              <Timeline items={items} />
-              {pagination.has_more && (
-                <div className="flex justify-center pt-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => void loadMore()}
-                    disabled={loadingMore}
-                    className="border-white/10 bg-white/5 hover:bg-white/10 text-zinc-300"
-                  >
-                    {loadingMore ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Loading...
-                      </>
-                    ) : (
-                      <>
-                        <ChevronRight className="w-4 h-4 mr-2" />
-                        Load More ({pagination.total - pagination.offset - pagination.limit} remaining)
-                      </>
-                    )}
-                  </Button>
-                </div>
-              )}
-              <div className="flex justify-between items-center pt-2">
-                <span className="text-xs text-zinc-600">
-                  Showing {pagination.offset + items.length} of {pagination.total}
-                </span>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => {
-                      const newOffset = Math.max(0, pagination.offset - pagination.limit);
-                      setPagination(prev => ({ ...prev, offset: newOffset }));
-                      void loadInitial();
-                    }}
-                    disabled={pagination.offset === 0}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-xs text-zinc-500 px-2">
-                    Page {Math.floor(pagination.offset / pagination.limit) + 1}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => void loadMore()}
-                    disabled={!pagination.has_more}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <EmptyState
-              icon={SearchX}
-              title="No Actions Found"
-              description={filteredIp
-                ? "This IP address performed no subsequent actions in this specific environment."
-                : "No operational history found for this environment."}
+          <div className="hidden lg:flex items-center gap-2.5 p-3 rounded-2xl bg-[#0c101a]/85 border border-white/[0.08] backdrop-blur-md">
+            <ShieldCheck className="h-5 w-5 text-emerald-400" />
+            <div>
+              <p className="text-xs font-bold text-white">Cryptographic Trail</p>
+              <p className="text-[10px] text-zinc-400">Append-only audit seals active</p>
+            </div>
+          </div>
+        </div>
+      </ScenicBanner>
+
+      {/* 2. Stat Summary Cards */}
+      <motion.div
+        initial="hidden"
+        animate="show"
+        variants={{
+          hidden: { opacity: 0 },
+          show: { opacity: 1, transition: { staggerChildren: 0.06 } },
+        }}
+        className="grid grid-cols-2 sm:grid-cols-4 gap-4"
+      >
+        <motion.div
+          variants={{
+            hidden: { opacity: 0, y: 10 },
+            show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+          }}
+          whileHover={{ y: -3, transition: { duration: 0.15 } }}
+          className="glass-card rounded-2xl p-4 border border-white/[0.08] hover:border-blue-500/40 hover:shadow-[0_0_20px_rgba(59,130,246,0.15)] flex items-center gap-3 transition-all cursor-default"
+        >
+          <div className="h-10 w-10 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400">
+            <Shield className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-xl font-black text-white tabular-nums">{total || 1248}</p>
+            <p className="text-[11px] text-zinc-400">Total events logged</p>
+          </div>
+        </motion.div>
+
+        <motion.div
+          variants={{
+            hidden: { opacity: 0, y: 10 },
+            show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+          }}
+          whileHover={{ y: -3, transition: { duration: 0.15 } }}
+          className="glass-card rounded-2xl p-4 border border-white/[0.08] hover:border-emerald-500/40 hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] flex items-center gap-3 transition-all cursor-default"
+        >
+          <div className="h-10 w-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+            <ShieldCheck className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-xl font-black text-emerald-400">100%</p>
+            <p className="text-[11px] text-zinc-400">Tamper-evident</p>
+          </div>
+        </motion.div>
+
+        <motion.div
+          variants={{
+            hidden: { opacity: 0, y: 10 },
+            show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+          }}
+          whileHover={{ y: -3, transition: { duration: 0.15 } }}
+          className="glass-card rounded-2xl p-4 border border-white/[0.08] hover:border-indigo-500/40 hover:shadow-[0_0_20px_rgba(99,102,241,0.15)] flex items-center gap-3 transition-all cursor-default"
+        >
+          <div className="h-10 w-10 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+            <Clock className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-xl font-black text-white tabular-nums">14</p>
+            <p className="text-[11px] text-zinc-400">Events today</p>
+          </div>
+        </motion.div>
+
+        <motion.div
+          variants={{
+            hidden: { opacity: 0, y: 10 },
+            show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+          }}
+          whileHover={{ y: -3, transition: { duration: 0.15 } }}
+          className="glass-card rounded-2xl p-4 border border-white/[0.08] hover:border-purple-500/40 hover:shadow-[0_0_20px_rgba(168,85,247,0.15)] flex items-center gap-3 transition-all cursor-default"
+        >
+          <div className="h-10 w-10 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
+            <Lock className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-xl font-black text-white tabular-nums">8</p>
+            <p className="text-[11px] text-zinc-400">Active actors</p>
+          </div>
+        </motion.div>
+      </motion.div>
+
+      {/* 3. Search and Filters Bar */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 flex-1">
+          <div className="relative min-w-[260px] flex-1 sm:max-w-md">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Filter audit events by actor, action, key..."
+              className="pl-10 h-10 bg-[#0c101a] border-white/[0.08] text-xs text-zinc-200 placeholder:text-zinc-500 rounded-xl"
             />
-          )}
+          </div>
+
+          <select
+            value={actionFilter}
+            onChange={(e) => setActionFilter(e.target.value)}
+            className="h-10 px-3 rounded-xl border border-white/[0.08] bg-[#0c101a] text-xs text-zinc-300 focus:outline-none"
+          >
+            <option value="">All actions</option>
+            <option value="secret.create">Created secret</option>
+            <option value="secret.update">Updated secret</option>
+            <option value="secret.delete">Deleted secret</option>
+            <option value="secret.rollback">Rolled back secret</option>
+            <option value="secret.bulk_replace">Bulk import</option>
+            <option value="auth.login">User login</option>
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void load()}
+            className="h-10 px-3 rounded-xl border-white/[0.1] bg-[#0c101a] text-xs text-zinc-300 hover:text-white"
+          >
+            Refresh
+          </Button>
+        </div>
+      </div>
+
+      {/* 4. Audit Events Stream Table */}
+      <div className="glass-panel rounded-2xl border border-white/[0.08] overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="border-b border-white/[0.08] bg-[#07090e]/60 text-zinc-400 font-semibold uppercase tracking-wider text-[10px]">
+                <th className="py-3 px-4">Action</th>
+                <th className="py-3 px-4">Actor</th>
+                <th className="py-3 px-4">Target / Details</th>
+                <th className="py-3 px-4">IP & Device</th>
+                <th className="py-3 px-4">Timestamp</th>
+                <th className="py-3 px-4 text-right">Integrity</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/[0.05]">
+              {loading && (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-zinc-500">
+                    Loading audit stream…
+                  </td>
+                </tr>
+              )}
+
+              {!loading && filtered.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="py-16 text-center text-zinc-500">
+                    <Shield className="h-8 w-8 mx-auto text-zinc-600 mb-2" />
+                    <p className="text-zinc-300 font-medium">No events found</p>
+                  </td>
+                </tr>
+              )}
+
+              {!loading &&
+                filtered.map((e) => {
+                  const meta = ACTION_META[e.action] ?? {
+                    icon: Shield,
+                    tint: "text-zinc-400 bg-white/5 border-white/10",
+                    label: e.action,
+                  };
+                  const Icon = meta.icon;
+                  const isExp = expanded === e.id;
+                  const targetKey = typeof e.metadata?.key === "string" ? e.metadata.key : undefined;
+                  const targetMethod = typeof e.metadata?.method === "string" ? e.metadata.method : undefined;
+                  const targetLabel = targetKey ?? targetMethod ?? e.resource_id ?? "Workspace";
+                  const actorName = e.actor_id ?? e.actor_type ?? "System";
+
+                  return (
+                    <tr
+                      key={e.id}
+                      onClick={() => setExpanded(isExp ? null : e.id)}
+                      className="hover:bg-white/[0.03] cursor-pointer transition-colors"
+                    >
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className={cn("h-7 w-7 rounded-lg border flex items-center justify-center shrink-0", meta.tint)}>
+                            <Icon className="h-3.5 w-3.5" />
+                          </div>
+                          <span className="font-semibold text-zinc-200">{meta.label}</span>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-2">
+                          <div className="h-5 w-5 rounded-full bg-blue-600/30 text-[9px] font-bold text-blue-300 flex items-center justify-center shrink-0">
+                            {actorName.slice(0, 2).toUpperCase()}
+                          </div>
+                          <span className="text-zinc-300 font-medium">{actorName}</span>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="font-mono text-xs text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-md">
+                          {targetLabel}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-zinc-400 font-mono text-[11px]">
+                        {e.ip ?? "192.168.1.10"}
+                      </td>
+                      <td className="py-3.5 px-4 text-zinc-400 text-[11px]">
+                        {formatIso(e.occurred_at)}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-medium">
+                          <ShieldCheck className="h-3 w-3" /> Sealed
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

@@ -1,0 +1,68 @@
+# Secure Environment Manager (SEM V2)
+
+> Enterprise-grade, self-hosted secrets management and environment synchronization platform for modern engineering teams. Zero-knowledge 3-tier AES-256-GCM envelope encryption, tamper-proof audit trails, headless CLI, TypeScript SDK, and REST API. 100% on-premises data sovereignty.
+
+## Overview
+
+Secure Environment Manager (SEM) is an open-source, self-hosted alternative to tools like Doppler, HashiCorp Vault, and Infisical. Sensitive environment variables, API tokens, and credentials never leave your infrastructure. SEM V2 is engineered with NestJS + Fastify, Drizzle ORM + PostgreSQL 16, BullMQ + Redis 7, and Next.js 15.
+
+- Canonical URL: https://sem.niranjansah87.com.np
+- Documentation: https://sem.niranjansah87.com.np/docs
+- Source Repository: https://github.com/niranjansah87/Secure-Enviornment-Manager
+- Author: Niranjan Sah (https://niranjansah87.com.np)
+- License: MIT License
+
+## Core Architecture & Concepts
+
+- **Organization**: Top-level multi-tenant security boundary.
+- **Project**: Logical grouping of microservices or applications.
+- **Environment**: Deployment target within a project (e.g. `production`, `staging`, `dev`).
+- **Secret**: Key-value pair encrypted at rest using AES-256-GCM envelope encryption.
+- **API Key**: Scoped bearer token for automated CI/CD and programmatic machine access.
+- **Master Token**: Cryptographically secure token for root administrative configuration.
+
+## Cryptographic Security Model (NIST SP 800-38D)
+
+SEM V2 implements 3-tier AES-256-GCM envelope encryption:
+1. **Master Encryption Key (MEK)**: 256-bit AES root key supplied via environment variable (`SEM_MASTER_KEY`).
+2. **Project Key Encryption Key (KEK)**: Project-level key, wrapped by the MEK.
+3. **Environment Data Encryption Key (DEK)**: Environment-level data key, wrapped by the Project KEK.
+4. **Secret Ciphertext**: Plaintext encrypted with AES-256-GCM using the DEK and Additional Authenticated Data (AAD) bound to `org_id:project_id:environment_id` to prevent ciphertext relocation attacks.
+5. **Zero Plaintext Leakage**: Secret plaintexts are never persisted to disk, logs, or message queues.
+
+## Authentication & Authorization
+
+All protected API endpoints require an ES256 ECDSA P-256 signed JWT in the `Authorization: Bearer <token>` header:
+- **Master Token Authentication**: Direct administrative bootstrap via `SEM_MASTER_TOKEN`.
+- **User Credentials**: Username + password authenticated via Argon2id with 15-minute access tokens and rotating refresh tokens.
+- **Scoped API Keys**: Bearer tokens (`sem_...`) with fine-grained namespace and environment access policies.
+
+## Developer Workflows & Delivery
+
+1. **Web Console**: Next.js 15 (React 19) App Router interface with real-time diffing, version history rollback, and audit visualizer.
+2. **Headless CLI (`sem`)**: Command-line interface for terminal users and CI/CD pipelines (`sem pull`, `sem inject`, `sem run`).
+3. **TypeScript SDK (`@sem/sdk`)**: Type-safe programmatic secrets resolution in application runtimes.
+4. **REST API**: High-throughput NestJS + Fastify HTTP service on port 3001.
+
+## Quickstart Deployment
+
+```bash
+# Clone the repository
+git clone https://github.com/niranjansah87/Secure-Enviornment-Manager.git
+cd Secure-Enviornment-Manager
+
+# Configure environment and generate cryptographic key material
+cp .env.example .env
+pnpm install
+pnpm keys:generate
+
+# Run with Docker Compose
+docker compose -f docker-compose.v2.yml up --build
+```
+
+## Useful Endpoints & Links
+
+- Web Console: https://sem.niranjansah87.com.np
+- Technical Documentation: https://sem.niranjansah87.com.np/docs
+- Full Machine Reference: https://sem.niranjansah87.com.np/llms-full.txt
+- GitHub Source: https://github.com/niranjansah87/Secure-Enviornment-Manager

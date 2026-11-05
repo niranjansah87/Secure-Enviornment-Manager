@@ -16,6 +16,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://sem.niranjansah87.com.np"),
   title: {
     default: "Secure Environment Manager",
     template: "%s | Secure Environment Manager",
@@ -25,6 +26,9 @@ export const metadata: Metadata = {
   authors: [{ name: "Niranjan Sah", url: "https://niranjansah87.com.np/" }],
   creator: "Niranjan Sah",
   publisher: "Niranjan Sah",
+  alternates: {
+    canonical: "https://sem.niranjansah87.com.np/",
+  },
   robots: {
     index: true,
     follow: true,
@@ -37,9 +41,16 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: "/logo.svg",
-    shortcut: "/logo.svg",
-    apple: "/logo.svg",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon-96x96.png", sizes: "96x96", type: "image/png" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+    other: [
+      { rel: "manifest", url: "/site.webmanifest" },
+    ],
   },
   openGraph: {
     type: "website",
@@ -48,12 +59,21 @@ export const metadata: Metadata = {
     title: "Secure Environment Manager",
     description: "Enterprise-grade secrets management and environment synchronization for modern teams.",
     siteName: "Secure Environment Manager",
+    images: [
+      {
+        url: "/og_default.png",
+        width: 1200,
+        height: 630,
+        alt: "Secure Environment Manager — self-hosted secrets management",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Secure Environment Manager",
     description: "Enterprise-grade secrets management and environment synchronization for modern teams.",
     creator: "@niranjan_sah",
+    images: ["/og_default.png"],
   },
 };
 
@@ -76,16 +96,63 @@ export default function RootLayout({
               dangerouslySetInnerHTML={{
                 __html: JSON.stringify({
                   "@context": "https://schema.org",
-                  "@type": "SoftwareApplication",
-                  "name": "Secure Environment Manager",
-                  "applicationCategory": "DevOpsApplication",
-                  "operatingSystem": "Web",
-                  "description": "Enterprise-grade secrets management and environment synchronization for modern teams.",
-                  "offers": {
-                    "@type": "Offer",
-                    "price": "0",
-                    "priceCurrency": "USD"
-                  }
+                  "@graph": [
+                    {
+                      "@type": "SoftwareApplication",
+                      "@id": "https://sem.niranjansah87.com.np/#application",
+                      "name": "Secure Environment Manager",
+                      "alternateName": "SEM",
+                      "applicationCategory": "DevOpsApplication",
+                      "applicationSubCategory": "SecurityApplication",
+                      "operatingSystem": "Linux, macOS, Windows, Docker",
+                      "softwareVersion": "2.0.0",
+                      "license": "https://opensource.org/licenses/MIT",
+                      "description": "Enterprise-grade, self-hosted secrets management and environment synchronization platform with AES-256-GCM envelope encryption.",
+                      "url": "https://sem.niranjansah87.com.np",
+                      "image": "https://sem.niranjansah87.com.np/og_default.png",
+                      "offers": {
+                        "@type": "Offer",
+                        "price": "0",
+                        "priceCurrency": "USD",
+                        "availability": "https://schema.org/InStock"
+                      },
+                      "author": {
+                        "@type": "Person",
+                        "@id": "https://sem.niranjansah87.com.np/#person"
+                      },
+                      "publisher": {
+                        "@type": "Organization",
+                        "@id": "https://sem.niranjansah87.com.np/#organization"
+                      },
+                      "featureList": [
+                        "AES-256-GCM 3-tier envelope encryption (MEK to KEK to DEK)",
+                        "Self-hosted zero-knowledge data sovereignty",
+                        "Multi-tenant namespace and environment isolation",
+                        "Append-only tamper-proof audit trails",
+                        "Developer CLI toolchain and TypeScript SDK",
+                        "Fastify + NestJS high-throughput API engine"
+                      ]
+                    },
+                    {
+                      "@type": "Organization",
+                      "@id": "https://sem.niranjansah87.com.np/#organization",
+                      "name": "Secure Environment Manager",
+                      "url": "https://sem.niranjansah87.com.np",
+                      "logo": "https://sem.niranjansah87.com.np/logo.png"
+                    },
+                    {
+                      "@type": "Person",
+                      "@id": "https://sem.niranjansah87.com.np/#person",
+                      "name": "Niranjan Sah",
+                      "url": "https://niranjansah87.com.np/",
+                      "sameAs": [
+                        "https://github.com/niranjansah87",
+                        "https://www.linkedin.com/in/niranjan-sah/",
+                        "https://x.com/niranjan8790"
+                      ],
+                      "jobTitle": "Lead Software Architect & Security Systems Engineer"
+                    }
+                  ]
                 }),
               }}
             />

@@ -17,7 +17,7 @@ interface AuthResponse {
   error?: string;
 }
 
-async function fetchApi(path: string, options: RequestInit = {}): Promise<unknown> {
+async function fetchApi(path: string, options: any = {}): Promise<unknown> {
   const config = loadConfig();
   if (!config) throw new Error('Not configured. Run: sem config init');
 

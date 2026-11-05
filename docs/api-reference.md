@@ -1,313 +1,157 @@
-# API Reference
+# SEM V2 REST API Reference
 
-The SEM API is a RESTful interface designed for programmatic access to secrets. All operations require authentication via **Bearer Tokens**.
+The Secure Environment Manager V2 API is a RESTful interface designed for multi-tenant, envelope-encrypted secrets management.
 
-## Authentication
-
-To authenticate your requests, include the `Authorization` header with a valid token:
-
-```http
-Authorization: Bearer <your_api_token>
+All responses use the standard JSON envelope:
+```json
+{
+  "success": true,
+  "data": { ... }
+}
 ```
-
-### Supported Tokens
-1.  **Master API Token**: Full system access (admin only).
-2.  **Dashboard Password Hash**: For administrative actions.
-3.  **Namespace-Specific API Key**: Grants access *only* to a specific namespace.
-4.  **Username + Password (JWT)**: Developer account credentials — returns JWT with role, scopes, and `must_change_password` flag.
-
-## Metadata Endpoints
-
-### 🟢 List Environments
-List all environments accessible to the provided token.
-
-- **Method**: `GET`
-- **URL**: `/api/v1/meta/environments`
-- **Response**:
-  ```json
-  {
-    "environments": {
-      "project-alpha": ["production", "staging"],
-      "project-beta": ["main"]
-    }
+In case of errors:
+```json
+{
+  "success": false,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Human readable explanation"
   }
-  ```
-
-### 📊 System Stats
-Get a summary of system-wide metrics (admin only).
-
-- **Method**: `GET`
-- **URL**: `/api/v1/meta/stats`
-- **Response**:
-  ```json
-  {
-    "environment_count": 5,
-    "secret_count": 42,
-    "last_updated": "2024-04-03T14:30:00Z",
-    "recent_activity": [...]
-  }
-  ```
-
-## Environment Endpoints
-
-### 🟢 Get Secrets
-Retrieve all secrets for a specific namespace and environment.
-
-- **Method**: `GET`
-- **URL**: `/api/v1/{namespace}/{environment}`
-- **Response**:
-  ```json
-  {
-    "DATABASE_URL": "postgres://user:pass@host:5432/db",
-    "API_KEY": "sk_test_..."
-  }
-  ```
-
-### 🟡 Update Secrets (Partial)
-Update specific secrets within an environment.
-
-- **Method**: `PATCH`
-- **URL**: `/api/v1/{namespace}/{environment}`
-- **Request Body**:
-  ```json
-  {
-    "NEW_VAR": "value",
-    "EXISTING_VAR": "updated_value"
-  }
-  ```
-- **Response**:
-  ```json
-  {
-    "status": "updated",
-    "count": 2
-  }
-  ```
-
-### 🔴 Replace All Secrets
-Overwrite the entire environment with a new set of secrets.
-
-- **Method**: `PUT`
-- **URL**: `/api/v1/{namespace}/{environment}`
-- **Request Body**:
-  ```json
-  {
-    "KEY1": "val1",
-    "KEY2": "val2"
-  }
-  ```
-- **Response**:
-  ```json
-  {
-    "status": "replaced",
-    "count": 2
-  }
-  ```
-
-### 🗑️ Delete a Secret
-Delete a single secret from an environment.
-
-- **Method**: `DELETE`
-- **URL**: `/api/v1/{namespace}/{environment}/keys/{key}`
-- **Response**:
-  ```json
-  {
-    "status": "deleted",
-    "key": "DATABASE_URL"
-  }
-  ```
-
-## History & Audit
-
-### 🟢 View History
-Retrieve the version history of an environment.
-
-- **Method**: `GET`
-- **URL**: `/api/v1/{namespace}/{environment}/history`
-- **Response**:
-  ```json
-  {
-    "history": [
-      {
-        "id": "abc123...",
-        "timestamp": "2024-04-03T10:00:00Z",
-        "action": "UPDATE",
-        "actor": "api_key:project-alpha"
-      }
-    ]
-  }
-  ```
-
-### 🟢 View Audit Logs
-Retrieve the audit trail for an environment.
-
-- **Method**: `GET`
-- **URL**: `/api/v1/{namespace}/{environment}/audit`
-- **Query Params**: `limit` (default: 100)
-
-## User Management Endpoints
-
-These endpoints manage developer accounts. All require admin authentication (master API token, dashboard password, or admin JWT).
-
-### 🟢 Create User
-Create a new developer account. Returns a temporary password shown once.
-
-- **Method**: `POST`
-- **URL**: `/api/v1/admin/users`
-- **Auth**: Admin only
-- **Request Body**:
-  ```json
-  {
-    "username": "johndoe",
-    "role": "developer",
-    "email": "john@example.com",
-    "scopes": ["production/main", "staging/dev"]
-  }
-  ```
-- **Response**:
-  ```json
-  {
-    "success": true,
-    "data": {
-      "user_id": "usr_a1b2c3d4e5f6g7h8",
-      "username": "johndoe",
-      "temp_password": "xK9mP2vR7sW4..."
-    }
-  }
-  ```
-
-### 🟢 List Users
-Get all user accounts.
-
-- **Method**: `GET`
-- **URL**: `/api/v1/admin/users`
-- **Auth**: Admin only
-- **Response**:
-  ```json
-  {
-    "success": true,
-    "data": {
-      "users": [
-        {
-          "user_id": "usr_a1b2...",
-          "username": "johndoe",
-          "email": "john@example.com",
-          "role": "developer",
-          "scopes": ["production/main"],
-          "status": "active",
-          "must_change_password": false,
-          "created_at": "2026-06-24T10:00:00Z",
-          "last_login": "2026-06-24T14:30:00Z"
-        }
-      ]
-    }
-  }
-  ```
-
-### 🟡 Update User
-Modify a user's email, role, scopes, or status.
-
-- **Method**: `PATCH`
-- **URL**: `/api/v1/admin/users/{user_id}`
-- **Auth**: Admin only
-- **Request Body**:
-  ```json
-  {
-    "email": "newemail@example.com",
-    "role": "admin",
-    "scopes": ["*"],
-    "status": "active"
-  }
-  ```
-
-### 🟠 Reset User Password
-Admin resets a user's password to a new temporary password.
-
-- **Method**: `POST`
-- **URL**: `/api/v1/admin/users/{user_id}/reset-password`
-- **Auth**: Admin only
-- **Response**:
-  ```json
-  {
-    "success": true,
-    "data": {
-      "temp_password": "aB3cD7eF9gH2..."
-    }
-  }
-  ```
-
-### 🔴 Delete User
-Remove a user account.
-
-- **Method**: `DELETE`
-- **URL**: `/api/v1/admin/users/{user_id}`
-- **Auth**: Admin only
-
-### 🟢 Change Password (Self-Service)
-Authenticated users change their own password. If `must_change_password` is true in JWT, this is enforced.
-
-- **Method**: `POST`
-- **URL**: `/api/v1/user/change-password`
-- **Auth**: Any valid JWT
-- **Request Body**:
-  ```json
-  {
-    "new_password": "my-new-secure-password"
-  }
-  ```
-- **Response**:
-  ```json
-  {
-    "success": true,
-    "data": {
-      "access_token": "eyJ...",
-      "refresh_token": "semr_...",
-      "message": "Password changed successfully. Fresh JWT issued."
-    }
-  }
-  ```
-
-### Login with Username + Password
-
-- **Method**: `POST`
-- **URL**: `/api/v1/auth/login`
-- **Request Body** (user mode):
-  ```json
-  {
-    "username": "johndoe",
-    "password": "user-password",
-    "device_name": "Chrome on Windows",
-    "device_type": "desktop",
-    "platform": "web"
-  }
-  ```
-- **Response**:
-  ```json
-  {
-    "success": true,
-    "data": {
-      "access_token": "eyJ...",
-      "refresh_token": "semr_...",
-      "expires_in": 900,
-      "token_type": "Bearer",
-      "credential_type": "user_password",
-      "user_id": "usr_a1b2...",
-      "username": "johndoe",
-      "email": "john@example.com",
-      "must_change_password": false
-    }
-  }
-  ```
-
-## Error Responses
-
-| Status Code | Description |
-| :--- | :--- |
-| `401` | Unauthorized (Missing or invalid Bearer token) |
-| `403` | Forbidden (Token does not have access to this namespace) |
-| `404` | Not Found (Invalid namespace or environment name) |
-| `400` | Bad Request (Invalid JSON or key pattern) |
-| `500` | Internal Server Error (Decryption failure or disk error) |
+}
+```
 
 ---
 
-Next: [CLI Guide](cli-guide.md)
+## Authentication
+
+All protected endpoints require an ES256 JWT in the `Authorization` header:
+```http
+Authorization: Bearer <access_token>
+```
+
+### 1. `POST /api/v1/auth/login`
+Authenticate using one of three credentials:
+- **Master token**: `{ "master_token": "..." }`
+- **Username + Password**: `{ "organization": "default", "username": "...", "password": "..." }`
+- **API Key**: `{ "api_key": "sem_..." }`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "access_token": "<jwt>",
+    "refresh_token": "<token>",
+    "token_type": "Bearer",
+    "expires_in": 900,
+    "must_change_password": false
+  }
+}
+```
+
+### 2. `POST /api/v1/auth/refresh`
+Rotate refresh token:
+```json
+{
+  "refresh_token": "<token>"
+}
+```
+
+### 3. `GET /api/v1/auth/me`
+Retrieve the current authenticated user identity and claims.
+
+---
+
+## Projects & Environments
+
+### `GET /api/v1/projects`
+List all projects accessible within the authenticated organization.
+
+### `POST /api/v1/projects`
+Create a new project.
+```json
+{
+  "name": "Backend Service",
+  "slug": "backend-service"
+}
+```
+
+### `GET /api/v1/projects/:projectId/environments`
+List environments for a project (`production`, `staging`, etc.).
+
+### `POST /api/v1/projects/:projectId/environments`
+Create a new environment in a project.
+```json
+{
+  "name": "Production",
+  "slug": "production"
+}
+```
+
+---
+
+## Secrets Management
+
+### `GET /api/v1/projects/:projectId/environments/:environmentId/secrets`
+List secret metadata in the specified environment (keys, versions, update dates, sensitive flag). Plaintext values are never returned in list endpoints.
+
+### `GET /api/v1/projects/:projectId/environments/:environmentId/secrets/:key/value`
+Retrieve the decrypted plaintext value for a single secret.
+```json
+{
+  "success": true,
+  "data": {
+    "key": "DATABASE_URL",
+    "value": "postgres://user:pass@db:5432/prod"
+  }
+}
+```
+
+### `PUT /api/v1/projects/:projectId/environments/:environmentId/secrets/:key`
+Create or update a secret:
+```json
+{
+  "value": "secret_value_here",
+  "description": "Primary database connection",
+  "is_sensitive": true
+}
+```
+
+### `DELETE /api/v1/projects/:projectId/environments/:environmentId/secrets/:key`
+Delete a secret.
+
+### `POST /api/v1/projects/:projectId/environments/:environmentId/secrets/bulk`
+Bulk replace or import secrets into an environment.
+
+### `GET /api/v1/projects/:projectId/environments/:environmentId/secrets/export?format=dotenv|json|yaml`
+Export all decrypted secrets in the environment in dotenv, JSON, or YAML format.
+
+---
+
+## Templates
+
+### `GET /api/v1/templates`
+List all 22 production environment templates (Next.js Enterprise, Django Advanced, Node Microservice, FastAPI ML, Spring Boot, etc.).
+
+### `POST /api/v1/projects/:projectId/environments/:environmentId/templates/:templateId/apply`
+Apply a template directly to an environment.
+
+---
+
+## Remote Config & SDK Integration
+
+### `GET /api/v1/remote/:projectSlug/:environmentSlug`
+Fetch key-value configuration for applications and SDKs using Bearer tokens (obtained via API key login). Supports caching headers (`ETag`, `If-None-Match`).
+
+---
+
+## Audit Logs
+
+### `GET /api/v1/audit`
+Query system audit events.
+Query parameters:
+- `action`: Filter by action (e.g. `secret.read`, `auth.login`, `secret.update`)
+- `from`: ISO timestamp start date
+- `to`: ISO timestamp end date
+- `limit`: Default 50, maximum 200
+- `offset`: Pagination offset

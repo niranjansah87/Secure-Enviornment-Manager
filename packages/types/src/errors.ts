@@ -1,0 +1,32 @@
+export interface ApiError {
+  error: {
+    code: string;
+    message: string;
+    details?: unknown;
+  };
+}
+
+export const ErrorCodes = {
+  // Auth
+  INVALID_CREDENTIALS: 'INVALID_CREDENTIALS',
+  TOKEN_EXPIRED: 'TOKEN_EXPIRED',
+  TOKEN_INVALID: 'TOKEN_INVALID',
+  SESSION_REVOKED: 'SESSION_REVOKED',
+  ACCOUNT_LOCKED: 'ACCOUNT_LOCKED',
+  MUST_CHANGE_PASSWORD: 'MUST_CHANGE_PASSWORD',
+  REFRESH_TOKEN_REUSED: 'REFRESH_TOKEN_REUSED',
+  INSUFFICIENT_PERMISSIONS: 'INSUFFICIENT_PERMISSIONS',
+  // Resources
+  NOT_FOUND: 'NOT_FOUND',
+  ALREADY_EXISTS: 'ALREADY_EXISTS',
+  // Validation
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+  INVALID_INPUT: 'INVALID_INPUT',
+  // Rate limiting
+  RATE_LIMIT_EXCEEDED: 'RATE_LIMIT_EXCEEDED',
+  // Server
+  INTERNAL_ERROR: 'INTERNAL_ERROR',
+  CRYPTO_ERROR: 'CRYPTO_ERROR',
+} as const;
+
+export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];
