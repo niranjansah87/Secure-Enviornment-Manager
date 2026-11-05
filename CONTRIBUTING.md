@@ -9,7 +9,7 @@ First off, thank you for considering contributing to Secure Environment Manager!
 1. Fork the repository on GitHub.
 2. Clone your fork locally:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/Secure-Environment-Manager.git
+   git clone https://github.com/niranjansah87/Secure-Environment-Manager.git
    cd Secure-Environment-Manager
    ```
 
