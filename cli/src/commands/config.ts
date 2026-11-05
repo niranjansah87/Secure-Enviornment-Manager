@@ -5,6 +5,7 @@
 import { Command } from 'commander';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 
@@ -17,8 +18,8 @@ export interface CliConfig {
   refreshToken?: string;
 }
 
-const CONFIG_DIR = process.env.HOME + '/.sem';
-const CONFIG_FILE = CONFIG_DIR + '/config.json';
+const CONFIG_DIR = path.join(os.homedir(), '.sem');
+const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 
 export function loadConfig(): CliConfig | null {
   try {

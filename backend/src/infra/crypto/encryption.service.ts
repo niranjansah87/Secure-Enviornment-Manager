@@ -90,7 +90,7 @@ export class EncryptionService {
       this.logger.error(
         `Decryption failed for secret ${secretId} v${version}: ${(err as Error).message}`,
       );
-      throw new Error('Secret decryption failed — possible data corruption or key mismatch');
+      throw new Error('Secret decryption failed — possible data corruption or key mismatch', { cause: err });
     } finally {
       dek.fill(0);
     }

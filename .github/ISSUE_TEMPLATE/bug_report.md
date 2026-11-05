@@ -1,33 +1,39 @@
 ---
-name: Bug report
-about: Create a report to help us improve
+name: Bug Report
+about: Create a report to help us fix a defect
 title: '[BUG] '
-labels: bug
+labels: ['bug', 'triage']
 assignees: ''
-
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+## Description
+A clear and concise description of the bug.
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
-4. See error
+## Affected Package(s)
+- [ ] Backend API (`@sem/api`)
+- [ ] Frontend (`frontend`)
+- [ ] Cryptographic engine (`@sem/crypto`)
+- [ ] CLI (`@sem-org/sem-cli`)
+- [ ] SDK (`@sem/sdk`)
+- [ ] Background Worker (`@sem/worker`)
+- [ ] Deployment / Docker Compose
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+## Steps to Reproduce
+1. Command run or action taken:
+2. Environment configuration:
+3. Error output observed:
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
+## Expected Behavior
+A concise description of what you expected to happen.
 
-**Environment (please complete the following information):**
- - OS: [e.g. Ubuntu 22.04]
- - Browser [e.g. chrome, safari]
- - Backend Version [e.g. 1.0.0]
- - Frontend Version [e.g. 1.0.0]
+## Actual Logs / Error Output
+```text
+(Paste relevant error message or stack trace here. Never include real secrets or tokens.)
+```
 
-**Additional context**
-Add any other context about the problem here (e.g. server logs).
+## Environment Information
+- **SEM Version / Git Commit**: 
+- **Node.js Version**: 
+- **pnpm Version**: 
+- **Operating System & Architecture**: 
+- **Docker / Compose Version (if applicable)**: 

@@ -1,21 +1,31 @@
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyc
+# Dependencies
+node_modules/
+.pnpm-store/
 
-# Virtual environments
-venv/
-env/
-.venv/
-ENV/
-env.bak/
+# Build artifacts
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
 
-# Environment and secrets
+# Turbo cache
+.turbo/
+
+# Environment files and credentials (CRITICAL)
 .env
 .env.local
+.env.development
+.env.test
+.env.production
 .env.*
 !.env.example
+!.env.local.example
+
+# Runtime credentials, keys, sessions, and databases
+device_sessions.json
+refresh_tokens.json
+*.sessions.json
 api_keys.json
 service_account.json
 .secrets.baseline
@@ -25,87 +35,67 @@ service_account.json
 *.p12
 *.pfx
 /secrets/
+infra/docker/secrets/
 
-# Data and logs
+# Databases, state, and backups
 data/
+storage/
+state/
+backups/
+*.sqlite
+*.sqlite3
+*.db
+
+# Logs and runtime PID files
 audit_logs/
+logs/
 *.log
 *.out
 *.err
 *.pid
 
-# OS-generated files
+# Testing and coverage
+coverage/
+.nyc_output/
+.cache/
+.pytest_cache/
+.mypy_cache/
+htmlcov/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyc
+venv/
+env/
+.venv/
+
+# OS and IDE files
 .DS_Store
 Thumbs.db
-
-# IDE configs
 .vscode/
 .idea/
 
-# Supabase
-.supabase/
-.supabase/functions/.env
-
-# Testing and coverage
-.cache/
-.mypy_cache/
-.pytest_cache/
-.coverage
-htmlcov/
-
-# Build artifacts
-*.spec
-build/
-dist/
-
-# Database
-*.sqlite3
-
-# Node modules (if React is in same repo)
-node_modules/
-dist/
-.next/
-out/
-.env.production
-.env.development
-.env.local
-nginx/dotenv_soundchan_ai.conf
-/.claude
-AGENTS.md
-
-CLAUDE.md
-
-DEBUGGING.md
-MEMORY.md
-SKILLS.md
-
-# Added by code-review-graph
+# Internal tool runs and session transcripts
 .code-review-graph/
+graphify-out/
+frontend/graphify-out/
+codex-session-*.md
+nginx/dotenv_soundchan_ai.conf
+sem_mobile/android/app/google-services.json
 
-# SEM V2 monorepo
-packages/*/dist/
-backend/dist/
-worker/dist/
-apps/*/dist/
-tools/*/dist/
-infra/docker/secrets/
-
-# Coverage and turbo cache
-coverage/
-.turbo/
-
-# Internal tooling sessions (never commit)
-**/.claude/autoharness/
-GEMINI.md
+# Local editor and assistant session files (keep AGENTS.md tracked for Codex/Open Source)
+.agents/
+.claude/
+.codex/
+.cursor/
+.cursorrules
 .windsurfrules
 .opencode.json
 .mcp.json
-.cursorrules
-/.cursor
-/tests
-sem_mobile/android/app/google-services.json
-/.agents
-/.codex
-/graphify-out
-/frontend/graphify-out
-codex-session-01a142cb-fa07-7293-abeb-27117875de3d.md
+CLAUDE.md
+DEBUGGING.md
+GEMINI.md
+MEMORY.md
+SKILLS.md

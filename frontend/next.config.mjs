@@ -32,9 +32,11 @@ const securityHeaders = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   poweredByHeader: false,
   transpilePackages: ['three', '@react-three/fiber', '@react-three/drei'],
   outputFileTracingRoot: path.resolve(__dirname, '..'),
+  turbopack: {},
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,

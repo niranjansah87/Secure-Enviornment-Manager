@@ -1,280 +1,145 @@
-# ARCHITECTURE.md
+# Architecture Specification — Secure Environment Manager V2
 
-<!-- AUTO-GENERATED START -->
-<!-- High-level system architecture -->
-<!-- AUTO-GENERATED END -->
-
-## Current architecture (v2 — 2026)
-
-> The project migrated off the original Flask backend. The sections below the
-> divider describe that **historical** Flask architecture and are retained for
-> reference only. They no longer reflect the running system.
-
-SEM is now a **pnpm + Turbo monorepo**:
-
-- **Backend — `backend/`**: NestJS (Fastify adapter), listening on **port 3001**,
-  all routes under `/api/v1`. Persistence via **Drizzle ORM + PostgreSQL**;
-  **Redis** (ioredis) for sessions/rate-limiting; **BullMQ** worker in
-  `worker/`. Auth is JWT (ES256) with refresh-token rotation; secrets are
-  encrypted with envelope encryption (AES-256-GCM DEK/KEK). Shared packages:
-  `@sem/crypto`, `@sem/types`, `@sem/sdk`.
-- **Frontend — `frontend/`**: Next.js 15 (App Router) + React 19 + Tailwind +
-  Radix, framer-motion, Recharts, Lenis, Sonner. Talks to the NestJS API via
-  `src/lib/sem-api.ts` (envelope `{ success, data }`); auth/workspace state in
-  `src/context/workspace-context.tsx`; URL model `/[projectSlug]/[envSlug]`.
-- **Worker — `worker/`**: BullMQ background maintenance worker for key rotation,
-  session cleanup, and email notification tasks.
-- **Legacy Backend — `backend_v1/`**: Preserved historical Python/Flask backend
-  and test suite, archived for historical reference.
-- **Domains** (org-scoped, JWT-guarded): auth, organizations, projects,
-  environments, secrets (+ versions/rollback/history/export/bulk/remote-config),
-  snapshots, templates, api-keys, audit, analytics, users, health.
-
-Run locally: `pnpm install`, provision Postgres + Redis, set `.env`
-(`DATABASE_URL`, `REDIS_URL`, `SEM_MASTER_KEY`, `SEM_TOKEN_HMAC_KEY`, JWT keys),
-`pnpm db:migrate && pnpm db:bootstrap`, then run `pnpm dev` to launch both
-backend (:3001) and frontend (:3000) simultaneously with Turborepo.
+This document provides a comprehensive technical overview of the architecture, security boundaries, cryptographic lifecycle, and data flow of Secure Environment Manager (SEM).
 
 ---
 
-## System Architecture (historical — Flask)
+## 1. High-Level System Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Client Browser                         │
-└────────────────────────┬──────────────────────────────────┘
-                         │ HTTPS
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Reverse Proxy                             │
-│              (Caddy/Nginx on domain.com)                     │
-│              Terminates HTTPS, forwards to                   │
-└────────────┬────────────────────────────┬───────────────────┘
-             │                            │
-             │ localhost:3080             │ localhost:8070
-             ▼                            ▼
-┌────────────────────────┐    ┌───────────────────────────────┐
-│    Next.js Frontend   │    │      Flask Backend API        │
-│      (Port 3000)       │    │        (Port 8070)           │
-│                       │    │                             │
-│  React 19 + Tailwind │    │  Fernet Encryption           │
-│  TanStack Table      │    │  Session Auth               │
-│  Framer Motion      │    │  File Storage               │
-│  Recharts           │    │  Prometheus Metrics         │
-└────────────────────────┘    └─────────────┬───────────────┘
-                                             │
-                         ┌───────────────────┼───────────────────┐
-                         │                   │                   │
-                         ▼                   ▼                   ▼
-               ┌────────────────┐  ┌────────────────┐  ┌────────────────┐
-               │  data/*        │  │ audit_logs/    │  │ monitoring/   │
-               │  *.enc         │  │ audit.jsonl    │  │ prometheus/   │
-               │  *.history     │  │                │  │ grafana/      │
-               └────────────────┘  └────────────────┘  └────────────────┘
+SEM is architected as a modular, distributed, multi-tenant secrets management system.
+
+```mermaid
+graph TD
+    Client["Client Devices / Consumers<br/>(Browser, CLI, SDK, CI/CD)"]
+    Proxy["Reverse Proxy / TLS Terminator<br/>(Nginx / Caddy)"]
+    Frontend["Frontend App<br/>Next.js 16 (Port 3000)"]
+    API["Backend REST & WS API<br/>NestJS + Fastify (Port 3001)"]
+    Worker["Background Worker<br/>BullMQ (@sem/worker)"]
+    Postgres[("PostgreSQL 16<br/>(Encrypted Secrets, Snapshots, RBAC)")]
+    Redis[("Redis 7<br/>(Token Lookup, Sessions, Rate Limits, Queues)")]
+
+    Client -->|HTTPS / WSS| Proxy
+    Proxy -->|HTTP :3000| Frontend
+    Proxy -->|HTTP / WS :3001| API
+    Frontend -.->|REST / WebSocket| API
+    API -->|Drizzle ORM| Postgres
+    API -->|ioredis| Redis
+    Worker -->|Queue Jobs| Redis
+    Worker -->|DEK Maintenance| Postgres
 ```
 
-## Component Responsibilities
+---
 
-### Frontend (Next.js)
+## 2. Cryptographic Architecture & Key Hierarchy
 
-**Purpose:** User interface for managing secrets
+SEM uses **envelope encryption** based on authenticated AES-256-GCM. Plaintext secret values are never encrypted directly with root credentials.
 
-**Location:** `frontend/`
+```mermaid
+graph TD
+    subgraph Storage ["Key Hierarchy"]
+        MK["Master Key (SEM_MASTER_KEY)<br/>32-byte AES root key (Env / Vault)"]
+        KEK["Project Key Encryption Key (KEK)<br/>Unique 256-bit AES key per project"]
+        DEK["Environment Data Encryption Key (DEK)<br/>Unique 256-bit AES key per environment"]
+        Secret["Secret Value<br/>Plaintext Environment Variable"]
+    end
 
-**Key Directories:**
-- `frontend/src/app/` — Next.js App Router pages
-- `frontend/src/components/` — Reusable UI components
-- `frontend/src/lib/` — Utilities and API client
-- `frontend/src/context/` — React Context providers
-
-**Authentication Flow:**
-1. User enters API token on login page
-2. Token stored in localStorage via `saveToken()`
-3. All API calls include `Authorization: Bearer <token>`
-4. Invalid token redirects to login
-
-**Key Pages:**
-| Route | Purpose |
-|-------|---------|
-| `/login` | Token entry page |
-| `/dashboard` | Global statistics |
-| `/projects` | Namespace list |
-| `/[namespace]/[environment]` | Secrets CRUD |
-| `/[namespace]/[environment]/history` | Version history |
-| `/[namespace]/[environment]/audit` | Audit logs |
-| `/[namespace]/[environment]/compare` | Diff view |
-| `/[namespace]/[environment]/templates` | Template management |
-| `/analytics` | Activity analytics |
-
-### Backend (Flask)
-
-**Purpose:** API server, encryption, file storage
-
-**Location:** Root directory
-
-**Key Modules:**
-| Module | Responsibility |
-|--------|----------------|
-| `app.py` | Main Flask application, routes, settings |
-| `history_manager.py` | Encrypted version snapshots |
-| `audit_logger.py` | Append-only audit log |
-| `analytics_service.py` | Trends and statistics |
-| `health_service.py` | Health checks |
-
-**Settings (`Settings` class):**
-- Loaded from environment variables
-- Validates required vars at startup
-- Configures Flask app behavior
-
-### Storage Architecture
-
-**Secret Storage:**
-```
-data/
-├── namespace1/
-│   ├── environment1.enc  (Fernet-encrypted JSON)
-│   └── environment2.enc
-└── namespace2/
-    └── production.enc
+    MK -->|Wraps via AES-256-GCM| KEK
+    KEK -->|Wraps via AES-256-GCM| DEK
+    DEK -->|Encrypts with AAD location binding| Secret
 ```
 
-**History Storage:**
-```
-data/
-└── namespace1/
-    └── environment1.history.jsonl  (one JSON object per line)
-```
+### Cryptographic Invariants
+1. **Authenticated Encryption**: All symmetric operations use `aes-256-gcm` with 128-bit authentication tags. Tampering with ciphertext or authentication tags immediately aborts decryption.
+2. **Deterministic Nonces**: Every encryption operation generates a cryptographically random 12-byte (96-bit) initialization vector via `crypto.randomBytes(12)`. Nonces are never reused.
+3. **Additional Authenticated Data (AAD)**: Ciphertext is cryptographically bound to its resource coordinates:
+   $$\text{AAD} = \text{"sem:secret:"} \parallel \text{orgId} \parallel \text{":"} \parallel \text{projectId} \parallel \text{":"} \parallel \text{envId} \parallel \text{":"} \parallel \text{key} \parallel \text{":v"} \parallel \text{version}$$
+   If an adversary copies ciphertext from `production` to `staging` or changes the secret key, decryption fails verification.
+4. **Zero Key Exposure**: Plaintext DEK buffers are held in memory only for the duration of the cryptographic operation and wiped with zeroes (`dek.fill(0)`) in `finally` blocks.
 
-**Audit Storage:**
-```
-audit_logs/
-└── audit.jsonl  (one JSON object per line)
-```
+---
 
-### API Design
+## 3. Authentication & Token Lifecycle
 
-**Base URL:** `http://localhost:8070/api/v1/`
+SEM implements asymmetric authentication via **ECDSA P-256 (ES256)** JWTs combined with opaque, single-use refresh tokens.
 
-**Authentication:**
-All API endpoints require `Authorization: Bearer <token>` header.
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Client (Web / CLI / SDK)
+    participant Auth as Auth Domain (@sem/api)
+    participant Redis as Redis 7 (Cache & Sessions)
+    participant DB as PostgreSQL 16
 
-**Endpoints:**
+    User->>Auth: POST /api/v1/auth/login (Credentials / API Key)
+    Auth->>DB: Query user record & verify Argon2id hash
+    Auth->>Auth: Generate ES256 Access Token (900s TTL)
+    Auth->>Auth: Generate Single-Use Refresh Token (semr_...)
+    Auth->>Redis: Store Token Family & Lookup HMAC
+    Auth-->>User: Return Access Token + Refresh Token + Session ID
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/meta/environments` | List all environments |
-| GET | `/meta/stats` | Global statistics |
-| GET | `/meta/analytics` | Activity trends |
-| GET | `/meta/health` | System health |
-| GET | `/meta/logins` | Login history |
-| GET | `/:namespace/:environment` | Get all secrets |
-| PUT | `/:namespace/:environment` | Replace all secrets |
-| PATCH | `/:namespace/:environment` | Update/create secrets |
-| DELETE | `/:namespace/:environment/keys/:key` | Delete a secret |
-| POST | `/:namespace/:environment/bulk` | Bulk replace |
-| GET | `/:namespace/:environment/history` | Version history |
-| POST | `/:namespace/:environment/rollback` | Rollback |
-| GET | `/:namespace/:environment/audit` | Audit logs |
-| POST | `/:namespace/:environment/templates/apply` | Apply template |
+    Note over User,Auth: Subsequent Authenticated Requests
+    User->>Auth: Request with Authorization: Bearer <AccessToken>
+    Auth->>Auth: Verify ES256 Signature, Claims, Expiry & Tenant
 
-### Security Architecture
-
-**Authentication Layers:**
-1. Bearer token validation
-2. Session authentication for web UI
-3. Rate limiting via login attempt tracking
-
-**Encryption Layers:**
-1. Fernet encryption for data at rest
-2. TLS transport encryption (via reverse proxy)
-3. CSRF protection via HMAC tokens
-
-**Audit Trail:**
-- All secret modifications logged
-- All authentication events logged
-- Exports logged (no values stored)
-
-### Monitoring Architecture
-
-**Prometheus Metrics:**
-- Exposed at `/metrics`
-- Collected by Prometheus server
-- Visualized in Grafana
-
-**Health Checks:**
-- Encryption key validity
-- Disk space availability
-- Process resource usage
-- Directory structure integrity
-
-## Data Flow
-
-### Secret Update Flow
-```
-User → Frontend → API PATCH → Backend
-                            │
-                            ├── validate_csrf()
-                            ├── read_vars()
-                            ├── write_vars()
-                            ├── history_manager.save_snapshot()
-                            ├── audit_logger.log_variable_update()
-                            └── Response 200
+    Note over User,Auth: Token Refresh Flow & Rotation
+    User->>Auth: POST /api/v1/auth/refresh { refresh_token }
+    Auth->>Redis: Lookup Token Family & Check Consumption State
+    alt Token Already Consumed (Reuse Detected)
+        Auth->>Redis: Revoke entire token family (Security Alert)
+        Auth-->>User: 401 Unauthorized (Session Invalidated)
+    else Token Valid
+        Auth->>Auth: Issue fresh Access Token & fresh Refresh Token
+        Auth->>Redis: Mark old token consumed, register new token
+        Auth-->>User: Return new token pair
+    end
 ```
 
-### Secret Read Flow
-```
-User → Frontend → API GET → Backend
-                          │
-                          ├── api_auth_ok()
-                          ├── read_vars() → Fernet decrypt
-                          ├── audit_logger.log_export()
-                          └── Response JSON
-```
+---
 
-### Rollback Flow
-```
-User → Frontend → API POST /rollback → Backend
-                                    │
-                                    ├── validate snapshot_id
-                                    ├── history_manager.get_snapshot()
-                                    ├── write_vars()
-                                    ├── history_manager.save_snapshot()
-                                    └── Response 200
+## 4. API Request & Authorization Pipeline
+
+Every request to `@sem/api` passes through strict defense-in-depth filters:
+
+```mermaid
+flowchart LR
+    Req[Incoming HTTP Request] --> Throttler[RateLimiter<br/>Sliding Window]
+    Throttler --> Helmet[Fastify Helmet<br/>CSP / HSTS]
+    Helmet --> Cors[CORS Guard<br/>Strict Whitelist]
+    Cors --> JwtGuard[JwtAuthGuard<br/>ES256 Verification]
+    JwtGuard --> MustChangePass[MustChangePassword<br/>Enforcement]
+    MustChangePass --> PermGuard[PermissionsGuard<br/>RBAC & Scopes]
+    PermGuard --> Controller[Domain Controller<br/>Tenant-Isolated Handler]
+    Controller --> Audit[AuditService<br/>Immutable Log]
+    Audit --> Res[HTTP Response]
 ```
 
-## Deployment Architecture
+---
 
-**Development:**
-```bash
-# Terminal 1
-python app.py  # Backend on :8070
+## 5. Secret History, Snapshots & Rollback
 
-# Terminal 2
-cd frontend && npm run dev  # Frontend on :3000
+```mermaid
+stateDiagram-v2
+    [*] --> ActiveVersion: Upsert Secret
+    ActiveVersion --> ArchivedVersion: Update / Mutation
+    ArchivedVersion --> ActiveVersion: Rollback Request
+    ActiveVersion --> EnvironmentSnapshot: Snapshot Creation (Tagged State)
+    EnvironmentSnapshot --> RestoredEnvironment: Snapshot Restore
 ```
 
-**Production (Docker):**
-```bash
-docker compose up -d --build
-```
+1. **Version History**: Secrets maintain an append-only version history. Overwriting a secret increments its version and archives previous encrypted payloads.
+2. **Environment Snapshots**: Point-in-time snapshots capture the encrypted state of all variables in an environment, sealed with dedicated snapshot AAD.
+3. **Rollback Guarantee**: Restoring an earlier version or snapshot generates a new forward version entry and triggers a cryptographic audit event.
 
-**Service URLs:**
-- Frontend: `http://localhost:3080`
-- Backend API: `http://localhost:8070`
-- Prometheus: `http://localhost:9095`
-- Grafana: `http://localhost:3002` (if enabled)
+---
 
-## Scalability Considerations
+## 6. Threat Model & Security Boundaries
 
-**Current Limitations:**
-- File-based storage (no concurrent database)
-- Single-backend deployment
-- No horizontal scaling without shared filesystem
-- Audit log grows unbounded
-
-**Potential Improvements:**
-- PostgreSQL for storage and audit
-- Redis for session management
-- Multi-backend deployment with load balancer
-- Log rotation for audit files
-- Secret versioning with actual diff storage
+| Threat | Mitigation Mechanism |
+| :--- | :--- |
+| **Database compromise / SQL leak** | Secrets at rest are AES-256-GCM encrypted; keys are never stored in the database. |
+| **Ciphertext substitution / moving** | AAD binds ciphertext to tenant, project, environment, key, and version. |
+| **JWT algorithm confusion** | Verification strictly enforces ES256 algorithm; HMAC and none algorithms are rejected. |
+| **Refresh token theft** | Single-use refresh token rotation with automated family reuse detection. |
+| **Cross-tenant data access (IDOR)** | Tenant ID (`orgId`) is derived exclusively from verified JWT identity claims. |
+| **Credential brute force** | Redis-backed sliding window rate limiter locks IPs after repeated failures. |
+| **Timing attacks** | Constant-time comparisons (`safeCompare`) and dummy Argon2 verification for missing users. |

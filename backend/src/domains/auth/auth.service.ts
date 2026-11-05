@@ -71,7 +71,7 @@ export class AuthService {
       throw new ForbiddenException({ code: 'ACCOUNT_LOCKED', message: 'Too many login attempts. Try again later.' });
     }
 
-    let result: IssuedTokens & { mustChangePassword: boolean } | null = null;
+    let result: (IssuedTokens & { mustChangePassword: boolean });
 
     try {
       if (creds.masterToken) {
@@ -158,7 +158,7 @@ export class AuthService {
     const dummyHash = '$argon2id$v=19$m=65536,t=3,p=4$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
     const hashToVerify = user?.passwordHash ?? dummyHash;
 
-    let verified = false;
+    let verified: boolean;
     try {
       verified = await argon2.verify(hashToVerify, creds.password!);
     } catch {
