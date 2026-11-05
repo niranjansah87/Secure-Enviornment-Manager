@@ -83,26 +83,38 @@ SEM was rebuilt from the ground up to replace legacy, single-node Python prototy
 
 <div align="center">
 
-### Modern Management Dashboard
-*High-level overview of namespaces, projects, environments, active keys, and quick actions.*
+### Executive Workspace & Dashboard
+*Real-time overview of organization projects, active secrets, environments, and activity metrics.*
 ![Dashboard](./screenshots/dashboard.png)
 
 <br/>
 
-### Encrypted Secrets Editor & Diff Studio
-*Live editing with variable masking, copy-to-clipboard, tag categorization, and bulk `.env` diffing.*
+### Encrypted Secrets Studio
+*Live key-value management with variable masking, instant copying, search filtering, and bulk `.env` operations.*
 ![Secrets Management](./screenshots/secrets_page.png)
 
 <br/>
 
-### Cryptographic Audit Trail
-*Immutable, actor-attributed security log tracking every view, mutation, and key access.*
-![Audit Logs](./screenshots/audit_logs.png)
+### Multi-Tenant Project Directory
+*Granular isolation across organizations, repositories, microservices, and custom environments.*
+![Projects Directory](./screenshots/projects.png)
 
 <br/>
 
-### Authentication & Session Security
-*Secure login with Argon2id password verification and device-bound session enforcement.*
+### Cross-Environment Comparison Matrix
+*Side-by-side diff engine across development, staging, and production to detect and eliminate configuration drift.*
+![Cross-Environment Comparison](./screenshots/compare.png)
+
+<br/>
+
+### Point-in-Time History & One-Click Rollback
+*Snapshot timeline tracking all cryptographic revisions with instant rollback capabilities.*
+![Version History](./screenshots/version_history.png)
+
+<br/>
+
+### Authentication & Zero-Trust Session Gateway
+*Argon2id credential verification, device tracking, and single-use refresh token exchange.*
 ![Login Screen](./screenshots/login_page.png)
 
 </div>
