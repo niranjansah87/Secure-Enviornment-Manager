@@ -21,7 +21,6 @@ async function bootstrap() {
 
   const config = app.get(ConfigService);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await app.register(fastifyHelmet as unknown as any, {
     contentSecurityPolicy: {
       directives: {
@@ -44,7 +43,6 @@ async function bootstrap() {
     .split(',')
     .map((o) => o.trim());
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await app.register(fastifyCors as unknown as any, {
     origin: allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

@@ -2,7 +2,23 @@
   "name": "sem",
   "private": true,
   "version": "2.0.0",
-  "description": "Secure Environment Manager v2 — monorepo root",
+  "description": "Secure Environment Manager v2 — Self-hosted developer secrets infrastructure with envelope encryption",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/niranjansah87/Secure-Enviornment-Manager.git"
+  },
+  "keywords": [
+    "secrets-management",
+    "environment-variables",
+    "developer-tools",
+    "self-hosted",
+    "security",
+    "devops",
+    "typescript",
+    "docker"
+  ],
+  "author": "Niranjan Sah",
+  "license": "MIT",
   "scripts": {
     "build": "turbo run build",
     "build:backend": "turbo run build --filter=@sem/api",
